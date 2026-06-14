@@ -1,0 +1,121 @@
+[
+  {
+    "id": "wabot-tab",
+    "type": "tab",
+    "label": "FitFlow WA Bot",
+    "disabled": false,
+    "info": ""
+  },
+
+  {
+    "id": "wabot-cmt",
+    "type": "comment",
+    "z": "wabot-tab",
+    "name": "WA Bot — Terima pesan masuk Fonnte → AI reply",
+    "info": "SETUP:\n1. Di Fonnte Dashboard → Device → Webhook\n   Masukkan URL: http://localhost:3000/api/wa/incoming?key=fitflow_wa_bot_2024\n   (ganti localhost dengan URL production jika sudah deploy)\n2. Pastikan FONNTE_TOKEN dan FONNTE_WEBHOOK_KEY sudah diset di .env.local\n\nCara kerja:\n- Fonnte kirim POST ke endpoint Next.js saat ada pesan masuk\n- Next.js cari instruktur berdasarkan nomor device\n- Claude AI jawab berdasarkan data kelas & event instruktur\n- Balasan dikirim otomatis via Fonnte\n\nNode-RED flow ini hanya untuk MONITORING & testing.\nLogic utama ada di Next.js /api/wa/incoming",
+    "x": 270,
+    "y": 40,
+    "wires": []
+  },
+
+  {
+    "id": "wabot-cmt-2",
+    "type": "comment",
+    "z": "wabot-tab",
+    "name": "── TEST: Simulasi pesan masuk (isi sender & message dulu) ──────────",
+    "info": "",
+    "x": 280,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "wabot-inj",
+    "type": "inject",
+    "z": "wabot-tab",
+    "name": "Simulasi Pesan Masuk",
+    "props": [{"p": "payload"}],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 160,
+    "wires": [["wabot-fn1"]]
+  },
+  {
+    "id": "wabot-fn1",
+    "type": "function",
+    "z": "wabot-tab",
+    "name": "Build Test Message",
+    "func": "// ⚙️  KONFIGURASI TEST\nconst FITFLOW_BASE_URL  = 'http://localhost:3000';\nconst FONNTE_WEBHOOK_KEY = 'fitflow_wa_bot_2024'; // sama dgn .env.local\nconst DEVICE_PHONE       = '628xxxxxxxxx'; // nomor WA instruktur di Fonnte\nconst SENDER_PHONE       = '628yyyyyyyyyy'; // nomor pengirim (beda dari device)\nconst TEST_MESSAGE       = 'Kak ada kelas poundfit jam berapa ya?';\nconst SENDER_NAME        = 'Test User';\n// ─────────────────────────────────────────────────────────\n\nmsg.url    = `${FITFLOW_BASE_URL}/api/wa/incoming?key=${FONNTE_WEBHOOK_KEY}`;\nmsg.method = 'POST';\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = JSON.stringify({\n    device:  DEVICE_PHONE,\n    sender:  SENDER_PHONE,\n    message: TEST_MESSAGE,\n    name:    SENDER_NAME,\n    id:      'test_' + Date.now()\n});\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 360,
+    "y": 160,
+    "wires": [["wabot-req"]]
+  },
+  {
+    "id": "wabot-req",
+    "type": "http request",
+    "z": "wabot-tab",
+    "name": "POST /api/wa/incoming",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 580,
+    "y": 160,
+    "wires": [["wabot-dbg"]]
+  },
+  {
+    "id": "wabot-dbg",
+    "type": "debug",
+    "z": "wabot-tab",
+    "name": "WA Bot Result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": true,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "payload.ok",
+    "statusType": "msg",
+    "x": 770,
+    "y": 160,
+    "wires": []
+  },
+
+  {
+    "id": "wabot-cmt-3",
+    "type": "comment",
+    "z": "wabot-tab",
+    "name": "── INFO: Setup Fonnte Webhook ───────────────────────────────────────",
+    "info": "",
+    "x": 260,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "wabot-info",
+    "type": "comment",
+    "z": "wabot-tab",
+    "name": "Fonnte Dashboard → Device → Webhook URL",
+    "info": "URL Webhook yang dimasukkan ke Fonnte:\n\nDEV  : http://[IP-komputer]:3000/api/wa/incoming?key=fitflow_wa_bot_2024\nPROD : https://[domain-kamu]/api/wa/incoming?key=fitflow_wa_bot_2024\n\nCatatan dev: Fonnte butuh URL yang bisa diakses dari internet.\nGunakan ngrok untuk testing lokal:\n  ngrok http 3000\n  → dapat URL: https://xxxx.ngrok-free.app\n  → masukkan: https://xxxx.ngrok-free.app/api/wa/incoming?key=fitflow_wa_bot_2024",
+    "x": 280,
+    "y": 300,
+    "wires": []
+  }
+]
