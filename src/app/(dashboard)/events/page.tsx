@@ -23,26 +23,32 @@ export default async function EventsPage({
 }: {
   searchParams: Promise<{ status?: string }>
 }) {
-  const { status = '' } = await searchParams
+  const params = await searchParams
+  const status = params.status ?? ''
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [eventsRes, profileRes] = await Promise.all([
-    (() => {
-      let q = supabase
-        .from('events')
-        .select('id, title, slug, event_date, start_time, location, status, ots_price, early_bird_price, registrations(id, payment_status)')
-        .eq('user_id', user!.id)
-        .order('event_date', { ascending: false })
-      if (status) q = q.eq('status', status as any)
-      return q
-    })(),
-    supabase.from('profiles').select('slug').eq('id', user!.id).single(),
+  if (!user) return null
+
+  // Fetch events and profile slug separately (avoid IIFE in Promise.all)
+  let eventsQuery = supabase
+    .from('events')
+    .select('id, title, slug, event_date, start_time, location, status, ots_price, early_bird_price, registrations(id, payment_status)')
+    .eq('user_id', user.id)
+    .order('event_date', { ascending: false })
+
+  if (status) {
+    eventsQuery = eventsQuery.eq('status', status as any)
+  }
+
+  const [{ data: events }, { data: profile }] = await Promise.all([
+    eventsQuery,
+    supabase.from('profiles').select('slug').eq('id', user.id).single(),
   ])
 
-  const events     = eventsRes.data
-  const profileSlug = profileRes.data?.slug ?? null
-  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const profileSlug = profile?.slug ?? null
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   return (
     <div className="max-w-2xl">
@@ -95,11 +101,11 @@ export default async function EventsPage({
             const total     = regs.length
             const pending   = regs.filter((r: any) => r.payment_status === 'pending').length
             const confirmed = regs.filter((r: any) => r.payment_status === 'confirmed').length
-            const regLink   = profileSlug ? `${appUrl}/${profileSlug}/daftar/${ev.slug}` : null
+            const regLink   = profileSlug && appUrl ? `${appUrl}/${profileSlug}/daftar/${ev.slug}` : null
 
             return (
               <div key={ev.id} className="bg-white rounded-2xl border border-gray-100 hover:border-violet-200 transition-colors">
-                <Link href={`/events/${ev.id}`}>
+                <Link href={`/events/${ev.id}`} className="block">
                   <div className="p-4 flex items-center gap-4">
                     {/* Date box */}
                     <div className="w-12 h-12 rounded-xl bg-violet-50 flex flex-col items-center justify-center shrink-0 text-violet-700">
@@ -121,7 +127,7 @@ export default async function EventsPage({
                           <Badge color="orange">{pending} menunggu</Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
+                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
                         <Users className="w-3 h-3" />
                         {total} daftar · {confirmed} konfirmasi
                         {ev.location && (
@@ -139,14 +145,13 @@ export default async function EventsPage({
 
                 {/* Inline public link for published events */}
                 {ev.status === 'published' && regLink && (
-                  <div className="px-4 pb-3 pt-0 flex items-center gap-2 border-t border-gray-50">
+                  <div className="px-4 pb-3 border-t border-gray-50 flex items-center gap-2 pt-2">
                     <p className="text-xs text-gray-400 font-mono flex-1 truncate">{regLink}</p>
                     <a
                       href={regLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-violet-600 hover:underline shrink-0"
-                      onClick={e => e.stopPropagation()}
                     >
                       <ExternalLink className="w-3 h-3" />
                       Buka
