@@ -116,33 +116,46 @@ export default async function PublicRegistrationPage({
             )}
           </div>
 
-          {/* Pricing */}
-          <div className="flex gap-3 mb-4">
-            {earlyBirdAvailable && (
-              <div className="flex-1 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <p className="text-xs font-semibold text-green-700 mb-0.5">Early Bird</p>
-                <p className="text-lg font-bold text-green-800">
+          {/* Smart Pricing */}
+          {earlyBirdAvailable ? (
+            <div className="mb-2">
+              <div className="p-3 bg-green-50 border-2 border-green-300 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-green-700">Early Bird 🔥</p>
+                  {event.early_bird_quota && (
+                    <p className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                      Sisa {event.early_bird_quota - (earlyBirdUsed ?? 0)} slot
+                    </p>
+                  )}
+                </div>
+                <p className="text-2xl font-bold text-green-800 mt-0.5">
                   {formatRupiah(Number(event.early_bird_price))}
                 </p>
-                {event.early_bird_quota && (
-                  <p className="text-xs text-green-600 mt-0.5">
-                    Sisa {event.early_bird_quota - (earlyBirdUsed ?? 0)} slot
-                  </p>
-                )}
               </div>
-            )}
-            <div className={`flex-1 p-3 bg-violet-50 border border-violet-200 rounded-xl`}>
-              <p className="text-xs font-semibold text-violet-700 mb-0.5">
-                {earlyBirdAvailable ? 'OTS' : 'Harga'}
-              </p>
-              <p className="text-lg font-bold text-violet-800">
-                {formatRupiah(Number(event.ots_price))}
-              </p>
+              {Number(event.ots_price) > 0 && (
+                <p className="text-xs text-gray-400 text-center mt-1.5">
+                  Harga naik ke{' '}
+                  <span className="font-medium text-gray-500">{formatRupiah(Number(event.ots_price))}</span>
+                  {' '}setelah kuota Early Bird habis
+                </p>
+              )}
             </div>
-          </div>
-
-          {event.description && (
-            <p className="text-sm text-gray-600 whitespace-pre-line">{event.description}</p>
+          ) : (
+            <div className="mb-2">
+              {Number(event.early_bird_price) > 0 && (
+                <p className="text-xs text-gray-400 line-through text-center mb-1">
+                  Early Bird: {formatRupiah(Number(event.early_bird_price))} — Habis
+                </p>
+              )}
+              <div className="p-3 bg-violet-50 border-2 border-violet-300 rounded-xl">
+                <p className="text-xs font-semibold text-violet-700">
+                  {Number(event.early_bird_price) > 0 ? 'OTS' : 'Harga Tiket'}
+                </p>
+                <p className="text-2xl font-bold text-violet-800 mt-0.5">
+                  {formatRupiah(Number(event.ots_price))}
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -30,7 +30,8 @@ export function RegistrationForm({
 }: Props) {
   const [name,     setName]     = useState('')
   const [phone,    setPhone]    = useState('')
-  const [tier,     setTier]     = useState<'early_bird' | 'ots'>(earlyBirdAvailable ? 'early_bird' : 'ots')
+  // Tier is auto-determined by quota — no manual user choice
+  const tier = earlyBirdAvailable ? 'early_bird' : 'ots'
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error,     setError]   = useState<string | null>(null)
@@ -181,43 +182,17 @@ export function RegistrationForm({
           <p className="text-xs text-gray-400">Untuk konfirmasi pendaftaran</p>
         </div>
 
-        {/* Tier selection */}
-        {earlyBirdAvailable && (
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Pilih Harga</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTier('early_bird')}
-                className={`p-3 rounded-xl border-2 text-left transition-colors ${
-                  tier === 'early_bird'
-                    ? 'border-green-400 bg-green-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <p className="text-xs font-semibold text-green-700">Early Bird</p>
-                <p className="text-base font-bold text-green-800">{formatRupiah(earlyBirdPrice)}</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTier('ots')}
-                className={`p-3 rounded-xl border-2 text-left transition-colors ${
-                  tier === 'ots'
-                    ? 'border-violet-400 bg-violet-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <p className="text-xs font-semibold text-violet-700">OTS</p>
-                <p className="text-base font-bold text-violet-800">{formatRupiah(otsPrice)}</p>
-              </button>
-            </div>
+        {/* Total — auto-priced, no manual tier choice */}
+        <div className={`flex items-center justify-between p-3 rounded-xl ${tier === 'early_bird' ? 'bg-green-50 border border-green-100' : 'bg-violet-50 border border-violet-100'}`}>
+          <div>
+            <p className="text-xs font-medium text-gray-500">
+              {tier === 'early_bird' ? 'Early Bird 🔥' : 'OTS'}
+            </p>
+            <p className="text-sm text-gray-600">Total pembayaran</p>
           </div>
-        )}
-
-        {/* Amount summary */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-          <span className="text-sm text-gray-600">Total pembayaran</span>
-          <span className="text-base font-bold text-gray-900">{formatRupiah(amount)}</span>
+          <span className={`text-xl font-bold ${tier === 'early_bird' ? 'text-green-700' : 'text-violet-700'}`}>
+            {formatRupiah(amount)}
+          </span>
         </div>
 
         {/* Proof upload */}
