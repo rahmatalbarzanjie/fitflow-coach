@@ -1,14 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, CheckSquare, Plus } from 'lucide-react'
+import { ArrowLeft, Calendar, CheckSquare } from 'lucide-react'
 import { ClassEditForm } from '@/components/classes/ClassEditForm'
 import { DeleteButton } from '@/components/ui/DeleteButton'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getDayName, formatDateShort, formatTime } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
-import { GenerateSessionsButton } from '@/components/classes/GenerateSessionsButton'
 import { ClassScheduleManager } from './ClassScheduleManager'
 
 const TYPE_COLOR: Record<string, 'violet' | 'green' | 'blue' | 'orange' | 'red' | 'yellow' | 'gray'> = {
@@ -79,21 +78,18 @@ export default async function ClassDetailPage({
 
       {/* Sessions */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">Jadwal Sesi</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {getDayName(cls.day_of_week)} · {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
-            </p>
-          </div>
-          <GenerateSessionsButton classId={cls.id} />
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-gray-900">Riwayat Sesi</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {getDayName(cls.day_of_week)} · {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
+          </p>
         </div>
 
         {!sessions?.length ? (
           <div className="text-center py-10">
             <Calendar className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-400 mb-3">Belum ada sesi yang dibuat</p>
-            <GenerateSessionsButton classId={cls.id} variant="primary" />
+            <p className="text-sm text-gray-400">Belum ada riwayat sesi</p>
+            <p className="text-xs text-gray-300 mt-1">Sesi akan muncul setelah absensi pertama</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">

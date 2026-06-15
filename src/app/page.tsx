@@ -8,6 +8,7 @@ import { StatsSummary } from '@/components/dashboard/StatsSummary'
 import { WeekCalendar } from '@/components/dashboard/WeekCalendar'
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 import { ConfirmPaymentButton } from '@/components/dashboard/ConfirmPaymentButton'
+import { AutoFillSessions } from '@/components/dashboard/AutoFillSessions'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -102,6 +103,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardLayout>
+      <AutoFillSessions />
       {/* Greeting */}
       <DashboardGreeting name={instructorName} />
 
