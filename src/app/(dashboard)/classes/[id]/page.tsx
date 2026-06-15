@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { getDayName, formatDateShort, formatTime } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
 import { GenerateSessionsButton } from '@/components/classes/GenerateSessionsButton'
+import { ClassScheduleManager } from './ClassScheduleManager'
 
 const TYPE_COLOR: Record<string, 'violet' | 'green' | 'blue' | 'orange' | 'red' | 'yellow' | 'gray'> = {
   zumba: 'violet', yoga: 'green', pilates: 'blue',
@@ -65,6 +66,16 @@ export default async function ClassDetailPage({
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Informasi Kelas</h2>
         <ClassEditForm cls={cls} />
       </Card>
+
+      {/* Schedule manager — reschedule / ubah lokasi */}
+      <ClassScheduleManager
+        classId={cls.id}
+        className={cls.name}
+        location={cls.location ?? null}
+        dayOfWeek={cls.day_of_week}
+        startTime={cls.start_time}
+        endTime={cls.end_time}
+      />
 
       {/* Sessions */}
       <Card>
