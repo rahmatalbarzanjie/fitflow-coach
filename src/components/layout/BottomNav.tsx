@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Calendar, Zap, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Users, Calendar, Zap, PenSquare, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const items = [
-  { href: '/',           icon: LayoutDashboard, label: 'Beranda'   },
-  { href: '/members',    icon: Users,           label: 'Member'    },
-  { href: '/classes',    icon: Calendar,        label: 'Kelas'     },
-  { href: '/events',     icon: Zap,             label: 'Event'     },
-  { href: '/broadcasts', icon: MessageSquare,   label: 'Broadcast' },
+  { href: '/',           icon: LayoutDashboard, label: 'Beranda'  },
+  { href: '/members',    icon: Users,           label: 'Member'   },
+  { href: '/classes',    icon: Calendar,        label: 'Kelas'    },
+  { href: '/events',     icon: Zap,             label: 'Event'    },
+  { href: '/content',    icon: PenSquare,       label: 'Konten'   },
+  { href: '/broadcasts', icon: MessageSquare,   label: 'Broadcast'},
 ]
 
 export function BottomNav() {
@@ -26,7 +27,7 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                'flex-1 flex flex-col items-center py-2.5 gap-0.5 text-[10px] font-medium transition-colors',
+                'flex-1 flex flex-col items-center py-2 gap-0.5 text-[9px] font-medium transition-colors',
                 isActive ? 'text-violet-600' : 'text-gray-400'
               )}
             >

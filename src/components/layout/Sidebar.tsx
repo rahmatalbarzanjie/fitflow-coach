@@ -3,16 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Users, Calendar, Zap, MessageSquare, Activity, Code2 } from 'lucide-react'
+import { LayoutDashboard, Users, Calendar, Zap, PenSquare, MessageSquare, Activity, Code2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
-  { href: '/',           icon: LayoutDashboard, label: 'Beranda'   },
-  { href: '/members',    icon: Users,           label: 'Member'    },
-  { href: '/classes',    icon: Calendar,        label: 'Kelas'     },
-  { href: '/events',     icon: Zap,             label: 'Events'    },
-  { href: '/broadcasts', icon: MessageSquare,   label: 'Broadcast' },
+  { href: '/',           icon: LayoutDashboard, label: 'Beranda'      },
+  { href: '/members',    icon: Users,           label: 'Member'       },
+  { href: '/classes',    icon: Calendar,        label: 'Kelas'        },
+  { href: '/events',     icon: Zap,             label: 'Events'       },
+  { href: '/content',    icon: PenSquare,       label: 'Buat Konten'  },
+  { href: '/broadcasts', icon: MessageSquare,   label: 'Broadcast'    },
 ]
 
 interface Props {
