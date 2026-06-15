@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Users, Clock, CheckCircle, XCircle, Shield } from 'lucide-react'
+import { Users, Clock, CheckCircle, XCircle, Shield, Bell } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils'
 import { TrialManager } from '@/components/admin/TrialManager'
+import { RequestActions } from '@/components/admin/RequestActions'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -15,6 +17,14 @@ export default async function AdminPage() {
   if (!adminEmail || user?.email !== adminEmail) notFound()
 
   const serviceSupabase = createServiceClient()
+
+  // Ambil pending registration requests
+  const { data: pendingRequestsRaw } = await serviceSupabase
+    .from('instructor_requests')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+  const pendingRequests = (pendingRequestsRaw ?? []) as any[]
 
   // Ambil semua profil instruktur (cast any karena kolom trial belum tentu ada di generated types)
   const { data: profilesRaw } = await serviceSupabase
@@ -68,6 +78,42 @@ export default async function AdminPage() {
         ))}
       </div>
 
+      {/* Pendaftaran Baru */}
+      {pendingRequests.length > 0 && (
+        <Card className="mb-6 border-orange-100 bg-orange-50/30">
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-4 h-4 text-orange-500" />
+            <h2 className="text-sm font-semibold text-gray-900">
+              Pendaftaran Menunggu Konfirmasi
+              <span className="ml-2 text-xs font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                {pendingRequests.length}
+              </span>
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {pendingRequests.map((r: any) => (
+              <div key={r.id} className="flex items-start justify-between p-3 bg-white rounded-xl border border-orange-100">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{r.business_name ?? r.name}</p>
+                  {r.business_name && <p className="text-xs text-gray-500">{r.name}</p>}
+                  <p className="text-xs text-gray-500 mt-0.5">{r.email} · {r.phone}</p>
+                  {r.city && <p className="text-xs text-gray-400">{r.city}</p>}
+                  <p className="text-xs text-gray-300 mt-1">
+                    Daftar: {formatDateShort(r.created_at)}
+                  </p>
+                </div>
+                <RequestActions
+                  requestId={r.id}
+                  name={r.name}
+                  email={r.email}
+                  phone={r.phone}
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Daftar instruktur */}
       <Card>
         <h2 className="text-sm font-semibold text-gray-900 mb-5">Semua Instruktur</h2>
@@ -103,11 +149,19 @@ export default async function AdminPage() {
                     {p.trial_expires_at && ` · Trial s/d ${formatDateShort(p.trial_expires_at)}`}
                   </p>
                 </div>
-                <TrialManager
-                  profileId={p.id}
-                  currentStatus={status}
-                  trialExpiresAt={p.trial_expires_at ?? null}
-                />
+                <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <Link
+                    href={`/admin/${p.id}`}
+                    className="text-xs text-gray-400 hover:text-violet-600 transition-colors"
+                  >
+                    Detail →
+                  </Link>
+                  <TrialManager
+                    profileId={p.id}
+                    currentStatus={status}
+                    trialExpiresAt={p.trial_expires_at ?? null}
+                  />
+                </div>
               </div>
             )
           })}

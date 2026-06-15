@@ -24,18 +24,57 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
+  // Routes accessible without login
   const isPublicRoute =
     path.startsWith('/login') ||
     path.startsWith('/register') ||
+    path.startsWith('/home') ||
+    path.startsWith('/daftar') ||
     path.startsWith('/api/') ||
-    path.match(/^\/[^/]+$/) !== null ||
-    path.match(/^\/[^/]+\/daftar/) !== null
+    path.match(/^\/[^/]+$/) !== null ||          // instructor landing pages /{slug}
+    path.match(/^\/[^/]+\/daftar/) !== null       // event registration /{slug}/daftar/...
 
+  // Unauthenticated → login
   if (!isPublicRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
+
+  // Already logged in → away from auth pages
   if ((path === '/login' || path === '/register') && user) {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Root for non-logged-in users → marketing page
+  if (path === '/' && !user) {
+    return NextResponse.redirect(new URL('/home', request.url))
+  }
+
+  // Trial expiry check for authenticated dashboard users
+  const adminEmail = process.env.ADMIN_EMAIL
+  const isAdminUser = user?.email === adminEmail
+  const isDashboardRoute =
+    !isPublicRoute &&
+    !path.startsWith('/expired') &&
+    !path.startsWith('/settings') &&
+    !path.startsWith('/api') &&
+    !path.startsWith('/admin') &&
+    path !== '/'  // root is the dashboard, check it too
+
+  if (user && !isAdminUser && (isDashboardRoute || path === '/') && path !== '/expired') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_status, trial_expires_at')
+      .eq('id', user.id)
+      .single()
+
+    if (profile) {
+      const isActive  = (profile as any).subscription_status === 'active'
+      const expiresAt = (profile as any).trial_expires_at
+
+      if (!isActive && expiresAt && new Date(expiresAt) < new Date()) {
+        return NextResponse.redirect(new URL('/expired', request.url))
+      }
+    }
   }
 
   return supabaseResponse
