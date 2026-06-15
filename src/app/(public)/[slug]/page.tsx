@@ -67,8 +67,12 @@ export default async function InstructorLandingPage({
 
   const profile = { ...profileBase, photo_url: (photoData as any)?.photo_url ?? null }
 
-  // Classes + Events
-  const [classesRes, eventsRes] = await Promise.all([
+  const in7Days = new Date()
+  in7Days.setDate(in7Days.getDate() + 7)
+  const in7DaysStr = in7Days.toISOString().split('T')[0]
+
+  // Classes + Events + Sessions with changes in next 7 days
+  const [classesRes, eventsRes, changedSessionsRes] = await Promise.all([
     supabase
       .from('classes')
       .select('id, name, type, day_of_week, start_time, end_time, location, capacity')
@@ -82,10 +86,30 @@ export default async function InstructorLandingPage({
       .gte('event_date', today)
       .order('event_date')
       .limit(6),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('sessions') as any)
+      .select('id, class_id, session_date, start_time, end_time, session_type, original_date, original_time, override_location')
+      .eq('user_id', profile.id)
+      .neq('session_type', 'regular')
+      .gte('session_date', today)
+      .lte('session_date', in7DaysStr)
+      .order('session_date'),
   ])
 
-  const classes = classesRes.data ?? []
-  const events  = eventsRes.data  ?? []
+  const classes        = classesRes.data         ?? []
+  const events         = eventsRes.data          ?? []
+  const changedSessions: any[] = changedSessionsRes.data ?? []
+
+  // Build maps for quick lookup
+  const rescheduledMap = new Map<string, any>() // class_id → session (rescheduled)
+  const locationMap    = new Map<string, any>() // class_id → session (location_changed)
+  const extraSessions: any[] = []
+
+  changedSessions.forEach((s: any) => {
+    if (s.session_type === 'rescheduled')      rescheduledMap.set(s.class_id, s)
+    else if (s.session_type === 'location_changed') locationMap.set(s.class_id, s)
+    else if (s.session_type === 'extra')        extraSessions.push(s)
+  })
 
   // Registration counts
   const regCountMap: Record<string, number> = {}
@@ -204,15 +228,33 @@ export default async function InstructorLandingPage({
 
                     {/* Class cards */}
                     <div className="flex flex-col gap-4">
-                      {(typeClasses as any[]).map((cls: any) => (
+                      {(typeClasses as any[]).map((cls: any) => {
+                        const reschedSess = rescheduledMap.get(cls.id)
+                        const locSess     = locationMap.get(cls.id)
+                        const displayLoc  = locSess?.override_location ?? cls.location
+                        return (
                         <div
                           key={cls.id}
                           className="p-6 rounded-2xl bg-white border border-outline-variant hover-lift custom-shadow"
                         >
                           <div className="flex justify-between items-start mb-4">
-                            <span className={`px-3 py-1 ${cfg.accentBg} ${cfg.accentText} font-bold rounded-lg text-xs uppercase tracking-wider`}>
-                              {DAY_NAMES[cls.day_of_week]}
-                            </span>
+                            <div className="flex flex-col gap-1.5">
+                              <span className={`px-3 py-1 ${cfg.accentBg} ${cfg.accentText} font-bold rounded-lg text-xs uppercase tracking-wider self-start`}>
+                                {reschedSess
+                                  ? DAY_NAMES[new Date(reschedSess.session_date + 'T00:00:00').getDay()]
+                                  : DAY_NAMES[cls.day_of_week]}
+                              </span>
+                              {reschedSess && (
+                                <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-medium self-start">
+                                  ⚠️ Jadwal Berubah
+                                </span>
+                              )}
+                              {locSess && (
+                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium self-start">
+                                  📍 Lokasi Berubah
+                                </span>
+                              )}
+                            </div>
                             {cls.capacity && (
                               <span className="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full text-xs font-medium">
                                 Maks {cls.capacity}
@@ -222,17 +264,66 @@ export default async function InstructorLandingPage({
                           <h4 className="font-montserrat text-lg font-bold text-on-surface mb-1">{cls.name}</h4>
                           <p className={`text-sm flex items-center gap-1.5 mb-1 ${cfg.dayText}`}>
                             <span className="material-symbols-outlined text-base">schedule</span>
-                            {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
+                            {reschedSess
+                              ? <>{formatTime(reschedSess.start_time)} – {formatTime(reschedSess.end_time)} <span className="text-on-surface-variant/50 line-through text-xs">{formatTime(cls.start_time)}</span></>
+                              : <>{formatTime(cls.start_time)} – {formatTime(cls.end_time)}</>
+                            }
                           </p>
-                          {cls.location && (
+                          {displayLoc && (
                             <p className="text-on-surface-variant text-sm flex items-center gap-1.5">
                               <span className="material-symbols-outlined text-base">location_on</span>
-                              {cls.location}
+                              {locSess ? (
+                                <>
+                                  <span className="line-through text-on-surface-variant/40 text-xs">{cls.location}</span>
+                                  <span className="font-semibold text-on-surface">{locSess.override_location}</span>
+                                </>
+                              ) : displayLoc}
+                            </p>
+                          )}
+                          {reschedSess && reschedSess.original_date && (
+                            <p className="text-on-surface-variant/50 text-xs mt-1">
+                              Biasanya {DAY_NAMES[cls.day_of_week]} {formatTime(cls.start_time)}
                             </p>
                           )}
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── KELAS TAMBAHAN MINGGU INI ─────────────────────────────────── */}
+      {extraSessions.length > 0 && (
+        <section className="py-16 bg-emerald-50/50">
+          <div className="max-w-container-max mx-auto px-4 md:px-10">
+            <div className="flex items-center gap-3 mb-8">
+              <span className="material-symbols-outlined text-emerald-600 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
+              <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface">⚡ Kelas Tambahan Minggu Ini</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(extraSessions as any[]).map((s: any) => {
+                const clsInfo = classes.find((c: any) => c.id === s.class_id)
+                return (
+                  <div key={s.id} className="bg-white rounded-2xl p-5 border-2 border-emerald-200 shadow-sm">
+                    <span className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mb-3">
+                      Kelas Ekstra
+                    </span>
+                    <h4 className="font-montserrat text-lg font-bold text-on-surface mb-2">
+                      {clsInfo?.name ?? 'Kelas Ekstra'}
+                    </h4>
+                    <p className="text-sm text-on-surface-variant flex items-center gap-1.5 mb-1">
+                      <span className="material-symbols-outlined text-base text-emerald-500">calendar_today</span>
+                      {DAY_NAMES[new Date(s.session_date + 'T00:00:00').getDay()]}, {formatDate(s.session_date).split(',')[1]?.trim()}
+                    </p>
+                    <p className="text-sm text-on-surface-variant flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-base text-emerald-500">schedule</span>
+                      {formatTime(s.start_time)} – {formatTime(s.end_time)}
+                    </p>
                   </div>
                 )
               })}

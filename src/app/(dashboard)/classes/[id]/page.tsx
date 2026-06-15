@@ -31,9 +31,9 @@ export default async function ClassDetailPage({
       .eq('id', id)
       .eq('user_id', user!.id)
       .single(),
-    supabase
-      .from('sessions')
-      .select('id, session_date, status, start_time, end_time, attendance(id)')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('sessions') as any)
+      .select('id, session_date, status, start_time, end_time, session_type, notified_at, attendance(id)')
       .eq('class_id', id)
       .order('session_date', { ascending: false })
       .limit(20),
@@ -90,10 +90,17 @@ export default async function ClassDetailPage({
               const count = Array.isArray(s.attendance) ? s.attendance.length : 0
               const isToday = s.session_date === today
               const isPast = s.session_date < today
+              const sessType = s.session_type
+              const SESSION_BADGE: Record<string, { label: string; color: string }> = {
+                rescheduled:      { label: 'Dijadwal Ulang', color: 'bg-orange-50 text-orange-700' },
+                extra:            { label: 'Ekstra',          color: 'bg-green-50 text-green-700'  },
+                location_changed: { label: 'Lokasi Baru',     color: 'bg-blue-50 text-blue-700'    },
+              }
+              const sessBadge = sessType && sessType !== 'regular' ? SESSION_BADGE[sessType] : null
               return (
                 <div key={s.id} className={`flex items-center justify-between py-3 ${isToday ? 'bg-violet-50/50 -mx-5 px-5' : ''}`}>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-gray-800">
                         {formatDateShort(s.session_date)}
                       </p>
@@ -102,23 +109,36 @@ export default async function ClassDetailPage({
                           Hari Ini
                         </span>
                       )}
+                      {sessBadge && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sessBadge.color}`}>
+                          {sessBadge.label}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {formatTime(s.start_time)} – {formatTime(s.end_time)}
                       {count > 0 && <span className="ml-2 font-medium text-gray-600">{count} hadir</span>}
                     </p>
                   </div>
-                  <Link
-                    href={`/classes/${cls.id}/attendance?date=${s.session_date}`}
-                    className={`flex items-center gap-1 h-7 px-3 rounded-lg text-xs font-medium transition-colors ${
-                      isToday || !isPast
-                        ? 'bg-violet-600 hover:bg-violet-700 text-white'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    <CheckSquare className="w-3.5 h-3.5" />
-                    {count > 0 ? 'Lihat' : 'Absen'}
-                  </Link>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Link
+                      href={`/classes/${cls.id}/sessions/${s.id}`}
+                      className="flex items-center h-7 px-2.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                    >
+                      Kelola
+                    </Link>
+                    <Link
+                      href={`/classes/${cls.id}/attendance?date=${s.session_date}`}
+                      className={`flex items-center gap-1 h-7 px-3 rounded-lg text-xs font-medium transition-colors ${
+                        isToday || !isPast
+                          ? 'bg-violet-600 hover:bg-violet-700 text-white'
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      {count > 0 ? 'Lihat' : 'Absen'}
+                    </Link>
+                  </div>
                 </div>
               )
             })}

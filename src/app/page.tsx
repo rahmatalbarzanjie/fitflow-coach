@@ -32,6 +32,7 @@ export default async function DashboardPage() {
     todaySessionsRes,
     pendingRes,
     atRiskRes,
+    changedSessionsRes,
   ] = await Promise.all([
     supabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     supabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'active'),
@@ -67,13 +68,22 @@ export default async function DashboardPage() {
       .eq('status', 'at_risk')
       .order('last_attended_at', { ascending: true })
       .limit(3),
+    // Today sessions with unnotified changes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('sessions') as any)
+      .select('id, class_id, session_type, classes(name)')
+      .eq('user_id', user.id)
+      .eq('session_date', today)
+      .neq('session_type', 'regular')
+      .is('notified_at', null),
   ])
 
-  const instructorName = profileRes.data?.name ?? 'Instruktur'
-  const todayClasses   = (todayClassesRes.data   as any[]) ?? []
-  const todaySessions  = (todaySessionsRes.data  as any[]) ?? []
-  const pendingRegs    = (pendingRes.data         as any[]) ?? []
-  const atRiskMembers  = (atRiskRes.data          as any[]) ?? []
+  const instructorName   = profileRes.data?.name ?? 'Instruktur'
+  const todayClasses     = (todayClassesRes.data   as any[]) ?? []
+  const todaySessions    = (todaySessionsRes.data  as any[]) ?? []
+  const pendingRegs      = (pendingRes.data         as any[]) ?? []
+  const atRiskMembers    = (atRiskRes.data          as any[]) ?? []
+  const changedSessions  = (changedSessionsRes.data as any[]) ?? []
 
   // Merge today's classes with their session info
   const todaySchedule = todayClasses.map((cls: any) => {
@@ -160,6 +170,36 @@ export default async function DashboardPage() {
             })}
           </div>
         </Card>
+      )}
+
+      {/* ── PERUBAHAN BELUM DINOTIF ── */}
+      {changedSessions.length > 0 && (
+        <div className="mb-4 bg-orange-50 border border-orange-100 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-orange-800">Ada perubahan yang belum diinfokan ke member</p>
+              <div className="mt-1.5 space-y-1">
+                {changedSessions.map((s: any) => {
+                  const TYPE_LABEL: Record<string, string> = {
+                    rescheduled: 'Dijadwal Ulang', extra: 'Kelas Ekstra', location_changed: 'Lokasi Berubah',
+                  }
+                  return (
+                    <p key={s.id} className="text-xs text-orange-700">
+                      • {(s.classes as any)?.name} — {TYPE_LABEL[s.session_type] ?? s.session_type}
+                    </p>
+                  )
+                })}
+              </div>
+            </div>
+            <Link
+              href="/broadcasts"
+              className="shrink-0 text-xs font-semibold text-orange-700 bg-orange-100 hover:bg-orange-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Kirim Info
+            </Link>
+          </div>
+        </div>
       )}
 
       {/* ── PERLU TINDAKAN — only when there are items ── */}
