@@ -652,7 +652,7 @@
     "type": "function",
     "z": "ff-tab",
     "name": "Split: 200 OK + Forward async",
-    "func": "const cfg  = flow.get('fitflow') || {};\nconst body = msg.payload;\n\n// Output 1: langsung balas 200 OK ke Fonnte (cegah retry)\nconst resp = { ...msg };\nresp.statusCode = 200;\nresp.payload    = JSON.stringify({ ok: true });\nresp.headers    = { 'Content-Type': 'application/json' };\n\n// Output 2: forward ke FitFlow (async, Fonnte sudah dapat 200)\nconst fwd = {\n  method:  'POST',\n  headers: { 'Content-Type': 'application/json' },\n  url:     cfg.base_url + '/api/wa/incoming?key=' + encodeURIComponent(cfg.fonnte_key),\n  payload: JSON.stringify(body)\n};\n\nreturn [resp, fwd];",
+    "func": "const cfg  = flow.get('fitflow') || {};\nconst body = msg.payload;\n\n// Output 1: langsung balas 200 OK ke Fonnte (cegah retry)\nconst resp = { ...msg };\nresp.statusCode = 200;\nresp.payload    = JSON.stringify({ ok: true });\nresp.headers    = { 'Content-Type': 'application/json' };\n\n// Output 2: forward ke FitFlow — tambahkan instructor_id dari config\nconst fwd = {\n  method:  'POST',\n  headers: { 'Content-Type': 'application/json' },\n  url:     cfg.base_url + '/api/wa/incoming?key=' + encodeURIComponent(cfg.fonnte_key),\n  payload: JSON.stringify({ ...body, instructor_id: cfg.user_id })\n};\n\nreturn [resp, fwd];",
     "outputs": 2,
     "noerr": 0,
     "initialize": "",

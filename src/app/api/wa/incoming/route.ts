@@ -32,37 +32,51 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ ok: false })
 
-  const { device, sender, message, name: senderName } = body
+  const { device, sender, message, name: senderName, instructor_id } = body
 
   // Abaikan jika tidak ada pesan teks
   if (!message || typeof message !== 'string') return NextResponse.json({ ok: true })
 
-  // Abaikan pesan dari device sendiri (instruktur ngirim ke diri sendiri)
+  // Abaikan pesan dari device sendiri (cegah loop balasan bot)
   const cleanDevice = String(device ?? '').replace(/\D/g, '')
   const cleanSender = String(sender ?? '').replace(/\D/g, '')
-  if (cleanSender === cleanDevice) return NextResponse.json({ ok: true })
+  if (cleanSender && cleanDevice && cleanSender === cleanDevice) {
+    return NextResponse.json({ ok: true })
+  }
 
   const supabase = createServiceClient()
 
-  // ── Cari instruktur berdasarkan nomor device ───────────────────────────────
-  // Fonnte device = nomor WA instruktur (format 628xxx)
-  const deviceVariants = [
-    cleanDevice,
-    cleanDevice.startsWith('62') ? '0' + cleanDevice.slice(2) : null,
-  ].filter(Boolean)
-
+  // ── Cari instruktur ───────────────────────────────────────────────────────
+  // Prioritas: instructor_id dari Node-RED config (langsung, tidak perlu lookup)
+  // Fallback: cari berdasarkan nomor device Fonnte di tabel profiles
   let instructorProfile: any = null
-  for (const phone of deviceVariants) {
+
+  if (instructor_id) {
     const { data } = await supabase
       .from('profiles')
       .select('id, name, business_name, phone, slug')
-      .ilike('phone', `%${phone!.slice(-9)}%`)
+      .eq('id', instructor_id)
       .single()
-    if (data) { instructorProfile = data; break }
+    instructorProfile = data ?? null
   }
 
   if (!instructorProfile) {
-    // Nomor device tidak terdaftar — abaikan
+    const deviceVariants = [
+      cleanDevice,
+      cleanDevice.startsWith('62') ? '0' + cleanDevice.slice(2) : null,
+    ].filter(Boolean)
+
+    for (const phone of deviceVariants) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, business_name, phone, slug')
+        .ilike('phone', `%${phone!.slice(-9)}%`)
+        .single()
+      if (data) { instructorProfile = data; break }
+    }
+  }
+
+  if (!instructorProfile) {
     return NextResponse.json({ ok: true })
   }
 
