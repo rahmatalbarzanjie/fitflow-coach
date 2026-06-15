@@ -1,18 +1,58 @@
 import { notFound } from 'next/navigation'
-import { createServiceClient } from '@/lib/supabase/service'
-import { CalendarDays, Clock, MapPin, ChevronRight, Phone, Zap, Star, Users, Trophy, Heart } from 'lucide-react'
 import Link from 'next/link'
+import { createServiceClient } from '@/lib/supabase/service'
 import { formatDate, formatTime, formatRupiah, DAY_NAMES } from '@/lib/utils'
+import { PublicNavbar } from '../_components/PublicNavbar'
 
+// ── Class type config ─────────────────────────────────────────────────────────
+const CLASS_CONFIG: Record<string, {
+  label: string; subtitle: string; icon: string
+  gradFrom: string; gradTo: string
+  accentText: string; accentBg: string; dayText: string
+}> = {
+  poundfit: {
+    label: 'POUNDFIT', subtitle: 'Cardio Drumming • Rock Your Body 🤘',
+    icon: 'fitness_center', gradFrom: '#F87171', gradTo: '#F43F5E',
+    accentText: 'text-red-500', accentBg: 'bg-red-50', dayText: 'text-red-500',
+  },
+  barre: {
+    label: 'BARRE', subtitle: 'Ballet-Inspired • Sculpt & Tone 💗',
+    icon: 'self_improvement', gradFrom: '#FDA4AF', gradTo: '#FB7185',
+    accentText: 'text-rose-600', accentBg: 'bg-rose-50', dayText: 'text-rose-500',
+  },
+  zumba: {
+    label: 'ZUMBA', subtitle: 'Dance • Cardio • Pure Energy ✨',
+    icon: 'music_note', gradFrom: '#2DD4BF', gradTo: '#0D9488',
+    accentText: 'text-teal-600', accentBg: 'bg-teal-50', dayText: 'text-teal-600',
+  },
+}
+
+function getTypeConfig(type: string) {
+  return CLASS_CONFIG[type?.toLowerCase()] ?? {
+    label: (type ?? 'KELAS').toUpperCase(), subtitle: 'Kelas Fitness',
+    icon: 'sports', gradFrom: '#8B5CF6', gradTo: '#7C3AED',
+    accentText: 'text-violet-600', accentBg: 'bg-violet-50', dayText: 'text-violet-500',
+  }
+}
+
+function countdownBadge(daysUntil: number) {
+  if (daysUntil <= 0)  return { label: 'Hari Ini!',           bg: 'bg-red-600' }
+  if (daysUntil === 1) return { label: '1 Hari Lagi',          bg: 'bg-red-600' }
+  if (daysUntil <= 7)  return { label: `${daysUntil} Hari Lagi`, bg: 'bg-amber-700' }
+  return                      { label: `${daysUntil} Hari Lagi`, bg: 'bg-indigo-700' }
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default async function InstructorLandingPage({
   params,
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = await params
-  const supabase  = createServiceClient()
+  const { slug }   = await params
+  const supabase   = createServiceClient()
+  const today      = new Date().toISOString().split('T')[0]
 
-  // First query without photo_url (safe for all migration states)
+  // Profile
   const { data: profileBase } = await supabase
     .from('profiles')
     .select('id, name, business_name, phone, slug')
@@ -21,293 +61,293 @@ export default async function InstructorLandingPage({
 
   if (!profileBase) notFound()
 
-  // Try to get photo_url (added in migration 004 — graceful fallback if missing)
-  let photo_url: string | null = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: photoData } = await (supabase.from('profiles') as any)
-    .select('photo_url')
-    .eq('id', profileBase.id)
-    .single()
-  photo_url = (photoData as any)?.photo_url ?? null
+    .select('photo_url').eq('id', profileBase.id).single()
 
-  const profile = { ...profileBase, photo_url }
+  const profile = { ...profileBase, photo_url: (photoData as any)?.photo_url ?? null }
 
-  const today = new Date().toISOString().split('T')[0]
-
-  const [eventsRes, classesRes] = await Promise.all([
+  // Classes + Events
+  const [classesRes, eventsRes] = await Promise.all([
+    supabase
+      .from('classes')
+      .select('id, name, type, day_of_week, start_time, end_time, location, capacity')
+      .eq('user_id', profile.id)
+      .order('day_of_week').order('start_time'),
     supabase
       .from('events')
-      .select('id, title, slug, event_date, start_time, end_time, location, ots_price, early_bird_price, max_capacity, cover_image_url')
+      .select('id, title, slug, event_date, start_time, end_time, location, ots_price, early_bird_price, early_bird_deadline, max_capacity, cover_image_url')
       .eq('user_id', profile.id)
       .eq('status', 'published')
       .gte('event_date', today)
       .order('event_date')
       .limit(6),
-
-    supabase
-      .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, capacity')
-      .eq('user_id', profile.id)
-      .order('day_of_week')
-      .order('start_time'),
   ])
 
-  const events  = eventsRes.data  as any[] | null
-  const classes = classesRes.data as any[] | null
+  const classes = classesRes.data ?? []
+  const events  = eventsRes.data  ?? []
+
+  // Registration counts
+  const regCountMap: Record<string, number> = {}
+  if (events.length > 0) {
+    const { data: regs } = await supabase
+      .from('registrations')
+      .select('event_id')
+      .in('event_id', events.map(e => e.id))
+      .in('payment_status', ['pending', 'confirmed'])
+    regs?.forEach((r: any) => { regCountMap[r.event_id] = (regCountMap[r.event_id] || 0) + 1 })
+  }
+
+  // Group classes by type
+  const classGroups = Object.entries(
+    classes.reduce((acc: Record<string, any[]>, cls: any) => {
+      const t = (cls.type || 'lainnya').toLowerCase()
+      ;(acc[t] ??= []).push(cls)
+      return acc
+    }, {})
+  )
 
   const studio   = profile.business_name ?? profile.name
   const waNumber = profile.phone?.replace(/\D/g, '').replace(/^0/, '62')
+  const waMsg    = encodeURIComponent(`Halo ${studio}! Aku mau tanya-tanya soal kelas 😊`)
 
-  const poundfitClasses = classes?.filter(c => c.type === 'poundfit') ?? []
-  const barreClasses    = classes?.filter(c => c.type === 'barre')    ?? []
-  const otherClasses    = classes?.filter(c => !['poundfit', 'barre'].includes(c.type)) ?? []
-
-  const whyPoints = [
-    { icon: Star,   text: 'Info jadwal & event lebih awal',    color: 'bg-amber-50  text-amber-500'  },
-    { icon: Trophy, text: 'Harga spesial untuk member tetap',   color: 'bg-green-50  text-green-500'  },
-    { icon: Heart,  text: 'Masuk komunitas fitness eksklusif',  color: 'bg-rose-50   text-rose-500'   },
-    { icon: Users,  text: 'Prioritas slot event & workshop',    color: 'bg-violet-50 text-violet-500' },
-  ]
+  const HERO_GRADIENT  = 'linear-gradient(135deg, #FFD1FF 0%, #D1E9FF 100%)'
+  const CLASS_SUBTITLE = classGroups.map(([t]) => getTypeConfig(t).label).join(' · ')
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-on-surface font-sans">
+      <PublicNavbar studio={studio} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden py-20 px-4 bg-gradient-to-br from-violet-600 via-violet-500 to-fuchsia-500">
-        <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'2\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}
-        />
-        <div className="max-w-xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-4 py-1.5 rounded-full mb-6 border border-white/30">
-            <Zap className="w-3 h-3" />
-            Fitness Studio
+      <section
+        className="relative h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden"
+        style={{ background: HERO_GRADIENT }}
+      >
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-indigo-700 mb-6 shadow-sm">
+            <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            <span className="text-xs font-bold tracking-widest uppercase">Fitness Studio</span>
           </div>
 
-          {/* Instructor photo */}
-          {profile.photo_url && (
-            <div className="flex justify-center mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={profile.photo_url}
-                alt={profile.name}
-                className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-white/40 shadow-xl"
-              />
-            </div>
-          )}
+          {/* Photo */}
+          <div className="relative mb-8 group">
+            <div className="absolute inset-0 bg-indigo-400/20 rounded-full blur-3xl group-hover:bg-pink-400/30 transition-all duration-500" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={profile.photo_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(studio)}&size=256&background=4f46e5&color=fff&bold=true`}
+              alt={studio}
+              className="w-48 h-48 md:w-64 md:h-64 rounded-full object-cover border-4 border-white shadow-2xl relative z-10"
+            />
+          </div>
 
-          <h1 className="text-5xl md:text-6xl font-black text-white tracking-tight mb-3 drop-shadow-sm">
+          {/* Name */}
+          <h1 className="font-montserrat text-5xl md:text-[80px] font-extralight text-on-surface mb-2 leading-tight tracking-tight">
             {studio}
           </h1>
-          <p className="text-white/80 text-base md:text-lg mb-2">Instruktur: {profile.name}</p>
-          <p className="text-white/60 text-sm mb-8">
-            {[poundfitClasses.length > 0 && 'Poundfit', barreClasses.length > 0 && 'Barre Intensity', otherClasses.length > 0 && 'Kelas Fitness']
-              .filter(Boolean).join(' · ')}
+          <p className="font-montserrat italic font-light text-on-surface/70 mb-10 tracking-wide text-lg">
+            {CLASS_SUBTITLE || 'Poundfit • Barre Intensity • Kelas Fitness'}
           </p>
+
+          {/* WA Button */}
           {waNumber && (
             <a
-              href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Halo ' + studio + '! Aku mau tanya-tanya soal kelas 😊')}`}
+              href={`https://wa.me/${waNumber}?text=${waMsg}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-white text-violet-700 font-bold px-6 py-3 rounded-full text-sm shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
+              className="bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group"
             >
-              <Phone className="w-4 h-4" />
+              <span className="material-symbols-outlined">chat</span>
               Chat WhatsApp
+              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </a>
           )}
         </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
+          <span className="material-symbols-outlined text-on-surface/30">keyboard_double_arrow_down</span>
+        </div>
       </section>
 
-      {/* ── POUNDFIT (Rock theme) ─────────────────────────────────────────── */}
-      {poundfitClasses.length > 0 && (
-        <section className="py-16 px-4 bg-gray-950">
-          <div className="max-w-xl mx-auto">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-11 h-11 bg-red-500 rounded-2xl flex items-center justify-center text-xl shadow-lg shadow-red-500/30">
-                🥁
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-wider">Poundfit</h2>
-                <p className="text-red-400 text-xs font-semibold">Cardio Drumming · Rock Your Body 🤘</p>
-              </div>
+      {/* ── CLASS SCHEDULE ───────────────────────────────────────────────── */}
+      {classGroups.length > 0 && (
+        <section className="py-24 md:py-32 bg-white" id="schedules">
+          <div className="max-w-container-max mx-auto px-4 md:px-10">
+            <div className="mb-16">
+              <h2 className="font-montserrat text-4xl md:text-5xl font-bold text-on-surface mb-3">Jadwal Kelas</h2>
+              <p className="text-on-surface-variant max-w-xl">
+                Pilih sesi yang sesuai dengan ritme kamu. Setiap kelas dirancang untuk hasil maksimal dengan energi yang menular.
+              </p>
             </div>
-            <p className="text-gray-500 text-sm mb-6 mt-2">Bakar kalori sambil dengerin musik rock! Energi penuh, feel good setiap sesi.</p>
-            <div className="space-y-2.5">
-              {poundfitClasses.map(cls => (
-                <div key={cls.id} className="p-4 bg-gray-900 border border-gray-800 rounded-2xl hover:border-red-500/40 transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-white">{cls.name}</p>
-                      <p className="text-red-400 text-sm mt-0.5">
-                        {DAY_NAMES[cls.day_of_week]} · {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
-                      </p>
-                      {cls.location && <p className="text-gray-600 text-xs mt-0.5">{cls.location}</p>}
+
+            <div className={`grid grid-cols-1 gap-6 ${
+              classGroups.length === 1 ? 'max-w-md' :
+              classGroups.length === 2 ? 'md:grid-cols-2 max-w-3xl' :
+              'lg:grid-cols-3'
+            }`}>
+              {classGroups.map(([type, typeClasses]) => {
+                const cfg = getTypeConfig(type)
+                return (
+                  <div key={type} className="flex flex-col gap-6">
+                    {/* Column header */}
+                    <div
+                      className="flex items-center gap-4 p-6 rounded-t-3xl text-white"
+                      style={{ background: `linear-gradient(to right, ${cfg.gradFrom}, ${cfg.gradTo})` }}
+                    >
+                      <span className="material-symbols-outlined text-4xl">{cfg.icon}</span>
+                      <div>
+                        <h3 className="font-montserrat text-2xl font-bold uppercase">{cfg.label}</h3>
+                        <p className="text-white/80 text-sm">{cfg.subtitle}</p>
+                      </div>
                     </div>
-                    {cls.capacity && (
-                      <span className="text-xs bg-red-500/10 text-red-300 border border-red-500/20 px-3 py-1 rounded-full font-medium shrink-0">
-                        Maks {cls.capacity}
-                      </span>
-                    )}
+
+                    {/* Class cards */}
+                    <div className="flex flex-col gap-4">
+                      {(typeClasses as any[]).map((cls: any) => (
+                        <div
+                          key={cls.id}
+                          className="p-6 rounded-2xl bg-white border border-outline-variant hover-lift custom-shadow"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <span className={`px-3 py-1 ${cfg.accentBg} ${cfg.accentText} font-bold rounded-lg text-xs uppercase tracking-wider`}>
+                              {DAY_NAMES[cls.day_of_week]}
+                            </span>
+                            {cls.capacity && (
+                              <span className="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full text-xs font-medium">
+                                Maks {cls.capacity}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-montserrat text-lg font-bold text-on-surface mb-1">{cls.name}</h4>
+                          <p className={`text-sm flex items-center gap-1.5 mb-1 ${cfg.dayText}`}>
+                            <span className="material-symbols-outlined text-base">schedule</span>
+                            {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
+                          </p>
+                          {cls.location && (
+                            <p className="text-on-surface-variant text-sm flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-base">location_on</span>
+                              {cls.location}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  {(cls as any).description && (
-                    <p className="text-gray-500 text-xs mt-2 leading-relaxed">{(cls as any).description}</p>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </section>
       )}
 
-      {/* ── BARRE (Pinky girl theme) ─────────────────────────────────────── */}
-      {barreClasses.length > 0 && (
-        <section className="py-16 px-4 bg-gradient-to-br from-rose-50 to-pink-50">
-          <div className="max-w-xl mx-auto">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-11 h-11 bg-rose-400 rounded-2xl flex items-center justify-center text-xl shadow-lg shadow-rose-300/40">
-                🩰
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-rose-700 uppercase tracking-wider">Barre Intensity</h2>
-                <p className="text-rose-400 text-xs font-semibold">Ballet-Inspired · Sculpt &amp; Tone 🩷</p>
-              </div>
+      {/* ── EVENTS ───────────────────────────────────────────────────────── */}
+      {events.length > 0 && (
+        <section className="py-24 bg-gray-50 relative overflow-hidden" id="events">
+          <div className="absolute top-0 left-0 w-full h-1 opacity-20"
+            style={{ background: 'linear-gradient(to right, #4f46e5, #fd56a7, #2DD4BF)' }} />
+          <div className="max-w-container-max mx-auto px-4 md:px-10">
+            <div className="flex items-center gap-3 mb-12">
+              <span className="material-symbols-outlined text-indigo-700 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                event_upcoming
+              </span>
+              <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface">Event Mendatang</h2>
             </div>
-            <p className="text-rose-400/80 text-sm mb-6 mt-2">Gerakan ballet dipadukan latihan intensitas tinggi — untuk tubuh kuat dan anggun.</p>
-            <div className="space-y-2.5">
-              {barreClasses.map(cls => (
-                <div key={cls.id} className="p-4 bg-white border border-rose-100 rounded-2xl hover:border-rose-300 hover:shadow-sm transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-gray-900">{cls.name}</p>
-                      <p className="text-rose-500 text-sm mt-0.5">
-                        {DAY_NAMES[cls.day_of_week]} · {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
-                      </p>
-                      {cls.location && <p className="text-gray-400 text-xs mt-0.5">{cls.location}</p>}
-                    </div>
-                    {cls.capacity && (
-                      <span className="text-xs bg-rose-50 text-rose-400 border border-rose-200 px-3 py-1 rounded-full font-medium shrink-0">
-                        Maks {cls.capacity}
-                      </span>
-                    )}
-                  </div>
-                  {(cls as any).description && (
-                    <p className="text-rose-400 text-xs mt-2 leading-relaxed">{(cls as any).description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
-      {/* ── OTHER CLASSES ─────────────────────────────────────────────────── */}
-      {otherClasses.length > 0 && (
-        <section className="py-16 px-4 bg-gray-50">
-          <div className="max-w-xl mx-auto">
-            <h2 className="text-2xl font-black text-gray-900 mb-6">Kelas Lainnya</h2>
-            <div className="space-y-2.5">
-              {otherClasses.map(cls => (
-                <div key={cls.id} className="p-4 bg-white border border-gray-100 rounded-2xl hover:shadow-sm transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-gray-900">{cls.name}</p>
-                      <p className="text-violet-500 text-sm mt-0.5">
-                        {DAY_NAMES[cls.day_of_week]} · {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
-                      </p>
-                      {cls.location && <p className="text-gray-400 text-xs mt-0.5">{cls.location}</p>}
-                    </div>
-                    {cls.capacity && (
-                      <span className="text-xs bg-violet-50 text-violet-500 border border-violet-100 px-3 py-1 rounded-full font-medium shrink-0">
-                        Maks {cls.capacity}
-                      </span>
-                    )}
-                  </div>
-                  {(cls as any).description && (
-                    <p className="text-gray-500 text-xs mt-2 leading-relaxed">{(cls as any).description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── UPCOMING EVENTS ───────────────────────────────────────────────── */}
-      {events && events.length > 0 && (
-        <section className="py-16 px-4 bg-white">
-          <div className="max-w-xl mx-auto">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-violet-100 rounded-xl flex items-center justify-center">
-                <Zap className="w-4 h-4 text-violet-600" />
-              </div>
-              <h2 className="text-2xl font-black text-gray-900">Event Mendatang</h2>
-            </div>
-            <p className="text-gray-400 text-sm mb-8">Daftar sekarang — slot terbatas! 🔥</p>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {(events as any[]).map(ev => {
-                const isPriced  = ev.pricing_mode === 'tiered'
-                const tier1Ok   = Number(ev.early_bird_price) > 0
                 const evDate    = new Date(ev.event_date)
                 const daysUntil = Math.ceil((evDate.getTime() - new Date(today).getTime()) / 86_400_000)
+                const badge     = countdownBadge(daysUntil)
+                const regCount  = regCountMap[ev.id] ?? 0
+                const capacity  = ev.max_capacity ?? 0
+                const fillPct   = capacity > 0 ? Math.min(100, Math.round(regCount / capacity * 100)) : 0
+
+                const ebValid = Number(ev.early_bird_price) > 0 &&
+                  ev.early_bird_deadline &&
+                  new Date(ev.early_bird_deadline) >= new Date()
+                const displayPrice = ebValid ? Number(ev.early_bird_price) : Number(ev.ots_price)
 
                 return (
-                  <div key={ev.id} className="border border-gray-100 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
-                    {ev.cover_image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ev.cover_image_url} alt={ev.title} className="w-full h-44 object-cover" />
-                    )}
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <h3 className="font-bold text-gray-900 text-base leading-snug">{ev.title}</h3>
-                        {daysUntil >= 0 && (
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
-                            daysUntil <= 3 ? 'bg-red-100 text-red-600' : 'bg-violet-100 text-violet-600'
-                          }`}>
-                            {daysUntil === 0 ? 'Hari ini!' : `${daysUntil} hari lagi`}
-                          </span>
-                        )}
+                  <div key={ev.id} className="bg-white rounded-3xl overflow-hidden custom-shadow hover-lift group">
+                    {/* Image */}
+                    <div className="relative h-48 overflow-hidden">
+                      {ev.cover_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={ev.cover_image_url}
+                          alt={ev.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full"
+                          style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #fd56a7 100%)' }}
+                        />
+                      )}
+                      <div className={`absolute top-4 right-4 ${badge.bg} text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg`}>
+                        {badge.label}
                       </div>
+                    </div>
 
-                      <div className="space-y-1.5 mb-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <CalendarDays className="w-4 h-4 text-violet-400 shrink-0" />
-                          {formatDate(ev.event_date)}
+                    {/* Body */}
+                    <div className="p-8">
+                      <h3 className="font-montserrat text-2xl font-bold text-on-surface mb-4">{ev.title}</h3>
+
+                      <div className="space-y-3 mb-8">
+                        <div className="flex items-center gap-3 text-on-surface-variant">
+                          <span className="material-symbols-outlined text-indigo-700 text-xl">calendar_today</span>
+                          <span className="text-sm">{formatDate(ev.event_date)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-violet-400 shrink-0" />
-                          {formatTime(ev.start_time)}{ev.end_time ? ` – ${formatTime(ev.end_time)}` : ''}
+                        <div className="flex items-center gap-3 text-on-surface-variant">
+                          <span className="material-symbols-outlined text-indigo-700 text-xl">schedule</span>
+                          <span className="text-sm">
+                            {formatTime(ev.start_time)}{ev.end_time ? ` – ${formatTime(ev.end_time)}` : ''}
+                          </span>
                         </div>
                         {ev.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-violet-400 shrink-0" />
-                            {ev.location}
+                          <div className="flex items-center gap-3 text-on-surface-variant">
+                            <span className="material-symbols-outlined text-indigo-700 text-xl">location_on</span>
+                            <span className="text-sm">{ev.location}</span>
                           </div>
                         )}
                       </div>
 
-                      {/* Pricing */}
-                      {isPriced && tier1Ok ? (
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="flex-1 bg-green-50 border border-green-100 rounded-xl p-2.5 text-center">
-                            <p className="text-xs text-green-600 font-semibold">{ev.tier1_label || 'Gelombang 1'}</p>
-                            <p className="text-base font-black text-green-700 mt-0.5">{formatRupiah(Number(ev.early_bird_price))}</p>
+                      {/* Pricing + Slot */}
+                      <div className="border-t border-outline-variant pt-6 mb-8">
+                        <p className="text-xs font-bold text-outline-muted uppercase tracking-widest mb-2">Pendaftaran</p>
+                        <div className="flex justify-between items-end mb-2">
+                          <div>
+                            <span className="font-montserrat text-2xl font-bold text-indigo-700">
+                              {formatRupiah(displayPrice)}
+                            </span>
+                            {ebValid && (
+                              <span className="ml-2 text-xs text-pink-500 font-semibold">Early Bird</span>
+                            )}
                           </div>
-                          <div className="text-gray-300 text-xs">→</div>
-                          <div className="flex-1 bg-violet-50 border border-violet-100 rounded-xl p-2.5 text-center">
-                            <p className="text-xs text-violet-600 font-semibold">{ev.tier2_label || 'Gelombang 2'}</p>
-                            <p className="text-base font-black text-violet-700 mt-0.5">{formatRupiah(Number(ev.ots_price))}</p>
+                          {capacity > 0 && (
+                            <span className="text-xs text-on-surface-variant">{regCount} / {capacity} Slot</span>
+                          )}
+                        </div>
+                        {capacity > 0 && (
+                          <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${fillPct}%`,
+                                background: 'linear-gradient(to right, #4f46e5, #fd56a7)',
+                              }}
+                            />
                           </div>
-                        </div>
-                      ) : (
-                        <div className="mb-4">
-                          <span className="text-2xl font-black text-gray-900">{formatRupiah(Number(ev.ots_price))}</span>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       <Link
                         href={`/${slug}/daftar/${ev.slug}`}
-                        className="flex items-center justify-center gap-2 w-full h-11 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition-colors"
+                        className="btn-gradient w-full text-white font-bold py-4 rounded-full flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95"
                       >
-                        Daftar Sekarang <ChevronRight className="w-4 h-4" />
+                        Daftar Sekarang
+                        <span className="material-symbols-outlined text-xl">chevron_right</span>
                       </Link>
                     </div>
                   </div>
@@ -318,32 +358,37 @@ export default async function InstructorLandingPage({
         </section>
       )}
 
-      {/* ── KENAPA JADI MEMBER ───────────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-gradient-to-br from-violet-50 to-fuchsia-50">
-        <div className="max-w-xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Kenapa Jadi Member?</h2>
-            <p className="text-gray-400 text-sm">Nikmati lebih banyak keuntungan sebagai member tetap</p>
+      {/* ── BENEFITS ─────────────────────────────────────────────────────── */}
+      <section className="py-24 bg-white" id="benefits">
+        <div className="max-w-container-max mx-auto px-4 md:px-10">
+          <div className="text-center mb-16">
+            <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface mb-3">Kenapa Jadi Member?</h2>
+            <p className="text-on-surface-variant">Nikmati lebih banyak keuntungan sebagai member tetap</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {whyPoints.map(({ icon: Icon, text, color }) => (
-              <div key={text} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${color.split(' ')[0]}`}>
-                  <Icon className={`w-5 h-5 ${color.split(' ')[1]}`} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            {[
+              { icon: 'star', text: 'Info jadwal & event lebih awal', bg: 'bg-amber-50', color: 'text-amber-500' },
+              { icon: 'emoji_events', text: 'Harga spesial member tetap', bg: 'bg-emerald-50', color: 'text-emerald-500' },
+              { icon: 'favorite', text: 'Komunitas fitness eksklusif', bg: 'bg-rose-50', color: 'text-rose-500' },
+              { icon: 'groups', text: 'Prioritas slot event & workshop', bg: 'bg-violet-50', color: 'text-violet-500' },
+            ].map(({ icon, text, bg, color }) => (
+              <div key={text} className="bg-white rounded-2xl p-6 border border-outline-variant custom-shadow hover-lift text-center">
+                <div className={`w-12 h-12 ${bg} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
+                  <span className={`material-symbols-outlined ${color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-800 leading-snug">{text}</p>
+                <p className="text-sm font-medium text-on-surface leading-snug">{text}</p>
               </div>
             ))}
           </div>
           {waNumber && (
-            <div className="mt-8 text-center">
+            <div className="mt-12 text-center">
               <a
-                href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Halo! Aku mau daftar jadi member tetap ' + studio + ' 😊')}`}
+                href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo! Aku mau daftar jadi member tetap ${studio} 😊`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-8 py-3 rounded-full text-sm shadow-md hover:shadow-lg transition-all"
+                className="btn-gradient inline-flex items-center gap-2 text-white font-bold px-10 py-4 rounded-full shadow-lg hover:opacity-90 hover:scale-105 transition-all"
               >
-                <Phone className="w-4 h-4" />
+                <span className="material-symbols-outlined">chat</span>
                 Daftar Jadi Member
               </a>
             </div>
@@ -352,24 +397,37 @@ export default async function InstructorLandingPage({
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-      <footer className="bg-gray-900 text-center py-12 px-4">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-violet-600 rounded-2xl mb-4">
-          <Zap className="w-6 h-6 text-white" />
+      <footer className="py-20 px-4 md:px-10" style={{ background: HERO_GRADIENT }}>
+        <div className="max-w-container-max mx-auto flex flex-col items-center text-center">
+          {/* CTA */}
+          <div className="mb-12 space-y-4">
+            <h3 className="font-montserrat text-xl font-bold text-on-surface">Mau coba sistem ini?</h3>
+            <a
+              href="https://wa.me/6282254049695"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform"
+            >
+              <span className="material-symbols-outlined">contact_support</span>
+              Kontak Developer
+            </a>
+          </div>
+
+          {/* Brand */}
+          <div className="space-y-3">
+            <p className="text-on-surface/50 text-xs uppercase tracking-widest font-bold">Developed &amp; Powered by</p>
+            <p className="font-montserrat font-bold text-5xl text-white drop-shadow-sm leading-none">SIMETRI</p>
+            <p className="text-on-surface/50 text-xs font-medium">IT &amp; Telemetry Solution</p>
+            <p className="text-on-surface/30 text-xs pt-3">Platform by FitFlow Coach</p>
+          </div>
+
+          {/* Copyright */}
+          <div className="pt-10 mt-10 border-t border-on-surface/5 w-full">
+            <p className="text-on-surface/30 text-sm">
+              © {new Date().getFullYear()} {studio}. All rights reserved.
+            </p>
+          </div>
         </div>
-        <p className="text-white font-black text-2xl mb-1">{studio}</p>
-        <p className="text-gray-400 text-sm mb-5">Instruktur: {profile.name}</p>
-        {waNumber && (
-          <a
-            href={`https://wa.me/${waNumber}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm transition-colors"
-          >
-            <Phone className="w-4 h-4" />
-            {profile.phone}
-          </a>
-        )}
-        <p className="text-gray-700 text-xs mt-8">Powered by FitFlow Coach</p>
       </footer>
     </div>
   )
