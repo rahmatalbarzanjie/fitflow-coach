@@ -26,6 +26,7 @@ export async function middleware(request: NextRequest) {
 
   const isPublicRoute =
     path.startsWith('/login') ||
+    path.startsWith('/register') ||
     path.startsWith('/api/') ||
     path.match(/^\/[^/]+$/) !== null ||
     path.match(/^\/[^/]+\/daftar/) !== null
@@ -33,7 +34,7 @@ export async function middleware(request: NextRequest) {
   if (!isPublicRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-  if (path === '/login' && user) {
+  if ((path === '/login' || path === '/register') && user) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

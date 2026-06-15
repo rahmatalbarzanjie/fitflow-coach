@@ -6,7 +6,12 @@ import { User, ExternalLink, Webhook } from 'lucide-react'
 import { CopySecretButton } from '@/components/settings/CopySecretButton'
 import { LogoutButton } from '@/components/settings/LogoutButton'
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>
+}) {
+  const { welcome } = await searchParams
   const supabase        = await createClient()
   const serviceSupabase = createServiceClient()
 
@@ -42,6 +47,16 @@ export default async function SettingsPage() {
         <h1 className="text-xl font-semibold text-gray-900">Pengaturan</h1>
         <p className="text-sm text-gray-400 mt-0.5">Profil instruktur dan konfigurasi sistem</p>
       </div>
+
+      {welcome === '1' && (
+        <div className="mb-6 p-4 bg-violet-50 border border-violet-100 rounded-2xl">
+          <p className="text-sm font-semibold text-violet-800">👋 Selamat datang di FitFlow Coach!</p>
+          <p className="text-xs text-violet-600 mt-1">
+            Lengkapi profil di bawah — terutama <strong>Nama</strong>, <strong>Nama Studio</strong>,
+            dan <strong>Slug URL</strong> agar halaman publikmu bisa diakses peserta.
+          </p>
+        </div>
+      )}
 
       {/* Email akun */}
       <div className="flex items-center gap-3 p-3 mb-6 bg-gray-50 rounded-xl border border-gray-100">

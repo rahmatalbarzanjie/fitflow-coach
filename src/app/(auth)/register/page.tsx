@@ -6,32 +6,41 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Activity } from 'lucide-react'
 
-export default function LoginPage() {
-  const [email, setEmail]       = useState('')
+export default function RegisterPage() {
+  const [name,     setName    ] = useState('')
+  const [email,    setEmail   ] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [loading,  setLoading ] = useState(false)
+  const [error,    setError   ] = useState<string | null>(null)
   const router   = useRouter()
   const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (password.length < 6) { setError('Password minimal 6 karakter.'); return }
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: signUpErr } = await supabase.auth.signUp({ email, password })
 
-    if (error) {
-      setError(
-        error.message === 'Invalid login credentials'
-          ? 'Email atau password salah.'
-          : error.message
-      )
+    if (signUpErr) {
+      setError(signUpErr.message)
       setLoading(false)
-    } else {
-      router.push('/')
-      router.refresh()
+      return
     }
+
+    // Simpan nama awal ke profil via API
+    if (data.user) {
+      await fetch('/api/auth/setup-profile', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ name: name.trim() || email.split('@')[0] }),
+      })
+    }
+
+    // Arahkan ke settings untuk lengkapi profil (slug, studio, dll)
+    router.push('/settings?welcome=1')
+    router.refresh()
   }
 
   return (
@@ -44,10 +53,9 @@ export default function LoginPage() {
             <Activity className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">FitFlow Coach</h1>
-          <p className="text-sm text-gray-500 mt-1">Masuk ke dashboard instruktur</p>
+          <p className="text-sm text-gray-500 mt-1">Daftar akun instruktur baru</p>
         </div>
 
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -56,6 +64,21 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Nama Instruktur
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Contoh: Sari Fitness"
+                required
+                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-shadow"
+              />
+            </div>
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -69,7 +92,7 @@ export default function LoginPage() {
                 placeholder="kamu@email.com"
                 required
                 autoComplete="email"
-                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-shadow"
+                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-shadow"
               />
             </div>
 
@@ -82,10 +105,11 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Minimal 6 karakter"
                 required
-                autoComplete="current-password"
-                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-shadow"
+                minLength={6}
+                autoComplete="new-password"
+                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-shadow"
               />
             </div>
 
@@ -97,21 +121,21 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
-                  Masuk...
+                  Mendaftarkan...
                 </>
-              ) : 'Masuk'}
+              ) : 'Daftar Sekarang'}
             </button>
 
           </form>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">
-          Belum punya akun?{' '}
-          <Link href="/register" className="text-violet-600 font-medium hover:underline">
-            Daftar
+          Sudah punya akun?{' '}
+          <Link href="/login" className="text-violet-600 font-medium hover:underline">
+            Masuk
           </Link>
         </p>
 
