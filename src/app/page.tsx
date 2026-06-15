@@ -1,318 +1,240 @@
 import { createClient } from '@/lib/supabase/server'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Card } from '@/components/ui/card'
-import { Users, Calendar, Zap, TrendingUp, CheckCircle, Clock, ChevronRight, AlertCircle } from 'lucide-react'
+import { AlertTriangle, MessageCircle, CheckCircle } from 'lucide-react'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import { StatsSummary } from '@/components/dashboard/StatsSummary'
 import { WeekCalendar } from '@/components/dashboard/WeekCalendar'
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
+import { ConfirmPaymentButton } from '@/components/dashboard/ConfirmPaymentButton'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
-  const today = new Date().toISOString().split('T')[0]
+  const today    = new Date().toISOString().split('T')[0]
+  const todayDOW = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+
+  // Monday of this week
+  const now  = new Date()
+  const diff = now.getDay() === 0 ? -6 : 1 - now.getDay()
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff)
+    .toISOString().split('T')[0]
 
   const [
     { count: totalMembers },
     { count: activeMembers },
-    { count: todaySessions },
-    { count: activeEvents },
+    { count: weekSessions },
+    profileRes,
+    todayClassesRes,
+    todaySessionsRes,
+    pendingRes,
+    atRiskRes,
   ] = await Promise.all([
-    supabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
-    supabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).eq('status', 'active'),
-    supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).eq('session_date', today),
-    supabase.from('events').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).eq('status', 'published'),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'active'),
+    supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gte('session_date', weekStart),
+    supabase.from('profiles').select('name').eq('id', user.id).single(),
+    // Classes scheduled today (by day_of_week)
+    supabase
+      .from('classes')
+      .select('id, name, start_time, location')
+      .eq('user_id', user.id)
+      .eq('day_of_week', todayDOW)
+      .eq('is_active', true)
+      .order('start_time'),
+    // Sessions that exist for today (to get attended_count)
+    supabase
+      .from('today_sessions')
+      .select('class_id, attended_count')
+      .eq('user_id', user.id)
+      .eq('session_date', today),
+    // Pending event payments
+    supabase
+      .from('registrations')
+      .select('id, event_id, registrant_name, amount_paid, events!inner(title, user_id)')
+      .eq('events.user_id', user.id)
+      .eq('payment_status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(3),
+    // At-risk members
+    supabase
+      .from('members')
+      .select('id, name, phone, last_attended_at')
+      .eq('user_id', user.id)
+      .eq('status', 'at_risk')
+      .order('last_attended_at', { ascending: true })
+      .limit(3),
   ])
 
-  const { data: atRiskMembers } = await supabase
-    .from('members')
-    .select('id, name, phone, last_attended_at')
-    .eq('user_id', user!.id)
-    .eq('status', 'at_risk')
-    .order('last_attended_at', { ascending: true })
-    .limit(5)
+  const instructorName = profileRes.data?.name ?? 'Instruktur'
+  const todayClasses   = (todayClassesRes.data   as any[]) ?? []
+  const todaySessions  = (todaySessionsRes.data  as any[]) ?? []
+  const pendingRegs    = (pendingRes.data         as any[]) ?? []
+  const atRiskMembers  = (atRiskRes.data          as any[]) ?? []
 
-  const { data: todaySchedule } = await supabase
-    .from('today_sessions')
-    .select('*')
-    .eq('user_id', user!.id)
-    .eq('session_date', today)
-    .order('start_time')
+  // Merge today's classes with their session info
+  const todaySchedule = todayClasses.map((cls: any) => {
+    const sess = todaySessions.find((s: any) => s.class_id === cls.id)
+    return {
+      class_id:      cls.id,
+      class_name:    cls.name,
+      start_time:    cls.start_time,
+      location:      cls.location,
+      attended_count: sess?.attended_count ?? 0,
+    }
+  })
 
-  // Nearest upcoming event with registration counts
-  const { data: nearestEvent } = await supabase
-    .from('events')
-    .select('id, title, event_date, slug, max_capacity, early_bird_price, ots_price')
-    .eq('user_id', user!.id)
-    .eq('status', 'published')
-    .gte('event_date', today)
-    .order('event_date')
-    .limit(1)
-    .single() as { data: any }
-
-  const nearestEventRegs = nearestEvent
-    ? await supabase
-        .from('registrations')
-        .select('payment_status')
-        .eq('event_id', nearestEvent.id)
-    : null
-
-  const confirmedCount = nearestEventRegs?.data?.filter(r => r.payment_status === 'confirmed').length ?? 0
-  const totalCount     = nearestEventRegs?.data?.length ?? 0
-
-  // Pending payments across all events
-  const { data: pendingRegs } = await supabase
-    .from('registrations')
-    .select('id, event_id, registrant_name, events!inner(title, user_id)')
-    .eq('events.user_id', user!.id)
-    .eq('payment_status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  const pendingCount = pendingRegs?.length ?? 0
-
-  // Group pending by event to get the most urgent event for link
-  const pendingEventId = (pendingRegs as any[])?.[0]?.event_id ?? null
-
-  const stats = [
-    { label: 'Total Members', value: totalMembers ?? 0, icon: Users,      color: 'text-violet-600', bg: 'bg-violet-50', href: '/members'           },
-    { label: 'Anggota Aktif', value: activeMembers ?? 0, icon: TrendingUp, color: 'text-green-600',  bg: 'bg-green-50',  href: '/members?status=active' },
-    { label: 'Sesi Hari Ini', value: todaySessions ?? 0, icon: Calendar,   color: 'text-blue-600',   bg: 'bg-blue-50',   href: '/classes'           },
-    { label: 'Event Aktif',   value: activeEvents ?? 0,  icon: Zap,        color: 'text-orange-600', bg: 'bg-orange-50', href: '/events'            },
-  ]
-
-  // Days until nearest event
-  const daysUntil = nearestEvent
-    ? Math.ceil((new Date(nearestEvent.event_date).getTime() - new Date(today).getTime()) / 86_400_000)
-    : null
-
-  const progressPct = nearestEvent?.max_capacity && confirmedCount
-    ? Math.min(100, Math.round((confirmedCount / Number(nearestEvent.max_capacity)) * 100))
-    : null
+  const allDone         = todaySchedule.length > 0 && todaySchedule.every(s => s.attended_count > 0)
+  const hasPendingItems = pendingRegs.length > 0 || atRiskMembers.length > 0
 
   return (
     <DashboardLayout>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{formatDate(new Date())}</p>
+      {/* Greeting */}
+      <DashboardGreeting name={instructorName} />
+
+      {/* 2 Stat Cards */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <Link href="/members?status=active">
+          <Card className="p-4 hover:shadow-md hover:border-violet-100 transition-all cursor-pointer">
+            <p className="text-2xl font-bold text-gray-900">{activeMembers ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">dari {totalMembers ?? 0} total</p>
+            <p className="text-xs font-semibold text-violet-600 mt-1.5">👥 Member Aktif</p>
+          </Card>
+        </Link>
+        <Link href="/classes">
+          <Card className="p-4 hover:shadow-md hover:border-violet-100 transition-all cursor-pointer">
+            <p className="text-2xl font-bold text-gray-900">{weekSessions ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">sesi minggu ini</p>
+            <p className="text-xs font-semibold text-violet-600 mt-1.5">📅 Kelas Minggu Ini</p>
+          </Card>
+        </Link>
       </div>
 
-      {/* Stat Cards — clickable */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map(({ label, value, icon: Icon, color, bg, href }) => (
-          <Link key={label} href={href}>
-            <Card className="p-5 hover:shadow-md hover:border-violet-100 transition-all cursor-pointer group">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">{label}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+      {/* ── AKSI HARI INI — always shown ── */}
+      {todaySchedule.length === 0 ? (
+        <div className="mb-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+          <p className="text-base font-medium text-gray-600">Tidak ada kelas hari ini 🎉</p>
+          <p className="text-sm text-gray-400 mt-1">Nikmati harimu, {instructorName}!</p>
+          <p className="text-xs text-gray-400 mt-1">{formatDate(new Date())}</p>
+        </div>
+      ) : allDone ? (
+        <div className="mb-4 p-5 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-3">
+          <CheckCircle className="w-9 h-9 text-green-500 shrink-0" />
+          <div>
+            <p className="text-base font-semibold text-green-800">Semua absensi hari ini sudah selesai ✓</p>
+            <p className="text-sm text-green-600 mt-0.5">{todaySchedule.length} kelas terlaksana</p>
+          </div>
+        </div>
+      ) : (
+        <Card className="mb-4 bg-gradient-to-br from-violet-50 to-white border-violet-100">
+          <p className="text-xs font-bold text-violet-500 uppercase tracking-widest mb-4">Aksi Hari Ini</p>
+          <div className="space-y-3">
+            {todaySchedule.map((s) => {
+              const done = s.attended_count > 0
+              return (
+                <div key={s.class_id} className={`rounded-xl p-4 ${done ? 'bg-green-50/70' : 'bg-white border border-violet-100'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-semibold text-gray-900 truncate">{s.class_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {String(s.start_time).substring(0, 5)}
+                        {s.location && ` · ${s.location}`}
+                      </p>
+                    </div>
+                    {done ? (
+                      <span className="text-sm text-green-600 font-semibold shrink-0">✓ {s.attended_count} hadir</span>
+                    ) : (
+                      <Link
+                        href={`/classes/${s.class_id}/attendance?date=${today}`}
+                        className="flex items-center justify-center h-12 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-colors shrink-0 shadow-sm"
+                      >
+                        ✓ Mulai Absensi
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <Icon className={`w-4 h-4 ${color}`} />
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ── PERLU TINDAKAN — only when there are items ── */}
+      {hasPendingItems && (
+        <Card className="mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="w-4 h-4 text-orange-500" />
+            <h2 className="text-sm font-semibold text-gray-900">Perlu Tindakan Sekarang</h2>
+          </div>
+          <div className="space-y-1">
+            {pendingRegs.map((r: any) => (
+              <div key={r.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    💳 {r.registrant_name}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {(r.events as any)?.title} · {formatRupiah(Number(r.amount_paid ?? 0))}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Link
+                    href={`/events/${r.event_id}/registrations`}
+                    className="h-8 px-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-xs transition-colors flex items-center"
+                  >
+                    Bukti
+                  </Link>
+                  <ConfirmPaymentButton registrationId={r.id} />
                 </div>
               </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
+            ))}
 
-      {/* Row 1: Today + Konfirmasi */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-        {/* Today's Schedule */}
-        <Card>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-semibold text-gray-900">Jadwal Hari Ini</h2>
-            <span className="text-xs text-gray-400">
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long' })}
-            </span>
-          </div>
-
-          {!todaySchedule?.length ? (
-            <div className="text-center py-8">
-              <Calendar className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Tidak ada sesi hari ini</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {(todaySchedule as any[]).map((s) => (
-                <div key={s.session_id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{s.class_name}</p>
+            {atRiskMembers.map((m: any) => {
+              const days = m.last_attended_at
+                ? Math.floor((Date.now() - new Date(m.last_attended_at).getTime()) / 86_400_000)
+                : null
+              const digits  = (m.phone ?? '').replace(/\D/g, '')
+              const waNum   = digits.startsWith('0') ? '62' + digits.slice(1) : digits.startsWith('62') ? digits : '62' + digits
+              const msg     = `Halo ${m.name}! Sudah ${days ?? 'lama'} hari nih kamu belum hadir kelas. Kapan mau balik? 😊`
+              const wa      = digits ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}` : null
+              return (
+                <div key={m.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      ⚠️ {m.name}
+                    </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {String(s.start_time).substring(0, 5)} – {String(s.end_time).substring(0, 5)}
-                      {s.location && ` · ${s.location}`}
+                      Belum hadir {days !== null ? `${days} hari` : 'cukup lama'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{s.attended_count} hadir</p>
-                      <p className="text-xs text-gray-400">{formatRupiah(Number(s.session_revenue))}</p>
-                    </div>
-                    <Link
-                      href={`/classes/${s.class_id}/attendance?date=${today}`}
-                      className="flex items-center gap-1 h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
+                  {wa && (
+                    <a
+                      href={wa}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 h-8 px-3 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
                     >
-                      Absen
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        {/* Konfirmasi Pembayaran */}
-        <Card>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-semibold text-gray-900">Konfirmasi Pembayaran</h2>
-            {pendingCount > 0 && (
-              <span className="text-xs bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-full font-medium">
-                {pendingCount} pending
-              </span>
-            )}
-          </div>
-
-          {pendingCount === 0 ? (
-            <div className="text-center py-8">
-              <CheckCircle className="w-8 h-8 text-green-200 mx-auto mb-2" />
-              <p className="text-sm text-green-600 font-medium">Semua pembayaran terkonfirmasi ✓</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {(pendingRegs as any[]).slice(0, 5).map((r) => (
-                <div key={r.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{r.registrant_name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{r.events?.title}</p>
-                  </div>
-                  <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">menunggu</span>
-                </div>
-              ))}
-              {pendingCount > 5 && (
-                <p className="text-xs text-gray-400 text-center">+{pendingCount - 5} lainnya</p>
-              )}
-              <Link
-                href={pendingEventId ? `/events/${pendingEventId}/registrations` : '/events'}
-                className="flex items-center justify-center gap-2 w-full h-9 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-medium transition-colors mt-2"
-              >
-                <AlertCircle className="w-4 h-4" />
-                Lihat &amp; Konfirmasi
-              </Link>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Row 2: Event Terdekat + At-Risk */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-        {/* Event Terdekat */}
-        <Card>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-semibold text-gray-900">Event Terdekat</h2>
-            <Link href="/events" className="text-xs text-violet-600 hover:underline">Semua event</Link>
-          </div>
-
-          {!nearestEvent ? (
-            <div className="text-center py-8">
-              <Zap className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Belum ada event aktif</p>
-              <Link href="/events/new" className="text-xs text-violet-600 hover:underline mt-1 block">
-                + Buat event baru
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <p className="text-base font-semibold text-gray-900">{nearestEvent.title}</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-xs text-gray-500">{formatDate(nearestEvent.event_date)}</span>
-                  {daysUntil !== null && daysUntil >= 0 && (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      daysUntil <= 3 ? 'bg-red-50 text-red-600' : 'bg-violet-50 text-violet-600'
-                    }`}>
-                      {daysUntil === 0 ? 'Hari ini!' : `${daysUntil} hari lagi`}
-                    </span>
+                      <MessageCircle className="w-3 h-3" />
+                      Kirim WA
+                    </a>
                   )}
                 </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-gray-500">Peserta terkonfirmasi</span>
-                  <span className="text-xs font-semibold text-gray-800">
-                    {confirmedCount}{nearestEvent.max_capacity ? ` / ${nearestEvent.max_capacity}` : ''} peserta
-                  </span>
-                </div>
-                {nearestEvent.max_capacity && (
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${progressPct && progressPct >= 80 ? 'bg-orange-500' : 'bg-violet-500'}`}
-                      style={{ width: `${progressPct ?? 0}%` }}
-                    />
-                  </div>
-                )}
-                <div className="flex items-center gap-1 mt-1">
-                  <Clock className="w-3 h-3 text-orange-400" />
-                  <span className="text-xs text-orange-500">{totalCount - confirmedCount} menunggu konfirmasi</span>
-                </div>
-              </div>
-
-              <Link
-                href={`/events/${nearestEvent.id}/registrations`}
-                className="flex items-center justify-center gap-2 w-full h-9 border border-violet-200 text-violet-700 hover:bg-violet-50 rounded-xl text-sm font-medium transition-colors"
-              >
-                Lihat Peserta <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-          )}
-        </Card>
-
-        {/* At-Risk Members */}
-        <Card>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-semibold text-gray-900">Perlu Diperhatikan</h2>
-            <Link href="/members?status=at_risk" className="text-xs text-violet-600 hover:underline">Lihat semua</Link>
+              )
+            })}
           </div>
-
-          {!atRiskMembers?.length ? (
-            <div className="text-center py-8">
-              <Users className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Semua member aktif 👍</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {atRiskMembers.map((m: any) => {
-                const days = m.last_attended_at
-                  ? Math.floor((Date.now() - new Date(m.last_attended_at).getTime()) / 86_400_000)
-                  : null
-                return (
-                  <Link key={m.id} href={`/members/${m.id}`} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 -mx-1 px-1 rounded-lg transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{m.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{m.phone}</p>
-                    </div>
-                    <span className="text-xs text-yellow-600 font-medium">
-                      {days !== null ? `${days} hari lalu` : 'Belum pernah'}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
         </Card>
+      )}
+
+      {/* ── KALENDER MINGGUAN ── */}
+      <div className="mb-4 bg-white rounded-2xl border border-gray-100 p-4">
+        <WeekCalendar userId={user.id} />
       </div>
 
-      {/* Row 3: Week Calendar */}
-      <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-5">
-        <WeekCalendar userId={user!.id} />
-      </div>
-
-      {/* Row 4: Stats Summary */}
-      <StatsSummary userId={user!.id} />
+      {/* ── RINGKASAN STATISTIK ── */}
+      <StatsSummary userId={user.id} />
     </DashboardLayout>
   )
 }

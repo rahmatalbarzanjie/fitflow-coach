@@ -18,12 +18,11 @@ export default async function AttendancePage({
   const { data: { user } } = await supabase.auth.getUser()
 
   // Fetch class — 404 if not owner
-  const { data: cls } = await supabase
-    .from('classes')
-    .select('id, name, type, start_time, end_time, user_id')
+  const { data: cls } = await (supabase.from('classes') as any)
+    .select('id, name, type, start_time, end_time, user_id, pricing_mode, class_price')
     .eq('id', id)
     .eq('user_id', user!.id)
-    .single()
+    .single() as { data: any }
 
   if (!cls) notFound()
 
@@ -61,11 +60,10 @@ export default async function AttendancePage({
 
   // Load all instructor's members + existing attendance in parallel
   const [{ data: members }, { data: existingAttendance }] = await Promise.all([
-    supabase
-      .from('members')
-      .select('id, name, phone, status')
+    (supabase.from('members') as any)
+      .select('id, name, phone, status, photo_url')
       .eq('user_id', user!.id)
-      .order('name'),
+      .order('name') as any,
     supabase
       .from('attendance')
       .select('id, member_id, payment_mode, payment_method, amount_paid')

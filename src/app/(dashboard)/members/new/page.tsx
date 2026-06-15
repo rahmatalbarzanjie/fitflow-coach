@@ -2,22 +2,29 @@
 
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Camera, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { memberSchema, type MemberFormData } from '@/lib/validations/member'
+import { z } from 'zod'
+
+const schema = z.object({
+  name:  z.string().min(2, 'Nama minimal 2 karakter'),
+  phone: z.string().min(8, 'Nomor HP minimal 8 digit').regex(/^[0-9+\-\s]+$/, 'Format nomor tidak valid'),
+  notes: z.string().optional(),
+})
+type FormData = z.infer<typeof schema>
 
 export default function NewMemberPage() {
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [photoFile, setPhotoFile]     = useState<File | null>(null)
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [serverError, setServerError]     = useState<string | null>(null)
+  const [photoFile, setPhotoFile]         = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview]   = useState<string | null>(null)
   const router   = useRouter()
   const supabase = createClient()
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<MemberFormData>({
-    resolver: zodResolver(memberSchema),
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
   })
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -27,13 +34,13 @@ export default function NewMemberPage() {
     setPhotoPreview(URL.createObjectURL(file))
   }
 
-  async function onSubmit(data: MemberFormData) {
+  async function onSubmit(data: FormData) {
     setServerError(null)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     const { data: member, error } = await (supabase.from('members') as any)
-      .insert({ name: data.name, phone: data.phone, notes: data.notes || null, address: data.address || null, instagram: data.instagram || null, user_id: user.id })
+      .insert({ name: data.name, phone: data.phone, notes: data.notes || null, user_id: user.id })
       .select('id')
       .single()
 
@@ -42,7 +49,6 @@ export default function NewMemberPage() {
       return
     }
 
-    // Upload photo if selected
     if (photoFile) {
       const ext  = photoFile.name.split('.').pop()
       const path = `${member.id}/${Date.now()}.${ext}`
@@ -52,7 +58,6 @@ export default function NewMemberPage() {
       if (uploadData) {
         const { data: urlData } = supabase.storage.from('member-photos').getPublicUrl(uploadData.path)
         if (urlData?.publicUrl) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from('members') as any).update({ photo_url: urlData.publicUrl }).eq('id', member.id)
         }
       }
@@ -63,7 +68,7 @@ export default function NewMemberPage() {
   }
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/members" className="text-gray-400 hover:text-gray-600 transition-colors">
           <ArrowLeft className="h-5 w-5" />
@@ -72,34 +77,32 @@ export default function NewMemberPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {serverError && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600">
+            <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600">
               {serverError}
             </div>
           )}
 
           {/* Photo */}
-          <div className="flex items-center gap-4 pb-2">
+          <div className="flex flex-col items-center gap-3 pb-2">
             <label className="relative cursor-pointer group">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-violet-100 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-violet-100 flex items-center justify-center">
                 {photoPreview
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
-                  : <User className="w-8 h-8 text-violet-400" />
+                  : <User className="w-10 h-10 text-violet-400" />
                 }
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 bg-violet-600 text-white rounded-full flex items-center justify-center">
-                <Camera className="w-3.5 h-3.5" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-violet-600 text-white rounded-full flex items-center justify-center">
+                <Camera className="w-4 h-4" />
               </div>
               <input type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoChange} />
             </label>
-            <div>
-              <p className="text-sm font-medium text-gray-700">Foto Profil</p>
-              <p className="text-xs text-gray-400 mt-0.5">Opsional — klik untuk upload atau ambil dari kamera</p>
-            </div>
+            <p className="text-xs text-gray-400">Foto opsional — klik untuk upload atau foto langsung</p>
           </div>
 
+          {/* Name */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
               Nama Lengkap <span className="text-red-500">*</span>
@@ -108,11 +111,12 @@ export default function NewMemberPage() {
               {...register('name')}
               autoFocus
               placeholder="Contoh: Siti Rahayu"
-              className="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
             {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
           </div>
 
+          {/* Phone */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
               Nomor HP <span className="text-red-500">*</span>
@@ -121,61 +125,42 @@ export default function NewMemberPage() {
               {...register('phone')}
               type="tel"
               placeholder="08xxxxxxxxxx"
-              className="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
             {errors.phone && <p className="text-xs text-red-600">{errors.phone.message}</p>}
-            <p className="text-xs text-gray-400">Akan dipakai untuk broadcast WhatsApp</p>
+            <p className="text-xs text-gray-400">Dipakai untuk broadcast WhatsApp</p>
           </div>
 
+          {/* Notes */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
-              Alamat
+              Catatan
               <span className="text-gray-400 font-normal ml-1 text-xs">(opsional)</span>
             </label>
-            <textarea
-              {...register('address')}
-              rows={2}
-              placeholder="Jl. Contoh No. 1, Kelurahan, Kota..."
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
+            <input
+              {...register('notes')}
+              placeholder="Contoh: alergi lutut kiri, langganan 3 bulan..."
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Instagram</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
-                <input
-                  {...register('instagram')}
-                  placeholder="username"
-                  className="w-full h-9 pl-7 pr-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Catatan</label>
-              <input
-                {...register('notes')}
-                placeholder="Catatan tambahan..."
-                className="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-1">
-            <Link
-              href="/members"
-              className="flex-1 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Batal
-            </Link>
+          {/* Save button */}
+          <div className="pt-2 space-y-3">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 h-9 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors"
+              className="w-full h-14 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-2xl text-base font-bold transition-colors"
             >
               {isSubmitting ? 'Menyimpan...' : 'Simpan Member'}
             </button>
+            <div className="text-center">
+              <Link
+                href="/members"
+                className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Batal
+              </Link>
+            </div>
           </div>
         </form>
       </div>

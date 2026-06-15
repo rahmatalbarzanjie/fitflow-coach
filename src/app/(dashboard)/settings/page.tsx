@@ -2,8 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { Card } from '@/components/ui/card'
 import { ProfileForm } from '@/components/settings/ProfileForm'
-import { User, ExternalLink, Webhook, Copy } from 'lucide-react'
+import { User, ExternalLink, Webhook } from 'lucide-react'
 import { CopySecretButton } from '@/components/settings/CopySecretButton'
+import { LogoutButton } from '@/components/settings/LogoutButton'
 
 export default async function SettingsPage() {
   const supabase        = await createClient()
@@ -105,6 +106,11 @@ export default async function SettingsPage() {
           </div>
         </Card>
       )}
+
+      {/* Logout */}
+      <div className="mb-6">
+        <LogoutButton />
+      </div>
 
       {/* Node-RED / Webhook config */}
       <Card>

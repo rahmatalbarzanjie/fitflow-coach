@@ -117,18 +117,28 @@ export function StatsSummary({ userId }: { userId: string }) {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {cards.map(({ label, value, unit, icon: Icon, color, bg }) => (
-            <div key={label} className="p-4 bg-gray-50 rounded-xl">
-              <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
-                <Icon className={`w-4 h-4 ${color}`} />
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {cards.map(({ label, value, unit, icon: Icon, color, bg }) => (
+              <div key={label} className="p-4 bg-gray-50 rounded-xl">
+                <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
+                  <Icon className={`w-4 h-4 ${color}`} />
+                </div>
+                <p className="text-lg font-bold text-gray-900">{value}</p>
+                {unit && <p className="text-xs text-gray-400 mt-0.5">{unit}</p>}
+                <p className="text-xs text-gray-500 mt-0.5">{label}</p>
               </div>
-              <p className="text-lg font-bold text-gray-900">{value}</p>
-              {unit && <p className="text-xs text-gray-400 mt-0.5">{unit}</p>}
-              <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {stats && (
+            <p className="mt-4 text-xs text-center text-gray-400 leading-relaxed">
+              {stats.totalSessions > 0
+                ? `Kamu sudah mengajar ${stats.totalSessions} sesi dengan ${stats.totalAttendance} kehadiran ${period === 'week' ? 'minggu' : period === 'month' ? 'bulan' : 'tahun'} ini. Luar biasa! 🌟`
+                : `Belum ada sesi ${period === 'week' ? 'minggu' : period === 'month' ? 'bulan' : 'tahun'} ini. Ayo semangat mengajar! 💪`
+              }
+            </p>
+          )}
+        </>
       )}
     </Card>
   )

@@ -70,9 +70,9 @@ export function MemberPhotoUpload({ memberId, currentPhotoUrl, onUploaded, size 
 }
 
 // Static avatar (no upload) — used in lists
-export function MemberAvatar({ photoUrl, name, size = 'sm' }: { photoUrl?: string | null; name: string; size?: 'sm' | 'lg' }) {
-  const dim     = size === 'lg' ? 'w-12 h-12' : 'w-8 h-8'
-  const textDim = size === 'lg' ? 'text-base'  : 'text-xs'
+export function MemberAvatar({ photoUrl, name, size = 'sm' }: { photoUrl?: string | null; name: string; size?: 'sm' | 'md' | 'lg' }) {
+  const dim     = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-10 h-10' : 'w-8 h-8'
+  const textDim = size === 'lg' ? 'text-base'  : size === 'md' ? 'text-sm'  : 'text-xs'
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 
   if (photoUrl) {
