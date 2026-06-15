@@ -3,9 +3,11 @@
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
+import { formatRupiah } from '@/lib/utils'
 
 interface Props {
   cls: {
@@ -18,8 +20,8 @@ interface Props {
     location: string | null
     capacity: number | null
     description?: string | null
-    payment_mode?: string | null
     class_price?: number | null
+    revenue_share_pct?: number | null
   }
 }
 
@@ -36,49 +38,56 @@ const DAY_OPTIONS = [
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white disabled:bg-gray-50 disabled:text-gray-400'
 
 export function ClassEditForm({ cls }: Props) {
-  const [saved, setSaved]         = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const router = useRouter()
   const supabase = createClient()
 
-  const { register, handleSubmit, control, formState: { errors, isDirty, isSubmitting } } = useForm<ClassFormData>({
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<ClassFormData>({
     resolver: zodResolver(classSchema),
     defaultValues: {
-      name:         cls.name,
-      type:         cls.type as ClassFormData['type'],
-      day_of_week:  cls.day_of_week,
-      start_time:   cls.start_time.substring(0, 5),
-      end_time:     cls.end_time.substring(0, 5),
-      location:     cls.location ?? '',
-      capacity:     cls.capacity ?? undefined,
-      description:  cls.description ?? '',
-      payment_mode: (cls.payment_mode as ClassFormData['payment_mode']) ?? 'free',
-      class_price:  cls.class_price ?? undefined,
+      name:              cls.name,
+      type:              cls.type as ClassFormData['type'],
+      day_of_week:       cls.day_of_week,
+      start_time:        cls.start_time.substring(0, 5),
+      end_time:          cls.end_time.substring(0, 5),
+      location:          cls.location ?? '',
+      capacity:          cls.capacity ?? undefined,
+      description:       cls.description ?? '',
+      class_price:       cls.class_price ?? undefined,
+      revenue_share_pct: cls.revenue_share_pct ?? 50,
     },
   })
-  const paymentMode = useWatch({ control, name: 'payment_mode' })
+
+  const classPrice       = useWatch({ control, name: 'class_price' })
+  const revenueSharePct  = useWatch({ control, name: 'revenue_share_pct' })
+
+  const priceNum   = Number(classPrice)   || 0
+  const shareNum   = Number(revenueSharePct) ?? 50
+  const instrShare = Math.round(priceNum * shareNum / 100)
+  const studioShare = priceNum - instrShare
 
   async function onSubmit(data: ClassFormData) {
     setServerError(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from('classes') as any)
       .update({
-        name:         data.name,
-        type:         data.type,
-        day_of_week:  data.day_of_week,
-        start_time:   data.start_time,
-        end_time:     data.end_time,
-        location:     data.location || null,
-        capacity:     data.capacity || null,
-        description:  data.description || null,
-        payment_mode: data.payment_mode,
-        class_price:  data.payment_mode === 'free' ? null : (data.class_price || null),
+        name:              data.name,
+        type:              data.type,
+        day_of_week:       data.day_of_week,
+        start_time:        data.start_time,
+        end_time:          data.end_time,
+        location:          data.location || null,
+        capacity:          data.capacity || null,
+        description:       data.description || null,
+        class_price:       data.class_price || null,
+        revenue_share_pct: data.revenue_share_pct,
       })
       .eq('id', cls.id)
 
     if (error) { setServerError(error.message); return }
 
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    router.push('/classes')
+    router.refresh()
   }
 
   return (
@@ -117,11 +126,23 @@ export function ClassEditForm({ cls }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">Jam Mulai</label>
-          <input {...register('start_time')} type="time" className={inputClass} />
+          <input
+            {...register('start_time')}
+            type="time"
+            step="60"
+            className={inputClass}
+          />
+          {errors.start_time && <p className="text-xs text-red-600">{errors.start_time.message}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">Jam Selesai</label>
-          <input {...register('end_time')} type="time" className={inputClass} />
+          <input
+            {...register('end_time')}
+            type="time"
+            step="60"
+            className={inputClass}
+          />
+          {errors.end_time && <p className="text-xs text-red-600">{errors.end_time.message}</p>}
         </div>
       </div>
 
@@ -138,63 +159,88 @@ export function ClassEditForm({ cls }: Props) {
 
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">
-          Deskripsi Kelas
+          Deskripsi
           <span className="text-gray-400 font-normal ml-1 text-xs">(tampil di landing page)</span>
         </label>
         <textarea
           {...register('description')}
-          rows={3}
-          placeholder="Contoh: Kelas cardio drumming energik! Bawa ripstix. Cocok untuk semua level."
+          rows={2}
+          placeholder="Contoh: Kelas cardio drumming energik! Cocok untuk semua level."
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
       </div>
 
-      {/* Payment Mode */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">Biaya Kelas</label>
-        <div className="flex gap-2">
-          {(['free', 'cash', 'transfer'] as const).map(mode => {
-            const labels = { free: 'Gratis', cash: 'Bayar Tunai', transfer: 'Bayar Transfer' }
-            return (
-              <label
-                key={mode}
-                className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-colors text-sm ${
-                  paymentMode === mode
-                    ? 'border-violet-500 bg-violet-50 text-violet-700'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                <input {...register('payment_mode')} type="radio" value={mode} className="hidden" />
-                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${paymentMode === mode ? 'border-violet-500' : 'border-gray-300'}`}>
-                  {paymentMode === mode && <div className="w-2 h-2 bg-violet-500 rounded-full" />}
-                </div>
-                {labels[mode]}
-              </label>
-            )
-          })}
+      {/* Harga & Bagi Hasil */}
+      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-3">
+        <p className="text-sm font-semibold text-gray-800">Keuangan</p>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-gray-600">Harga per Sesi (Rp)</label>
+          <input
+            {...register('class_price')}
+            type="number"
+            min="0"
+            placeholder="Contoh: 75000"
+            className={inputClass}
+          />
         </div>
-        {paymentMode !== 'free' && (
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-600">Nominal (Rp)</label>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-medium text-gray-600">Bagi Hasil — Instruktur</label>
+            <span className="text-xs text-gray-400">Studio mendapat {100 - shareNum}%</span>
+          </div>
+          <div className="flex items-center gap-2">
             <input
-              {...register('class_price')}
+              {...register('revenue_share_pct')}
               type="number"
               min="0"
-              placeholder="Contoh: 50000"
-              className={inputClass}
+              max="100"
+              className="w-20 h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white text-center"
             />
+            <span className="text-sm text-gray-500">%</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={shareNum}
+              onChange={e => {
+                const el = document.querySelector('input[name="revenue_share_pct"]') as HTMLInputElement
+                if (el) { el.value = e.target.value; el.dispatchEvent(new Event('input', { bubbles: true })) }
+              }}
+              className="flex-1 accent-violet-600"
+            />
+          </div>
+        </div>
+
+        {priceNum > 0 && (
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="rounded-lg bg-violet-50 border border-violet-100 p-2.5 text-center">
+              <p className="text-xs text-violet-500 font-medium">Instruktur</p>
+              <p className="text-sm font-bold text-violet-700 mt-0.5">{formatRupiah(instrShare)}</p>
+            </div>
+            <div className="rounded-lg bg-gray-100 border border-gray-200 p-2.5 text-center">
+              <p className="text-xs text-gray-500 font-medium">Studio</p>
+              <p className="text-sm font-bold text-gray-700 mt-0.5">{formatRupiah(studioShare)}</p>
+            </div>
           </div>
         )}
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-1">
-        {serverError && <p className="text-xs text-red-600 flex-1">{serverError}</p>}
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="h-9 px-4 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm transition-colors"
+        >
+          Batal
+        </button>
         <button
           type="submit"
           disabled={isSubmitting}
           className="h-9 px-5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors"
         >
-          {isSubmitting ? 'Menyimpan...' : saved ? 'Tersimpan ✓' : 'Simpan Perubahan'}
+          {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
         </button>
       </div>
     </form>

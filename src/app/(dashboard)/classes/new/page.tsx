@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
+import { formatRupiah } from '@/lib/utils'
 
 const DAY_OPTIONS = [
   { value: 0, label: 'Minggu' },
@@ -30,12 +31,19 @@ export default function NewClassPage() {
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<ClassFormData>({
     resolver: zodResolver(classSchema),
     defaultValues: {
-      type:         'zumba',
-      day_of_week:  new Date().getDay(),
-      payment_mode: 'free',
+      type:              'zumba',
+      day_of_week:       new Date().getDay(),
+      revenue_share_pct: 50,
     },
   })
-  const paymentMode = useWatch({ control, name: 'payment_mode' })
+
+  const classPrice      = useWatch({ control, name: 'class_price' })
+  const revenueSharePct = useWatch({ control, name: 'revenue_share_pct' })
+
+  const priceNum    = Number(classPrice) || 0
+  const shareNum    = Number(revenueSharePct) ?? 50
+  const instrShare  = Math.round(priceNum * shareNum / 100)
+  const studioShare = priceNum - instrShare
 
   async function onSubmit(data: ClassFormData) {
     setServerError(null)
@@ -45,17 +53,17 @@ export default function NewClassPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: cls, error } = await (supabase.from('classes') as any)
       .insert({
-        user_id:      user.id,
-        name:         data.name,
-        type:         data.type,
-        day_of_week:  data.day_of_week,
-        start_time:   data.start_time,
-        end_time:     data.end_time,
-        location:     data.location || null,
-        capacity:     data.capacity || null,
-        description:  data.description || null,
-        payment_mode: data.payment_mode,
-        class_price:  data.payment_mode === 'free' ? null : (data.class_price || null),
+        user_id:           user.id,
+        name:              data.name,
+        type:              data.type,
+        day_of_week:       data.day_of_week,
+        start_time:        data.start_time,
+        end_time:          data.end_time,
+        location:          data.location || null,
+        capacity:          data.capacity || null,
+        description:       data.description || null,
+        class_price:       data.class_price || null,
+        revenue_share_pct: data.revenue_share_pct,
       })
       .select('id')
       .single()
@@ -131,90 +139,110 @@ export default function NewClassPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Jam Mulai <span className="text-red-500">*</span>
               </label>
-              <input {...register('start_time')} type="time" className={inputClass} />
+              <input {...register('start_time')} type="time" step="60" className={inputClass} />
               {errors.start_time && <p className="text-xs text-red-600">{errors.start_time.message}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
                 Jam Selesai <span className="text-red-500">*</span>
               </label>
-              <input {...register('end_time')} type="time" className={inputClass} />
+              <input {...register('end_time')} type="time" step="60" className={inputClass} />
               {errors.end_time && <p className="text-xs text-red-600">{errors.end_time.message}</p>}
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Lokasi</label>
-            <input
-              {...register('location')}
-              placeholder="Contoh: Studio A, GOR Mandiri Lt.2"
-              className={inputClass}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Kapasitas</label>
-            <input
-              {...register('capacity')}
-              type="number"
-              min="1"
-              placeholder="Kosongkan jika tidak terbatas"
-              className={inputClass}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Lokasi</label>
+              <input
+                {...register('location')}
+                placeholder="Contoh: Studio A, GOR Lt.2"
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Kapasitas</label>
+              <input
+                {...register('capacity')}
+                type="number"
+                min="1"
+                placeholder="Tak terbatas"
+                className={inputClass}
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
-              Deskripsi Kelas
+              Deskripsi
               <span className="text-gray-400 font-normal ml-1 text-xs">(tampil di landing page)</span>
             </label>
             <textarea
               {...register('description')}
-              rows={3}
-              placeholder="Contoh: Kelas cardio drumming energik! Bawa ripstix. Cocok untuk semua level."
+              rows={2}
+              placeholder="Contoh: Kelas cardio drumming energik! Cocok untuk semua level."
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
 
-          {/* Payment Mode */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Biaya Kelas</label>
-            <div className="flex gap-2">
-              {(['free', 'cash', 'transfer'] as const).map(mode => {
-                const labels = { free: 'Gratis', cash: 'Bayar Tunai', transfer: 'Bayar Transfer' }
-                return (
-                  <label
-                    key={mode}
-                    className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-colors text-sm ${
-                      paymentMode === mode
-                        ? 'border-violet-500 bg-violet-50 text-violet-700'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <input {...register('payment_mode')} type="radio" value={mode} className="hidden" />
-                    <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${paymentMode === mode ? 'border-violet-500' : 'border-gray-300'}`}>
-                      {paymentMode === mode && <div className="w-2 h-2 bg-violet-500 rounded-full" />}
-                    </div>
-                    {labels[mode]}
-                  </label>
-                )
-              })}
+          {/* Keuangan */}
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-3">
+            <p className="text-sm font-semibold text-gray-800">Keuangan</p>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-gray-600">Harga per Sesi (Rp)</label>
+              <input
+                {...register('class_price')}
+                type="number"
+                min="0"
+                placeholder="Contoh: 75000"
+                className={inputClass}
+              />
             </div>
-            {paymentMode !== 'free' && (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-gray-600">Nominal (Rp)</label>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-gray-600">Bagi Hasil — Instruktur</label>
+                <span className="text-xs text-gray-400">Studio mendapat {100 - shareNum}%</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <input
-                  {...register('class_price')}
+                  {...register('revenue_share_pct')}
                   type="number"
                   min="0"
-                  placeholder="Contoh: 50000"
-                  className={inputClass}
+                  max="100"
+                  className="w-20 h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white text-center"
                 />
+                <span className="text-sm text-gray-500">%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={shareNum}
+                  onChange={e => {
+                    const el = document.querySelector('input[name="revenue_share_pct"]') as HTMLInputElement
+                    if (el) { el.value = e.target.value; el.dispatchEvent(new Event('input', { bubbles: true })) }
+                  }}
+                  className="flex-1 accent-violet-600"
+                />
+              </div>
+            </div>
+
+            {priceNum > 0 && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="rounded-lg bg-violet-50 border border-violet-100 p-2.5 text-center">
+                  <p className="text-xs text-violet-500 font-medium">Instruktur</p>
+                  <p className="text-sm font-bold text-violet-700 mt-0.5">{formatRupiah(instrShare)}</p>
+                </div>
+                <div className="rounded-lg bg-gray-100 border border-gray-200 p-2.5 text-center">
+                  <p className="text-xs text-gray-500 font-medium">Studio</p>
+                  <p className="text-sm font-bold text-gray-700 mt-0.5">{formatRupiah(studioShare)}</p>
+                </div>
               </div>
             )}
           </div>
 
-          <p className="text-xs text-gray-400">Sesi akan dibuat otomatis untuk 8 minggu ke depan.</p>
+          <p className="text-xs text-gray-400">Jadwal sesi akan dibuat otomatis untuk 8 minggu ke depan.</p>
 
           <div className="flex gap-3 pt-1">
             <Link
