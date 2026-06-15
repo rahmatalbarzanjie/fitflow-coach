@@ -49,7 +49,7 @@ export function InstructorPhotoUpload({ profileId, currentPhotoUrl, onUploaded }
           <User className="w-8 h-8 text-violet-400" />
         )}
       </div>
-      <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 bg-violet-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 bg-violet-600 text-white rounded-full flex items-center justify-center">
         <Camera className="w-3.5 h-3.5" />
       </div>
       <input

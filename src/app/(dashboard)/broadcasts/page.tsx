@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Plus, Send, FileText, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { DeleteButton } from '@/components/ui/DeleteButton'
 import { formatDateShort } from '@/lib/utils'
 
 const AUDIENCE_LABEL: Record<string, string> = {
@@ -107,6 +108,12 @@ export default async function BroadcastsPage({
                         : `Dibuat ${formatDateShort(bc.created_at ?? new Date().toISOString())}`}
                     </p>
                   </div>
+                  <DeleteButton
+                    table="broadcasts"
+                    id={bc.id}
+                    redirectTo="/broadcasts"
+                    confirmText="Hapus broadcast ini?"
+                  />
                 </div>
               </div>
             )

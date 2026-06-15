@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Calendar, Zap, MessageSquare, Activity } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { LayoutDashboard, Users, Calendar, Zap, MessageSquare, Activity, Code2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/',           icon: LayoutDashboard, label: 'Beranda'   },
@@ -19,7 +21,16 @@ interface Props {
 }
 
 export function Sidebar({ open, onClose }: Props) {
-  const pathname = usePathname()
+  const pathname  = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+    if (!adminEmail) return
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      setIsAdmin(user?.email === adminEmail)
+    })
+  }, [])
 
   function handleNavClick() {
     if (window.innerWidth < 768) onClose()
@@ -50,7 +61,7 @@ export function Sidebar({ open, onClose }: Props) {
           </div>
         </div>
 
-        {/* Navigation — 5 items */}
+        {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {navItems.map(({ href, icon: Icon, label }) => {
             const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -71,6 +82,23 @@ export function Sidebar({ open, onClose }: Props) {
               </Link>
             )
           })}
+
+          {/* Developer link — admin only */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={handleNavClick}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all mt-4 border-t border-gray-100 pt-4',
+                pathname.startsWith('/admin')
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+              )}
+            >
+              <Code2 className="h-4 w-4 shrink-0" />
+              Developer
+            </Link>
+          )}
         </nav>
       </aside>
     </>

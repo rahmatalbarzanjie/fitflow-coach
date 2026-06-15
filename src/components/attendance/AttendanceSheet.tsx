@@ -34,7 +34,7 @@ interface Session {
 interface ClassInfo {
   id: string
   name: string
-  pricing_mode?: string | null
+  payment_mode?: string | null
   class_price?: number | null
 }
 
@@ -99,7 +99,7 @@ export function AttendanceSheet({ cls, session, members, existingAttendance }: P
 
   // Determine default payment based on class pricing
   function getPayment() {
-    const mode = cls.pricing_mode
+    const mode = cls.payment_mode
     if (mode === 'free')     return { payment_mode: 'free' as const, payment_method: null, amount_paid: 0 }
     if (mode === 'transfer') return { payment_mode: 'drop_in' as const, payment_method: 'transfer' as const, amount_paid: cls.class_price ?? 0 }
     return { payment_mode: 'drop_in' as const, payment_method: 'cash' as const, amount_paid: cls.class_price ?? 0 }

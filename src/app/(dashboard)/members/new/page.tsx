@@ -63,7 +63,7 @@ export default function NewMemberPage() {
       }
     }
 
-    router.push(`/members/${member.id}`)
+    router.push('/members')
     router.refresh()
   }
 

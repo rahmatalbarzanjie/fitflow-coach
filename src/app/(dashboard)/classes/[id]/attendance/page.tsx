@@ -19,7 +19,7 @@ export default async function AttendancePage({
 
   // Fetch class — 404 if not owner
   const { data: cls } = await (supabase.from('classes') as any)
-    .select('id, name, type, start_time, end_time, user_id, pricing_mode, class_price')
+    .select('id, name, type, start_time, end_time, user_id, payment_mode, class_price')
     .eq('id', id)
     .eq('user_id', user!.id)
     .single() as { data: any }

@@ -68,7 +68,7 @@ export default function NewClassPage() {
       p_days: 56,
     })
 
-    router.push(`/classes/${cls.id}`)
+    router.push('/classes')
     router.refresh()
   }
 

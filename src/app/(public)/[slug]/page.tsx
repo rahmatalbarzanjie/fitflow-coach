@@ -12,13 +12,25 @@ export default async function InstructorLandingPage({
   const { slug } = await params
   const supabase  = createServiceClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase.from('profiles') as any)
-    .select('id, name, business_name, phone, photo_url')
+  // First query without photo_url (safe for all migration states)
+  const { data: profileBase } = await supabase
+    .from('profiles')
+    .select('id, name, business_name, phone, slug')
     .eq('slug', slug)
-    .single() as { data: { id: string; name: string; business_name: string | null; phone: string | null; photo_url?: string | null } | null }
+    .single()
 
-  if (!profile) notFound()
+  if (!profileBase) notFound()
+
+  // Try to get photo_url (added in migration 004 — graceful fallback if missing)
+  let photo_url: string | null = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: photoData } = await (supabase.from('profiles') as any)
+    .select('photo_url')
+    .eq('id', profileBase.id)
+    .single()
+  photo_url = (photoData as any)?.photo_url ?? null
+
+  const profile = { ...profileBase, photo_url }
 
   const today = new Date().toISOString().split('T')[0]
 

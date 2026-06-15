@@ -98,7 +98,7 @@ export default function NewEventPage() {
 
     if (coverFile) await uploadCover(ev.id, coverFile)
 
-    router.push(`/events/${ev.id}`)
+    router.push('/events')
     router.refresh()
   }
 

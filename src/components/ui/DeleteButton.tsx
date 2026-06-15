@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Trash2 } from 'lucide-react'
 
 interface Props {
-  table: 'events' | 'members' | 'classes'
+  table: 'events' | 'members' | 'classes' | 'broadcasts'
   id: string
   redirectTo: string
   confirmText?: string

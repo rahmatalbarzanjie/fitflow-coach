@@ -48,7 +48,8 @@ export default async function EventsPage({
   ])
 
   const profileSlug = profile?.slug ?? null
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const rawUrl      = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const appUrl      = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl
 
   return (
     <div className="max-w-2xl">

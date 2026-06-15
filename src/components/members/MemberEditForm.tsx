@@ -5,9 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { memberSchema, type MemberFormData } from '@/lib/validations/member'
+import { z } from 'zod'
 import { Check } from 'lucide-react'
 import { MemberPhotoUpload } from './MemberPhotoUpload'
+
+const schema = z.object({
+  name:  z.string().min(2, 'Nama minimal 2 karakter'),
+  phone: z.string().min(8, 'Nomor HP minimal 8 digit').regex(/^[0-9+\-\s]+$/, 'Format nomor tidak valid'),
+  notes: z.string().optional(),
+})
+type FormData = z.infer<typeof schema>
 
 interface Props {
   member: {
@@ -15,8 +22,6 @@ interface Props {
     name: string
     phone: string
     notes?: string | null
-    address?: string | null
-    instagram?: string | null
     photo_url?: string | null
   }
 }
@@ -29,27 +34,22 @@ export function MemberEditForm({ member }: Props) {
   const router   = useRouter()
   const supabase = createClient()
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<MemberFormData>({
-    resolver: zodResolver(memberSchema),
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
     defaultValues: {
-      name:      member.name,
-      phone:     member.phone,
-      notes:     member.notes     ?? '',
-      address:   member.address   ?? '',
-      instagram: member.instagram ?? '',
+      name:  member.name,
+      phone: member.phone,
+      notes: member.notes ?? '',
     },
   })
 
-  async function onSubmit(data: MemberFormData) {
+  async function onSubmit(data: FormData) {
     setServerError(null)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from('members') as any)
       .update({
-        name:      data.name,
-        phone:     data.phone,
-        notes:     data.notes     || null,
-        address:   data.address   || null,
-        instagram: data.instagram || null,
+        name:  data.name,
+        phone: data.phone,
+        notes: data.notes || null,
       })
       .eq('id', member.id)
 
@@ -94,38 +94,12 @@ export function MemberEditForm({ member }: Props) {
       </div>
 
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">
-          Alamat
-          <span className="text-gray-400 font-normal ml-1 text-xs">(untuk pengiriman / info lain)</span>
-        </label>
-        <textarea
-          {...register('address')}
-          rows={2}
-          placeholder="Jl. Contoh No. 1, Kelurahan, Kota..."
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
+        <label className="block text-sm font-medium text-gray-700">Catatan</label>
+        <input
+          {...register('notes')}
+          placeholder="Catatan tambahan..."
+          className={inp}
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700">Instagram</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
-            <input
-              {...register('instagram')}
-              className="w-full h-9 pl-7 pr-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              placeholder="username"
-            />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700">Catatan</label>
-          <input
-            {...register('notes')}
-            placeholder="Catatan tambahan..."
-            className={inp}
-          />
-        </div>
       </div>
 
       <div className="flex justify-end pt-1">

@@ -31,8 +31,10 @@ export default async function SettingsPage() {
     profile = created
   }
 
-  const appUrl        = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const rawAppUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl        = rawAppUrl && !rawAppUrl.startsWith('http') ? `https://${rawAppUrl}` : rawAppUrl
   const webhookSecret = process.env.NODERED_WEBHOOK_SECRET ?? '(belum diset di .env)'
+  const isAdmin       = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
 
   return (
     <div className="max-w-lg">
@@ -112,8 +114,8 @@ export default async function SettingsPage() {
         <LogoutButton />
       </div>
 
-      {/* Node-RED / Webhook config */}
-      <Card>
+      {/* Node-RED / Webhook config — admin only */}
+      {isAdmin && <Card>
         <div className="flex items-center gap-2 mb-1">
           <Webhook className="w-4 h-4 text-gray-400" />
           <h2 className="text-sm font-semibold text-gray-900">Node-RED Integration</h2>
@@ -147,7 +149,7 @@ export default async function SettingsPage() {
             </code>
           </div>
         </div>
-      </Card>
+      </Card>}
     </div>
   )
 }

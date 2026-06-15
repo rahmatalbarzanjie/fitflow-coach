@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
-const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
-const TODAY_IDX = new Date().getDay()
+// Display order: Mon=1, Tue=2, ..., Sat=6, Sun=0
+const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
+const DAY_LABELS    = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+const TODAY_DOW     = new Date().getDay() // 0=Sun, 1=Mon, ... 6=Sat
 
 const TYPE_STYLE: Record<string, string> = {
   poundfit: 'bg-orange-50 text-orange-700 border-orange-200',
@@ -23,8 +25,6 @@ interface ClassRow {
   type: string
   day_of_week: number
   start_time: string
-  end_time: string
-  location: string | null
 }
 
 export function WeekCalendar({ userId }: { userId: string }) {
@@ -34,14 +34,14 @@ export function WeekCalendar({ userId }: { userId: string }) {
   useEffect(() => {
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location')
+      .select('id, name, type, day_of_week, start_time')
       .eq('user_id', userId)
+      .eq('is_active', true)
       .order('start_time')
       .then(({ data }) => setClasses((data as ClassRow[]) ?? []))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
-  const byDay = DAYS.map((_, i) => classes.filter(c => c.day_of_week === i))
   const hasAny = classes.length > 0
 
   return (
@@ -52,39 +52,43 @@ export function WeekCalendar({ userId }: { userId: string }) {
       </div>
 
       {!hasAny ? (
-        <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
+        <div className="text-center py-8">
           <p className="text-sm text-gray-400">Belum ada kelas terdaftar</p>
           <Link href="/classes/new" className="text-xs text-violet-600 hover:underline mt-1 block">
             + Tambah kelas
           </Link>
         </div>
       ) : (
-        <div className="overflow-x-auto -mx-1 px-1 pb-1">
+        <div className="overflow-x-auto -mx-1 px-1 pt-1 pb-1">
           <div className="grid grid-cols-7 gap-1.5 min-w-[480px]">
-            {DAYS.map((day, i) => (
-              <div
-                key={i}
-                className={`rounded-xl p-1.5 ${i === TODAY_IDX ? 'bg-violet-50 ring-1 ring-violet-200' : 'bg-white border border-gray-100'}`}
-              >
-                <p className={`text-center text-[11px] font-bold mb-1.5 ${i === TODAY_IDX ? 'text-violet-700' : 'text-gray-400'}`}>
-                  {day}
-                </p>
-                <div className="space-y-1 min-h-[40px]">
-                  {byDay[i].length === 0 ? (
-                    <div className="h-8 rounded-lg border border-dashed border-gray-100" />
-                  ) : (
-                    byDay[i].map(c => (
-                      <Link key={c.id} href={`/classes/${c.id}`}>
-                        <div className={`rounded-lg border px-1.5 py-1 text-[10px] cursor-pointer hover:opacity-75 transition-opacity leading-tight ${TYPE_STYLE[c.type] ?? TYPE_STYLE.other}`}>
-                          <p className="font-semibold truncate">{c.name}</p>
-                          <p className="opacity-70">{String(c.start_time).substring(0, 5)}</p>
-                        </div>
-                      </Link>
-                    ))
-                  )}
+            {DISPLAY_ORDER.map((dow, i) => {
+              const isToday  = dow === TODAY_DOW
+              const dayClass = classes.filter(c => c.day_of_week === dow)
+              return (
+                <div
+                  key={dow}
+                  className={`rounded-xl p-1.5 ${isToday ? 'bg-violet-50 ring-1 ring-violet-200' : 'bg-white border border-gray-100'}`}
+                >
+                  <p className={`text-center text-[11px] font-bold mb-2 ${isToday ? 'text-violet-700' : 'text-gray-400'}`}>
+                    {DAY_LABELS[i]}
+                  </p>
+                  <div className="flex flex-col gap-1.5 min-h-[40px]">
+                    {dayClass.length === 0 ? (
+                      <div className="h-8 rounded-lg border border-dashed border-gray-100" />
+                    ) : (
+                      dayClass.map(c => (
+                        <Link key={c.id} href={`/classes/${c.id}`}>
+                          <div className={`rounded-lg border px-1.5 py-1.5 text-[10px] cursor-pointer hover:opacity-75 transition-opacity leading-tight ${TYPE_STYLE[c.type] ?? TYPE_STYLE.other}`}>
+                            <p className="font-semibold truncate">{c.name}</p>
+                            <p className="opacity-70 mt-0.5">{String(c.start_time).substring(0, 5)}</p>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
