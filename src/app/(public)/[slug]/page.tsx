@@ -142,7 +142,7 @@ export default async function InstructorLandingPage({
           </div>
 
           {/* Name */}
-          <h1 className="font-montserrat text-5xl md:text-[80px] font-extralight text-on-surface mb-2 leading-tight tracking-tight">
+          <h1 className="font-montserrat text-4xl sm:text-5xl md:text-[72px] lg:text-[88px] font-extralight text-on-surface mb-2 leading-tight tracking-tight break-words max-w-[90vw] text-center">
             {studio}
           </h1>
           <p className="font-montserrat italic font-light text-on-surface/70 mb-10 tracking-wide text-lg">
@@ -183,8 +183,8 @@ export default async function InstructorLandingPage({
 
             <div className={`grid grid-cols-1 gap-6 ${
               classGroups.length === 1 ? 'max-w-md' :
-              classGroups.length === 2 ? 'md:grid-cols-2 max-w-3xl' :
-              'lg:grid-cols-3'
+              classGroups.length === 2 ? 'sm:grid-cols-2 max-w-3xl' :
+              'sm:grid-cols-2 lg:grid-cols-3'
             }`}>
               {classGroups.map(([type, typeClasses]) => {
                 const cfg = getTypeConfig(type)
@@ -291,8 +291,8 @@ export default async function InstructorLandingPage({
                     </div>
 
                     {/* Body */}
-                    <div className="p-8">
-                      <h3 className="font-montserrat text-2xl font-bold text-on-surface mb-4">{ev.title}</h3>
+                    <div className="p-5 md:p-8">
+                      <h3 className="font-montserrat text-xl md:text-2xl font-bold text-on-surface mb-4 break-words leading-tight">{ev.title}</h3>
 
                       <div className="space-y-3 mb-8">
                         <div className="flex items-center gap-3 text-on-surface-variant">
