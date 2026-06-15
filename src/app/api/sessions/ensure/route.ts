@@ -26,11 +26,13 @@ export async function POST(request: Request) {
 
     // Check if session already exists
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase.from('sessions') as any)
+    const { data: existing, error: selectErr } = await (supabase.from('sessions') as any)
       .select('id, session_type, original_date, original_time, override_location, notified_at, start_time, end_time')
       .eq('class_id', classId)
       .eq('session_date', sessionDate)
-      .single()
+      .maybeSingle()
+
+    if (selectErr) throw new Error(selectErr.message)
 
     if (existing) {
       return NextResponse.json({ sessionId: existing.id, session: existing, created: false })
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
 
     // Create new session
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newSession, error } = await (supabase.from('sessions') as any)
+    const { data: newSession, error: insertErr } = await (supabase.from('sessions') as any)
       .insert({
         class_id:     classId,
         user_id:      user.id,
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
       .select('id, session_type, original_date, original_time, override_location, notified_at, start_time, end_time')
       .single()
 
-    if (error) throw error
+    if (insertErr) throw new Error(insertErr.message)
 
     return NextResponse.json({ sessionId: newSession.id, session: newSession, created: true })
   } catch (err: unknown) {
