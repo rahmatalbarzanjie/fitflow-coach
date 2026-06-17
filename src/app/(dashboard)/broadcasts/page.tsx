@@ -4,6 +4,7 @@ import { Plus, Send, FileText, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/DeleteButton'
 import { BroadcastSendButton } from '@/components/broadcasts/BroadcastSendButton'
+import { BroadcastGroupSendButton } from '@/components/broadcasts/BroadcastGroupSendButton'
 import { formatDateShort } from '@/lib/utils'
 
 const AUDIENCE_LABEL: Record<string, string> = {
@@ -37,7 +38,7 @@ export default async function BroadcastsPage({
 
   let query = supabase
     .from('broadcasts')
-    .select('id, title, content, target_audience, status, recipient_count, sent_at, created_at')
+    .select('id, title, content, target_audience, status, recipient_count, sent_at, created_at, target_class_id, group_sent_at, classes(wa_group_name)')
     .eq('user_id', user!.id)
     .order('created_at', { ascending: false })
 
@@ -93,6 +94,7 @@ export default async function BroadcastsPage({
         <div className="space-y-2">
           {broadcasts.map(bc => {
             const cfg = STATUS_CONFIG[bc.status as keyof typeof STATUS_CONFIG]
+            const groupName = (bc as any).classes?.wa_group_name as string | null | undefined
             return (
               <div key={bc.id} className="bg-white rounded-2xl border border-gray-100 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -101,6 +103,11 @@ export default async function BroadcastsPage({
                       <p className="text-sm font-semibold text-gray-900">{bc.title}</p>
                       <Badge color={cfg?.color ?? 'gray'}>{cfg?.label ?? bc.status}</Badge>
                       <Badge color="violet">{AUDIENCE_LABEL[bc.target_audience] ?? bc.target_audience}</Badge>
+                      {(bc as any).target_class_id && (
+                        <Badge color={(bc as any).group_sent_at ? 'green' : 'blue'}>
+                          {(bc as any).group_sent_at ? 'Terkirim ke grup' : `Grup: ${groupName ?? '—'}`}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 line-clamp-2">{bc.content}</p>
                     <p className="text-xs text-gray-300 mt-2">
@@ -112,6 +119,9 @@ export default async function BroadcastsPage({
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     {bc.status === 'draft' && (
                       <BroadcastSendButton broadcastId={bc.id} />
+                    )}
+                    {(bc as any).target_class_id && !(bc as any).group_sent_at && (
+                      <BroadcastGroupSendButton broadcastId={bc.id} groupName={groupName ?? 'komunitas'} />
                     )}
                     <DeleteButton
                       table="broadcasts"

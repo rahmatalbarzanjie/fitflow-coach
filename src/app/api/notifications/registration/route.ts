@@ -18,14 +18,18 @@ export async function POST(request: Request) {
   }
 
   // Ambil data registrasi + event title (pastikan milik instruktur ini)
-  const { data: reg } = await supabase
-    .from('registrations')
-    .select('registrant_name, registrant_phone, events(title)')
-    .eq('id', registrationId)
-    .eq('user_id', user.id)
-    .single()
+  const [{ data: reg }, { data: profile }] = await Promise.all([
+    supabase
+      .from('registrations')
+      .select('registrant_name, registrant_phone, events(title)')
+      .eq('id', registrationId)
+      .eq('user_id', user.id)
+      .single(),
+    supabase.from('profiles').select('fonnte_token').eq('id', user.id).single(),
+  ])
 
   if (!reg) return NextResponse.json({ error: 'Registrasi tidak ditemukan' }, { status: 404 })
+  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
 
   const name      = reg.registrant_name
   const phone     = reg.registrant_phone
@@ -47,6 +51,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'type tidak valid' }, { status: 400 })
   }
 
-  const sent = await sendWhatsApp(phone, message)
+  const sent = await sendWhatsApp(phone, message, instructorToken)
   return NextResponse.json({ ok: true, sent })
 }

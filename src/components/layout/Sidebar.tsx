@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Users, Calendar, Zap, PenSquare, MessageSquare,
+  LayoutDashboard, Users, Users2, Calendar, Zap, PenSquare, MessageSquare,
   Activity, Settings, Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 const instructorItems = [
   { href: '/',           icon: LayoutDashboard, label: 'Beranda'      },
   { href: '/members',    icon: Users,           label: 'Member'       },
+  { href: '/community',  icon: Users2,          label: 'Komunitas'    },
   { href: '/classes',    icon: Calendar,        label: 'Kelas'        },
   { href: '/events',     icon: Zap,             label: 'Events'       },
   { href: '/content',    icon: PenSquare,       label: 'Buat Konten'  },

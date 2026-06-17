@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { getDayName, formatDateShort, formatTime } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
 import { ClassScheduleManager } from './ClassScheduleManager'
+import { WaGroupPicker } from '@/components/classes/WaGroupPicker'
 
 const TYPE_COLOR: Record<string, 'violet' | 'green' | 'blue' | 'orange' | 'red' | 'yellow' | 'gray'> = {
   zumba: 'violet', yoga: 'green', pilates: 'blue',
@@ -65,6 +66,15 @@ export default async function ClassDetailPage({
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Informasi Kelas</h2>
         <ClassEditForm cls={cls} />
       </Card>
+
+      {/* Grup komunitas WA */}
+      <div className="mb-6">
+        <WaGroupPicker
+          classId={cls.id}
+          currentGroupId={(cls as any).wa_group_id ?? null}
+          currentGroupName={(cls as any).wa_group_name ?? null}
+        />
+      </div>
 
       {/* Schedule manager — reschedule / ubah lokasi */}
       <ClassScheduleManager

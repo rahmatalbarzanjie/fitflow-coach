@@ -22,6 +22,13 @@ export async function POST(
   if (!bc) return NextResponse.json({ error: 'Broadcast tidak ditemukan' }, { status: 404 })
   if ((bc as any).status === 'sent') return NextResponse.json({ error: 'Broadcast sudah terkirim sebelumnya' }, { status: 400 })
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('fonnte_token')
+    .eq('id', user.id)
+    .single()
+  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+
   const audience = (bc as any).target_audience as string
 
   // Resolve target member IDs based on audience
@@ -65,7 +72,7 @@ export async function POST(
 
   for (const m of (members ?? []) as { id: string; name: string; phone: string | null }[]) {
     if (!m.phone) { failed++; continue }
-    const ok = await sendWhatsApp(m.phone, message)
+    const ok = await sendWhatsApp(m.phone, message, instructorToken)
     ok ? sent++ : failed++
   }
 

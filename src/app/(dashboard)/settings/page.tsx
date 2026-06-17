@@ -2,9 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { Card } from '@/components/ui/card'
 import { ProfileForm } from '@/components/settings/ProfileForm'
-import { User, ExternalLink, Webhook } from 'lucide-react'
+import { User, ExternalLink, Webhook, MessageCircle } from 'lucide-react'
 import { CopySecretButton } from '@/components/settings/CopySecretButton'
 import { LogoutButton } from '@/components/settings/LogoutButton'
+import { WhatsAppSettingsForm } from '@/components/settings/WhatsAppSettingsForm'
 
 export default async function SettingsPage({
   searchParams,
@@ -17,12 +18,12 @@ export default async function SettingsPage({
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  type ProfileRow = { id: string; name: string; business_name: string | null; phone: string | null; slug: string | null; photo_url?: string | null }
+  type ProfileRow = { id: string; name: string; business_name: string | null; phone: string | null; slug: string | null; photo_url?: string | null; bot_phone?: string | null; fonnte_token?: string | null }
 
   // Ambil profil — auto-create jika belum ada (misalnya user lama sebelum trigger dibuat)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let { data: profile } = await (supabase.from('profiles') as any)
-    .select('id, name, business_name, phone, slug, photo_url')
+    .select('id, name, business_name, phone, slug, photo_url, bot_phone, fonnte_token')
     .eq('id', user!.id)
     .single() as { data: ProfileRow | null }
 
@@ -82,6 +83,21 @@ export default async function SettingsPage({
             Gagal memuat profil. Coba refresh halaman.
           </p>
         )}
+      </Card>
+
+      {/* Nomor bot WhatsApp — untuk broadcast & otomasi, beda dari nomor pribadi */}
+      <Card className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <MessageCircle className="w-4 h-4 text-gray-400" />
+          <h2 className="text-sm font-semibold text-gray-900">Nomor Bot WhatsApp</h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-5">
+          Dipakai khusus untuk broadcast ke member, auto-reply AI, dan post ke grup komunitas.
+        </p>
+        <WhatsAppSettingsForm
+          initialBotPhone={profile?.bot_phone ?? ''}
+          initialHasToken={!!(profile?.fonnte_token && profile.fonnte_token.trim().length > 10)}
+        />
       </Card>
 
       {/* Halaman publik */}

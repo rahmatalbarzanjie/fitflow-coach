@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Sparkles, Send, FileText, Loader2 } from 'lucide-react'
@@ -23,8 +23,27 @@ export default function NewBroadcastPage() {
   const [drafting, setDrafting] = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState<string | null>(null)
+
+  const [groupClasses,    setGroupClasses]    = useState<{ id: string; name: string; wa_group_name: string | null }[]>([])
+  const [alsoSendGroup,   setAlsoSendGroup]   = useState(false)
+  const [targetClassId,   setTargetClassId]   = useState('')
+
   const router  = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const { data } = await supabase
+        .from('classes')
+        .select('id, name, wa_group_id, wa_group_name')
+        .eq('user_id', user.id)
+        .not('wa_group_id', 'is', null)
+      setGroupClasses(
+        ((data ?? []) as any[]).map(c => ({ id: c.id, name: c.name, wa_group_name: c.wa_group_name }))
+      )
+    })
+  }, [])
 
   async function draftWithAI() {
     setDrafting(true)
@@ -45,7 +64,7 @@ export default function NewBroadcastPage() {
     }
   }
 
-  async function saveBroadcast(asDraft: boolean) {
+  async function saveBroadcast(sendNow: boolean) {
     if (!title.trim())   { setError('Judul tidak boleh kosong.'); return }
     if (!content.trim()) { setError('Isi pesan tidak boleh kosong.'); return }
 
@@ -55,30 +74,18 @@ export default function NewBroadcastPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Get matching members for this audience
-    let memberQuery = supabase
-      .from('members')
-      .select('id, name, phone')
-      .eq('user_id', user.id)
-
-    if (audience !== 'all') {
-      memberQuery = memberQuery.eq('status', audience as any)
-    }
-
-    const { data: members } = await memberQuery
-    const recipientCount = members?.length ?? 0
-
-    // Insert broadcast
+    // Selalu simpan sebagai draft dulu — status 'sent' hanya diset setelah
+    // benar-benar berhasil dikirim lewat API send (bukan diasumsikan terkirim).
     const { data: bc, error: bcErr } = await supabase
       .from('broadcasts')
       .insert({
-        user_id:          user.id,
-        title:            title.trim(),
-        content:          content.trim(),
-        target_audience:  audience,
-        status:           asDraft ? 'draft' : 'sent',
-        recipient_count:  asDraft ? 0 : recipientCount,
-        sent_at:          asDraft ? null : new Date().toISOString(),
+        user_id:         user.id,
+        title:           title.trim(),
+        content:         content.trim(),
+        target_audience: audience,
+        target_class_id: alsoSendGroup && targetClassId ? targetClassId : null,
+        status:          'draft',
+        recipient_count: 0,
       })
       .select('id')
       .single()
@@ -89,17 +96,17 @@ export default function NewBroadcastPage() {
       return
     }
 
-    // If sending now, create recipient records
-    if (!asDraft && members && members.length > 0) {
-      await supabase.from('broadcast_recipients').insert(
-        members.map(m => ({
-          broadcast_id: bc.id,
-          member_id:    m.id,
-          phone:        m.phone,
-          name:         m.name,
-          status:       'pending',
-        }))
-      )
+    if (sendNow) {
+      const res = await fetch(`/api/broadcasts/${bc.id}/send`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error ?? 'Broadcast disimpan, tapi gagal kirim WA ke member.')
+        setSaving(false)
+        return
+      }
+      if (alsoSendGroup && targetClassId) {
+        await fetch(`/api/broadcasts/${bc.id}/send-group`, { method: 'POST' })
+      }
     }
 
     router.push('/broadcasts')
@@ -135,13 +142,39 @@ export default function NewBroadcastPage() {
 
         {/* Audience */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700">Kirim Ke</label>
+          <label className="block text-sm font-medium text-gray-700">Kirim Ke Member</label>
           <select value={audience} onChange={e => setAudience(e.target.value)} className={inp}>
             {AUDIENCE_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
+
+        {/* Komunitas group */}
+        {groupClasses.length > 0 && (
+          <div className="space-y-1.5 p-3 bg-violet-50/50 border border-violet-100 rounded-xl">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={alsoSendGroup}
+                onChange={e => setAlsoSendGroup(e.target.checked)}
+                className="accent-violet-600"
+              />
+              Juga kirim ke grup komunitas
+            </label>
+            {alsoSendGroup && (
+              <select value={targetClassId} onChange={e => setTargetClassId(e.target.value)} className={inp}>
+                <option value="">Pilih kelas / grup...</option>
+                {groupClasses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} — {c.wa_group_name}</option>
+                ))}
+              </select>
+            )}
+            <p className="text-xs text-violet-500">
+              Pesan akan diposting sekali ke grup WA, terpisah dari kiriman personal ke Member.
+            </p>
+          </div>
+        )}
 
         {/* Content */}
         <div className="space-y-1.5">
@@ -174,7 +207,7 @@ export default function NewBroadcastPage() {
         {/* Actions */}
         <div className="flex gap-3 pt-1">
           <button
-            onClick={() => saveBroadcast(true)}
+            onClick={() => saveBroadcast(false)}
             disabled={saving}
             className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-60 transition-colors"
           >
@@ -182,7 +215,7 @@ export default function NewBroadcastPage() {
             Simpan Draft
           </button>
           <button
-            onClick={() => saveBroadcast(false)}
+            onClick={() => saveBroadcast(true)}
             disabled={saving || !content.trim()}
             className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors"
           >

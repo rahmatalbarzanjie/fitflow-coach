@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   if (instructor_id) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, name, business_name, phone, slug')
+      .select('id, name, business_name, phone, slug, fonnte_token')
       .eq('id', instructor_id)
       .single()
     instructorProfile = data ?? null
@@ -66,11 +66,12 @@ export async function POST(request: Request) {
       cleanDevice.startsWith('62') ? '0' + cleanDevice.slice(2) : null,
     ].filter(Boolean)
 
+    // Cocokkan ke bot_phone (nomor bot Fonnte), bukan phone (nomor pribadi instruktur)
     for (const phone of deviceVariants) {
       const { data } = await supabase
         .from('profiles')
-        .select('id, name, business_name, phone, slug')
-        .ilike('phone', `%${phone!.slice(-9)}%`)
+        .select('id, name, business_name, phone, slug, fonnte_token')
+        .ilike('bot_phone', `%${phone!.slice(-9)}%`)
         .single()
       if (data) { instructorProfile = data; break }
     }
@@ -172,7 +173,7 @@ CARA MENJAWAB:
     const senderPhone = cleanSender.startsWith('62')
       ? '0' + cleanSender.slice(2)
       : cleanSender
-    await sendWhatsApp(senderPhone, reply)
+    await sendWhatsApp(senderPhone, reply, instructorProfile.fonnte_token ?? null)
   }
 
   return NextResponse.json({ ok: true })
