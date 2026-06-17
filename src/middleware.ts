@@ -31,6 +31,7 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute =
     path.startsWith('/login') ||
     path.startsWith('/register') ||
+    path.startsWith('/forgot-password') ||
     path.startsWith('/home') ||
     path.startsWith('/daftar') ||
     path.startsWith('/api/') ||

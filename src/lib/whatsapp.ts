@@ -1,5 +1,11 @@
 import { getSystemConfig } from './system-config'
 
+export function normalizePhone(phone: string): string {
+  let target = phone.replace(/\D/g, '')
+  if (target.startsWith('0')) target = '62' + target.slice(1)
+  return target
+}
+
 async function resolveToken(instructorToken?: string | null): Promise<string | null> {
   if (instructorToken && instructorToken.trim().length > 10) return instructorToken.trim()
 
@@ -21,8 +27,7 @@ export async function sendWhatsApp(
     return false
   }
 
-  let target = phone.replace(/\D/g, '')
-  if (target.startsWith('0')) target = '62' + target.slice(1)
+  const target = normalizePhone(phone)
   if (target.length < 9) return false
 
   try {
