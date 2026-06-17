@@ -2,10 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { Card } from '@/components/ui/card'
 import { ProfileForm } from '@/components/settings/ProfileForm'
-import { User, ExternalLink, Webhook, MessageCircle } from 'lucide-react'
+import { User, ExternalLink, Webhook, MessageCircle, Quote } from 'lucide-react'
 import { CopySecretButton } from '@/components/settings/CopySecretButton'
 import { LogoutButton } from '@/components/settings/LogoutButton'
 import { WhatsAppSettingsForm } from '@/components/settings/WhatsAppSettingsForm'
+import { TestimonialsManager } from '@/components/settings/TestimonialsManager'
 
 export default async function SettingsPage({
   searchParams,
@@ -18,12 +19,12 @@ export default async function SettingsPage({
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  type ProfileRow = { id: string; name: string; business_name: string | null; phone: string | null; slug: string | null; photo_url?: string | null; bot_phone?: string | null; bot_phone_requested?: string | null; fonnte_token?: string | null }
+  type ProfileRow = { id: string; name: string; business_name: string | null; phone: string | null; slug: string | null; photo_url?: string | null; bio?: string | null; bot_phone?: string | null; bot_phone_requested?: string | null; fonnte_token?: string | null }
 
   // Ambil profil — auto-create jika belum ada (misalnya user lama sebelum trigger dibuat)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let { data: profile } = await (supabase.from('profiles') as any)
-    .select('id, name, business_name, phone, slug, photo_url, bot_phone, bot_phone_requested, fonnte_token')
+    .select('id, name, business_name, phone, slug, photo_url, bio, bot_phone, bot_phone_requested, fonnte_token')
     .eq('id', user!.id)
     .single() as { data: ProfileRow | null }
 
@@ -36,6 +37,13 @@ export default async function SettingsPage({
       .single() as { data: ProfileRow | null }
     profile = created
   }
+
+  const { data: testimonialsRaw } = await supabase
+    .from('testimonials')
+    .select('id, name, content, photo_url, is_published, created_at')
+    .eq('user_id', user!.id)
+    .order('created_at', { ascending: false })
+  const testimonials = testimonialsRaw ?? []
 
   const rawAppUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const appUrl        = rawAppUrl && !rawAppUrl.startsWith('http') ? `https://${rawAppUrl}` : rawAppUrl
@@ -99,6 +107,18 @@ export default async function SettingsPage({
           initialBotPhoneRequested={profile?.bot_phone_requested ?? ''}
           initialHasToken={!!(profile?.fonnte_token && profile.fonnte_token.trim().length > 10)}
         />
+      </Card>
+
+      {/* Testimoni */}
+      <Card className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Quote className="w-4 h-4 text-gray-400" />
+          <h2 className="text-sm font-semibold text-gray-900">Testimoni</h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-5">
+          Tampil di landing page untuk meyakinkan calon peserta.
+        </p>
+        <TestimonialsManager initialTestimonials={testimonials as any[]} />
       </Card>
 
       {/* Halaman publik */}

@@ -13,6 +13,7 @@ const profileSchema = z.object({
   business_name: z.string().optional(),
   phone:         z.string().min(8, 'Nomor HP minimal 8 digit').regex(/^[0-9+\-\s]+$/, 'Nomor tidak valid'),
   slug:          z.string().min(2).regex(/^[a-z0-9-]+$/, 'Hanya huruf kecil, angka, tanda -'),
+  bio:           z.string().max(600, 'Maksimal 600 karakter').optional(),
 })
 
 type ProfileFormData = z.infer<typeof profileSchema>
@@ -25,6 +26,7 @@ interface Props {
     phone: string | null
     slug: string | null
     photo_url?: string | null
+    bio?: string | null
   }
   appUrl: string
 }
@@ -44,6 +46,7 @@ export function ProfileForm({ profile, appUrl }: Props) {
       business_name: profile.business_name ?? '',
       phone:         profile.phone ?? '',
       slug:          profile.slug ?? '',
+      bio:           profile.bio ?? '',
     },
   })
 
@@ -59,6 +62,7 @@ export function ProfileForm({ profile, appUrl }: Props) {
         business_name: data.business_name || null,
         phone:         data.phone,
         slug:          data.slug,
+        bio:           data.bio || null,
         updated_at:    new Date().toISOString(),
       })
       .eq('id', profile.id)
@@ -114,6 +118,21 @@ export function ProfileForm({ profile, appUrl }: Props) {
         <input {...register('phone')} type="tel" placeholder="08xxxxxxxxxx" className={inp} />
         {errors.phone && <p className="text-xs text-red-600">{errors.phone.message}</p>}
         <p className="text-xs text-gray-400">Dipakai untuk mengirim broadcast ke member</p>
+      </div>
+
+      {/* Bio */}
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-700">
+          Biografi
+          <span className="text-gray-400 font-normal ml-1 text-xs">(tampil di landing page, di bawah nama)</span>
+        </label>
+        <textarea
+          {...register('bio')}
+          rows={3}
+          placeholder="Contoh: Instruktur tersertifikasi dengan 5 tahun pengalaman mengajar Zumba dan Poundfit..."
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
+        />
+        {errors.bio && <p className="text-xs text-red-600">{errors.bio.message}</p>}
       </div>
 
       {/* Slug */}

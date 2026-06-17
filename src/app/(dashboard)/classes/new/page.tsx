@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Upload, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
@@ -25,6 +25,8 @@ const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm fo
 
 export default function NewClassPage() {
   const [serverError, setServerError] = useState<string | null>(null)
+  const [coverFile, setCoverFile]     = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -44,6 +46,19 @@ export default function NewClassPage() {
   const shareNum    = Number(revenueSharePct) ?? 50
   const instrShare  = Math.round(priceNum * shareNum / 100)
   const studioShare = priceNum - instrShare
+
+  async function uploadCover(classId: string, file: File) {
+    const ext  = file.name.split('.').pop()
+    const path = `${classId}/${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage
+      .from('class-covers')
+      .upload(path, file, { cacheControl: '3600', upsert: true })
+    if (!error && data) {
+      const { data: urlData } = supabase.storage.from('class-covers').getPublicUrl(data.path)
+      const url = urlData?.publicUrl ?? null
+      if (url) await supabase.from('classes').update({ cover_image_url: url }).eq('id', classId)
+    }
+  }
 
   async function onSubmit(data: ClassFormData) {
     setServerError(null)
@@ -69,6 +84,8 @@ export default function NewClassPage() {
       .single()
 
     if (error) { setServerError(error.message); return }
+
+    if (coverFile) await uploadCover(cls.id, coverFile)
 
     // Auto-generate sessions for the next 56 days (8 weeks)
     await supabase.rpc('generate_sessions_for_class', {
@@ -96,6 +113,42 @@ export default function NewClassPage() {
               {serverError}
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">
+              Foto Kelas
+              <span className="text-gray-400 font-normal ml-1 text-xs">(tampil di landing page, opsional)</span>
+            </label>
+            {coverPreview ? (
+              <div className="relative rounded-xl overflow-hidden border border-gray-200 group w-32 h-32">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverPreview} alt="preview foto kelas" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => { setCoverFile(null); setCoverPreview(null) }}
+                  className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-1.5 cursor-pointer w-32 h-32 rounded-xl border-2 border-dashed border-gray-200 hover:border-violet-400 bg-gray-50 hover:bg-violet-50 transition-all">
+                <Upload className="w-4 h-4 text-gray-400" />
+                <span className="text-xs text-gray-500 text-center px-1">Upload foto</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    setCoverFile(f)
+                    setCoverPreview(URL.createObjectURL(f))
+                  }}
+                />
+              </label>
+            )}
+          </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">

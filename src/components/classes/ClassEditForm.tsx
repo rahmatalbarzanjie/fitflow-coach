@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
+import { ClassPhotoUpload } from './ClassPhotoUpload'
 
 interface Props {
   cls: {
@@ -22,6 +23,7 @@ interface Props {
     description?: string | null
     class_price?: number | null
     revenue_share_pct?: number | null
+    cover_image_url?: string | null
   }
 }
 
@@ -97,6 +99,8 @@ export function ClassEditForm({ cls }: Props) {
           {serverError}
         </div>
       )}
+
+      <ClassPhotoUpload classId={cls.id} currentUrl={cls.cover_image_url} />
 
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">Nama Kelas</label>

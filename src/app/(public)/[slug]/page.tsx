@@ -62,20 +62,24 @@ export default async function InstructorLandingPage({
   if (!profileBase) notFound()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: photoData } = await (supabase.from('profiles') as any)
-    .select('photo_url').eq('id', profileBase.id).single()
+  const { data: extraData } = await (supabase.from('profiles') as any)
+    .select('photo_url, bio').eq('id', profileBase.id).single()
 
-  const profile = { ...profileBase, photo_url: (photoData as any)?.photo_url ?? null }
+  const profile = {
+    ...profileBase,
+    photo_url: (extraData as any)?.photo_url ?? null,
+    bio:       (extraData as any)?.bio ?? null,
+  }
 
   const in7Days = new Date()
   in7Days.setDate(in7Days.getDate() + 7)
   const in7DaysStr = in7Days.toISOString().split('T')[0]
 
   // Classes + Events + Sessions with changes in next 7 days
-  const [classesRes, eventsRes, changedSessionsRes] = await Promise.all([
+  const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes] = await Promise.all([
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, capacity')
+      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, description, cover_image_url')
       .eq('user_id', profile.id)
       .order('day_of_week').order('start_time'),
     supabase
@@ -94,11 +98,25 @@ export default async function InstructorLandingPage({
       .gte('session_date', today)
       .lte('session_date', in7DaysStr)
       .order('session_date'),
+    supabase
+      .from('testimonials')
+      .select('id, name, content, photo_url')
+      .eq('user_id', profile.id)
+      .eq('is_published', true)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('class_type_benefits')
+      .select('type, benefits')
+      .eq('user_id', profile.id),
   ])
 
   const classes        = classesRes.data         ?? []
   const events         = eventsRes.data          ?? []
   const changedSessions: any[] = changedSessionsRes.data ?? []
+  const testimonials    = testimonialsRes.data    ?? []
+  const benefitsMap = Object.fromEntries(
+    ((benefitsRes.data ?? []) as any[]).filter(b => b.benefits).map(b => [b.type, b.benefits])
+  )
 
   // Build maps for quick lookup
   const rescheduledMap = new Map<string, any>() // class_id → session (rescheduled)
@@ -169,9 +187,15 @@ export default async function InstructorLandingPage({
           <h1 className="font-montserrat text-4xl sm:text-5xl md:text-[72px] lg:text-[88px] font-extralight text-on-surface mb-2 leading-tight tracking-tight break-words max-w-[90vw] text-center">
             {studio}
           </h1>
-          <p className="font-montserrat italic font-light text-on-surface/70 mb-10 tracking-wide text-lg">
+          <p className={`font-montserrat italic font-light text-on-surface/70 tracking-wide text-lg ${profile.bio ? 'mb-4' : 'mb-10'}`}>
             {CLASS_SUBTITLE || 'Poundfit • Barre Intensity • Kelas Fitness'}
           </p>
+
+          {profile.bio && (
+            <p className="text-on-surface/70 max-w-xl mb-10 text-sm leading-relaxed">
+              {profile.bio}
+            </p>
+          )}
 
           {/* WA Button */}
           {waNumber && (
@@ -222,7 +246,7 @@ export default async function InstructorLandingPage({
                       <span className="material-symbols-outlined text-4xl">{cfg.icon}</span>
                       <div>
                         <h3 className="font-montserrat text-2xl font-bold uppercase">{cfg.label}</h3>
-                        <p className="text-white/80 text-sm">{cfg.subtitle}</p>
+                        <p className="text-white/80 text-sm">{benefitsMap[type] ?? cfg.subtitle}</p>
                       </div>
                     </div>
 
@@ -232,11 +256,21 @@ export default async function InstructorLandingPage({
                         const reschedSess = rescheduledMap.get(cls.id)
                         const locSess     = locationMap.get(cls.id)
                         const displayLoc  = locSess?.override_location ?? cls.location
+                        const classWaMsg = encodeURIComponent(`Halo ${studio}! Saya mau daftar kelas ${cls.name} 😊`)
                         return (
                         <div
                           key={cls.id}
-                          className="p-6 rounded-2xl bg-white border border-outline-variant hover-lift custom-shadow"
+                          className="rounded-2xl bg-white border border-outline-variant hover-lift custom-shadow overflow-hidden"
                         >
+                          {cls.cover_image_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={cls.cover_image_url}
+                              alt={cls.name}
+                              className="w-full h-40 object-cover"
+                            />
+                          )}
+                          <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex flex-col gap-1.5">
                               <span className={`px-3 py-1 ${cfg.accentBg} ${cfg.accentText} font-bold rounded-lg text-xs uppercase tracking-wider self-start`}>
@@ -285,6 +319,31 @@ export default async function InstructorLandingPage({
                               Biasanya {DAY_NAMES[cls.day_of_week]} {formatTime(cls.start_time)}
                             </p>
                           )}
+
+                          {cls.description && (
+                            <details className="mt-3 group">
+                              <summary className="text-xs font-medium text-on-surface-variant cursor-pointer list-none flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm group-open:rotate-90 transition-transform">chevron_right</span>
+                                Lihat deskripsi
+                              </summary>
+                              <p className="text-xs text-on-surface-variant/80 leading-relaxed mt-2 pl-5">
+                                {cls.description}
+                              </p>
+                            </details>
+                          )}
+
+                          {waNumber && (
+                            <a
+                              href={`https://wa.me/${waNumber}?text=${classWaMsg}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`mt-4 w-full flex items-center justify-center gap-1.5 ${cfg.accentBg} ${cfg.accentText} font-bold py-2.5 rounded-xl text-sm hover:opacity-80 transition-opacity`}
+                            >
+                              Daftar Kelas
+                              <span className="material-symbols-outlined text-base">chevron_right</span>
+                            </a>
+                          )}
+                          </div>
                         </div>
                         )
                       })}
@@ -486,6 +545,35 @@ export default async function InstructorLandingPage({
           )}
         </div>
       </section>
+
+      {/* ── TESTIMONI ────────────────────────────────────────────────────── */}
+      {testimonials.length > 0 && (
+        <section className="py-24 bg-gray-50" id="testimonials">
+          <div className="max-w-container-max mx-auto px-4 md:px-10">
+            <div className="text-center mb-16">
+              <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface mb-3">Kata Mereka</h2>
+              <p className="text-on-surface-variant">Pengalaman langsung dari peserta kelas</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(testimonials as any[]).map(t => (
+                <div key={t.id} className="bg-white rounded-2xl p-6 border border-outline-variant custom-shadow">
+                  <span className="material-symbols-outlined text-violet-200 text-3xl mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
+                  <p className="text-sm text-on-surface-variant leading-relaxed mb-4">{t.content}</p>
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={t.photo_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&size=64&background=8B5CF6&color=fff`}
+                      alt={t.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <p className="font-montserrat text-sm font-bold text-on-surface">{t.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
       <footer className="py-20 px-4 md:px-10" style={{ background: HERO_GRADIENT }}>

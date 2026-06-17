@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Plus, Clock, MapPin, CheckSquare, ChevronRight, Sparkles, AlertTriangle } from 'lucide-react'
+import { Plus, Clock, MapPin, CheckSquare, ChevronRight, Sparkles, AlertTriangle, Heart } from 'lucide-react'
 import { getDayName, formatTime, formatDateShort } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +48,13 @@ export default async function ClassesPage() {
           <p className="text-sm text-gray-400 mt-0.5">{classes.length} kelas terdaftar</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/classes/benefits"
+            className="flex items-center gap-1.5 h-9 px-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors"
+          >
+            <Heart className="w-4 h-4" />
+            Manfaat Kelas
+          </Link>
           <Link
             href="/classes/extra"
             className="flex items-center gap-1.5 h-9 px-3 border border-violet-200 text-violet-600 hover:bg-violet-50 rounded-xl text-sm font-medium transition-colors"
