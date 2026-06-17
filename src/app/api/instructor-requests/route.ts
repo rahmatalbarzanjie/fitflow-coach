@@ -17,15 +17,17 @@ export async function POST(request: Request) {
 
     const serviceSupabase = createServiceClient()
 
-    // Check for duplicate email
-    const { data: existing } = await serviceSupabase
+    // Check for duplicate email — hanya blokir kalau masih pending/confirmed.
+    // Request yang sudah 'rejected' tidak boleh menghalangi pendaftaran ulang.
+    const { data: existingRows } = await serviceSupabase
       .from('instructor_requests')
       .select('id, status')
       .eq('email', email)
-      .single()
+      .in('status', ['pending', 'confirmed'])
+      .limit(1)
 
-    if (existing) {
-      const label = existing.status === 'confirmed' ? 'sudah terdaftar' : 'sudah mengirim permintaan dan sedang menunggu konfirmasi'
+    if (existingRows && existingRows.length > 0) {
+      const label = existingRows[0].status === 'confirmed' ? 'sudah terdaftar' : 'sudah mengirim permintaan dan sedang menunggu konfirmasi'
       return NextResponse.json({ error: `Email ini ${label}.` }, { status: 409 })
     }
 
