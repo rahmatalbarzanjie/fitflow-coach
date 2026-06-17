@@ -3,9 +3,10 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Users, Clock, CheckCircle, XCircle, Shield, Bell, Wallet, ArrowRight } from 'lucide-react'
+import { Users, Clock, CheckCircle, XCircle, Shield, Bell, Wallet, ArrowRight, MessageCircle } from 'lucide-react'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { RequestActions } from '@/components/admin/RequestActions'
+import { ApproveLinkButton } from '@/components/admin/ApproveLinkButton'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -20,7 +21,7 @@ export default async function AdminPage() {
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
 
-  const [pendingRes, profilesRes, paymentsRes] = await Promise.all([
+  const [pendingRes, profilesRes, paymentsRes, linkRequestsRes] = await Promise.all([
     serviceSupabase
       .from('instructor_requests')
       .select('*')
@@ -34,11 +35,18 @@ export default async function AdminPage() {
       .from('payments')
       .select('amount')
       .gte('payment_date', startOfMonth.toISOString().split('T')[0]),
+    serviceSupabase
+      .from('profiles')
+      .select('id, name, business_name, bot_phone_requested')
+      .not('bot_phone_requested', 'is', null)
+      .is('fonnte_token', null)
+      .neq('id', user!.id),
   ])
 
   const pendingRequests = (pendingRes.data ?? []) as any[]
   const profiles        = (profilesRes.data ?? []) as any[]
   const monthlyRevenue  = ((paymentsRes.data ?? []) as any[]).reduce((sum, p) => sum + Number(p.amount), 0)
+  const linkRequests    = (linkRequestsRes.data ?? []) as any[]
 
   const now = new Date()
   const stats = {
@@ -105,6 +113,32 @@ export default async function AdminPage() {
                   <p className="text-xs text-gray-300 mt-1">Daftar: {formatDateShort(r.created_at)}</p>
                 </div>
                 <RequestActions requestId={r.id} name={r.name} email={r.email} phone={r.phone} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Permintaan Tautan Bot WA */}
+      {linkRequests.length > 0 && (
+        <Card className="mb-6 border-violet-100 bg-violet-50/30">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageCircle className="w-4 h-4 text-violet-500" />
+            <h2 className="text-sm font-semibold text-gray-900">
+              Permintaan Tautan Bot WA
+              <span className="ml-2 text-xs font-bold bg-violet-500 text-white px-2 py-0.5 rounded-full">
+                {linkRequests.length}
+              </span>
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {linkRequests.map((p: any) => (
+              <div key={p.id} className="flex items-start justify-between p-3 bg-white rounded-xl border border-violet-100">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{p.business_name ?? p.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Nomor diajukan: {p.bot_phone_requested}</p>
+                </div>
+                <ApproveLinkButton profileId={p.id} />
               </div>
             ))}
           </div>

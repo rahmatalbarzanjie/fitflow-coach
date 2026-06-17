@@ -94,3 +94,110 @@ export async function fetchWhatsAppGroups(
     return []
   }
 }
+
+// Mapping nama paket Fonnte -> parameter `plan` (integer 1-7) di API Order.
+// TEBAKAN AWAL berdasarkan urutan wajar di pricing page Fonnte — dokumentasi
+// publik tidak menjelaskan angka mana = paket apa. Validasi di percobaan
+// pertama: cek paket yang benar-benar terpasang di dashboard Fonnte setelah
+// order, koreksi mapping ini kalau ternyata salah.
+export const FONNTE_PLAN_IDS: Record<string, number> = {
+  free:        1,
+  lite:        2,
+  regular:     3,
+  regular_pro: 4,
+  super:       5,
+  master:      6,
+  ultra:       7,
+}
+
+export async function fonnteAddDevice(
+  masterToken: string,
+  deviceId: string,
+  name: string
+): Promise<{ token: string } | { reason: string }> {
+  try {
+    const res = await fetch('https://api.fonnte.com/add-device', {
+      method:  'POST',
+      headers: { Authorization: masterToken, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ device: deviceId, name }),
+    })
+    const json = await res.json()
+    if (json.status === true && json.token) return { token: json.token }
+    return { reason: json.reason ?? 'Gagal menambah device' }
+  } catch (err) {
+    console.error('[WA] Gagal add-device:', err)
+    return { reason: 'Koneksi ke Fonnte gagal' }
+  }
+}
+
+export async function fonnteUpdateDeviceWebhook(
+  deviceToken: string,
+  webhookUrl: string
+): Promise<boolean> {
+  try {
+    const res = await fetch('https://api.fonnte.com/update-device', {
+      method:  'POST',
+      headers: { Authorization: deviceToken, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ webhook: webhookUrl }),
+    })
+    const json = await res.json()
+    return json.status === true
+  } catch (err) {
+    console.error('[WA] Gagal update-device webhook:', err)
+    return false
+  }
+}
+
+export async function fonnteOrderPackage(
+  deviceToken: string,
+  plan: number,
+  durationMonths: number
+): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    const res = await fetch('https://api.fonnte.com/order', {
+      method:  'POST',
+      headers: { Authorization: deviceToken, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ plan, duration: 1, 'duration-value': durationMonths }),
+    })
+    const json = await res.json()
+    return json.status === true ? { ok: true } : { ok: false, reason: json.reason }
+  } catch (err) {
+    console.error('[WA] Gagal order paket:', err)
+    return { ok: false, reason: 'Koneksi ke Fonnte gagal' }
+  }
+}
+
+export async function fonnteGetQr(
+  deviceToken: string
+): Promise<{ connected: boolean; qr?: string }> {
+  try {
+    const res = await fetch('https://api.fonnte.com/qr', {
+      method:  'POST',
+      headers: { Authorization: deviceToken, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ type: 'qr' }),
+    })
+    const json = await res.json()
+    if (json.status === true && json.url) return { connected: false, qr: json.url }
+    if (json.reason && String(json.reason).toLowerCase().includes('already connect')) {
+      return { connected: true }
+    }
+    return { connected: false }
+  } catch (err) {
+    console.error('[WA] Gagal ambil QR:', err)
+    return { connected: false }
+  }
+}
+
+export async function fonnteGetDeviceProfile(deviceToken: string): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.fonnte.com/device-profile', {
+      method:  'POST',
+      headers: { Authorization: deviceToken },
+    })
+    const json = await res.json()
+    return json.device ?? null
+  } catch (err) {
+    console.error('[WA] Gagal ambil device profile:', err)
+    return null
+  }
+}
