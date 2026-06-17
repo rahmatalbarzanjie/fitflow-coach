@@ -40,7 +40,7 @@ export default async function SettingsPage({
 
   const { data: testimonialsRaw } = await supabase
     .from('testimonials')
-    .select('id, name, content, photo_url, is_published, created_at')
+    .select('id, name, content, photo_url, is_published, rating, created_at')
     .eq('user_id', user!.id)
     .order('created_at', { ascending: false })
   const testimonials = testimonialsRaw ?? []

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar } from 'lucide-react'
+import { ArrowLeft, Calendar, MessageSquareQuote } from 'lucide-react'
 import { MemberStatusBadge } from '@/components/members/MemberStatusBadge'
 import { MemberEditForm } from '@/components/members/MemberEditForm'
 import { MemberAvatar } from '@/components/members/MemberPhotoUpload'
@@ -19,7 +19,7 @@ export default async function MemberDetailPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: summary }, memberRes, { data: attendance }] = await Promise.all([
+  const [{ data: summary }, memberRes, { data: attendance }, { data: profile }] = await Promise.all([
     supabase
       .from('member_summary')
       .select('*')
@@ -43,6 +43,8 @@ export default async function MemberDetailPage({
       .eq('member_id', id)
       .order('created_at', { ascending: false })
       .limit(30),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('profiles') as any).select('slug').eq('id', user!.id).single() as Promise<{ data: { slug: string | null } | null }>,
   ])
 
   const member = memberRes.data
@@ -51,6 +53,14 @@ export default async function MemberDetailPage({
 
   const days = summary.last_attended_at
     ? Math.floor((Date.now() - new Date(summary.last_attended_at).getTime()) / 86_400_000)
+    : null
+
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+  const slug   = (profile as any)?.slug ?? null
+  const testimonialUrl = slug ? `${appUrl}/${slug}/testimoni/${member.id}` : null
+  const memberWa = member.phone?.replace(/\D/g, '').replace(/^0/, '62')
+  const testimonialWaLink = testimonialUrl && memberWa
+    ? `https://wa.me/${memberWa}?text=${encodeURIComponent(`Halo ${member.name}! Boleh minta waktu sebentar untuk kasih testimoni soal kelas yang sudah diikuti? 🙏\n\n${testimonialUrl}`)}`
     : null
 
   return (
@@ -68,6 +78,17 @@ export default async function MemberDetailPage({
           </div>
           <p className="text-sm text-gray-400 mt-0.5">{summary.phone}</p>
         </div>
+        {testimonialWaLink && (
+          <a
+            href={testimonialWaLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 h-9 px-3 border border-violet-200 text-violet-600 hover:bg-violet-50 rounded-xl text-sm font-medium transition-colors shrink-0"
+          >
+            <MessageSquareQuote className="w-4 h-4" />
+            Minta Testimoni
+          </a>
+        )}
         <DeleteButton table="members" id={id} redirectTo="/members" />
       </div>
 

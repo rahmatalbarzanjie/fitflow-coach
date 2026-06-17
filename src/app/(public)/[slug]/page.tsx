@@ -116,7 +116,7 @@ export default async function InstructorLandingPage({
       .order('session_date'),
     supabase
       .from('testimonials')
-      .select('id, name, content, photo_url')
+      .select('id, name, content, photo_url, rating')
       .eq('user_id', profile.id)
       .eq('is_published', true)
       .order('created_at', { ascending: false }),
@@ -586,6 +586,19 @@ export default async function InstructorLandingPage({
               {(testimonials as any[]).map(t => (
                 <div key={t.id} className="bg-white rounded-2xl p-6 border border-outline-variant custom-shadow">
                   <span className="material-symbols-outlined text-violet-200 text-3xl mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
+                  {typeof t.rating === 'number' && (
+                    <div className="flex gap-0.5 mb-2">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span
+                          key={n}
+                          className="material-symbols-outlined text-base"
+                          style={{ fontVariationSettings: n <= t.rating ? "'FILL' 1" : "'FILL' 0", color: n <= t.rating ? '#FBBF24' : '#E5E7EB' }}
+                        >
+                          star
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-sm text-on-surface-variant leading-relaxed mb-4">{t.content}</p>
                   <div className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
