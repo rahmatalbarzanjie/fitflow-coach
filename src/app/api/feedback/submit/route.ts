@@ -12,19 +12,20 @@ export async function POST(request: Request) {
 
   const { data: invite } = await supabase
     .from('feedback_invites')
-    .select('id, user_id, session_id, used')
+    .select('id, user_id, session_id, event_id, used')
     .eq('id', inviteId)
     .single()
 
   if (!invite) return NextResponse.json({ error: 'Link tidak ditemukan' }, { status: 404 })
   if ((invite as any).used) {
-    return NextResponse.json({ error: 'Kamu sudah pernah mengirim feedback untuk sesi ini' }, { status: 409 })
+    return NextResponse.json({ error: 'Kamu sudah pernah mengirim feedback ini' }, { status: 409 })
   }
 
-  // Sengaja tidak menyimpan member_id/invite_id apa pun di sini — anonim total
+  // Sengaja tidak menyimpan member_id/registration_id apa pun di sini — anonim total
   const { error: insertErr } = await supabase.from('session_feedback').insert({
     user_id:    (invite as any).user_id,
     session_id: (invite as any).session_id,
+    event_id:   (invite as any).event_id,
     content:    content.trim(),
   })
 

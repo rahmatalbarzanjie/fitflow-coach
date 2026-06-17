@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Users, ExternalLink, MessageSquareWarning } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import { RegistrationActions } from '@/components/events/RegistrationActions'
+import { AttendanceToggle } from '@/components/events/AttendanceToggle'
+import { FeedbackRequestButtonEvent } from '@/components/events/FeedbackRequestButtonEvent'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { PAYMENT_STATUS, REGISTRATION_TIER } from '@/lib/constants'
 
@@ -53,9 +56,16 @@ export default async function RegistrationsPage({
 
   const { data: registrations } = await regQuery
 
+  const { data: feedbackList } = await supabase
+    .from('session_feedback')
+    .select('id, content, created_at')
+    .eq('event_id', id)
+    .order('created_at', { ascending: false })
+
   const total     = registrations?.length ?? 0
   const pending   = registrations?.filter(r => r.payment_status === 'pending').length ?? 0
   const confirmed = registrations?.filter(r => r.payment_status === 'confirmed').length ?? 0
+  const attended  = registrations?.filter(r => r.attended).length ?? 0
 
   return (
     <div className="max-w-3xl">
@@ -67,9 +77,10 @@ export default async function RegistrationsPage({
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold text-gray-900 truncate">{ev.title}</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            {formatDateShort(ev.event_date)} · {total} peserta · {confirmed} terkonfirmasi
+            {formatDateShort(ev.event_date)} · {total} peserta · {confirmed} terkonfirmasi · {attended} dari {total} hadir
           </p>
         </div>
+        {attended > 0 && <FeedbackRequestButtonEvent eventId={id} />}
       </div>
 
       {/* Filter tabs */}
@@ -141,21 +152,42 @@ export default async function RegistrationsPage({
                   </div>
 
                   {/* Actions */}
-                  <RegistrationActions
-                    registrationId={r.id}
-                    eventId={id}
-                    userId={user!.id}
-                    paymentStatus={r.payment_status}
-                    registrantName={r.registrant_name}
-                    registrantPhone={r.registrant_phone}
-                    canInviteToJoin={!!r.can_invite_to_join}
-                    isInvited={!!r.invited_to_join_at}
-                  />
+                  <div className="flex flex-col items-end gap-1.5">
+                    <AttendanceToggle registrationId={r.id} attended={!!r.attended} />
+                    <RegistrationActions
+                      registrationId={r.id}
+                      eventId={id}
+                      userId={user!.id}
+                      paymentStatus={r.payment_status}
+                      registrantName={r.registrant_name}
+                      registrantPhone={r.registrant_phone}
+                      canInviteToJoin={!!r.can_invite_to_join}
+                      isInvited={!!r.invited_to_join_at}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Kritik & Saran — anonim, untuk konsumsi pribadi instruktur */}
+      {(feedbackList ?? []).length > 0 && (
+        <Card className="mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquareWarning className="w-4 h-4 text-gray-400" />
+            <h2 className="text-sm font-semibold text-gray-900">Kritik & Saran</h2>
+          </div>
+          <div className="space-y-2">
+            {(feedbackList as any[]).map(f => (
+              <div key={f.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-sm text-gray-700">{f.content}</p>
+                <p className="text-xs text-gray-400 mt-1">{formatDateShort(f.created_at)} · Anonim</p>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
     </div>
   )
