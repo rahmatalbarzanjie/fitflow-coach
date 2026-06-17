@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users, Bell, BellOff } from 'lucide-react'
+import { ArrowLeft, Users, Bell, BellOff, MessageSquareWarning } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatDateShort, formatTime } from '@/lib/utils'
 import { SessionActions } from './SessionActions'
+import { FeedbackRequestButton } from '@/components/classes/FeedbackRequestButton'
 
 const SESSION_TYPE_CONFIG: Record<string, { label: string; color: 'orange' | 'green' | 'blue' }> = {
   rescheduled:      { label: 'Dijadwal Ulang', color: 'orange' },
@@ -44,6 +45,12 @@ export default async function SessionDetailPage({
     .from('attendance')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
+
+  const { data: feedbackList } = await supabase
+    .from('session_feedback')
+    .select('id, content, created_at')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
 
   const sessionType = session.session_type ?? 'regular'
   const typeCfg     = SESSION_TYPE_CONFIG[sessionType]
@@ -98,9 +105,12 @@ export default async function SessionDetailPage({
         )}
 
         {/* Attendance */}
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Users className="w-4 h-4 text-gray-400" />
-          {attendanceCount ?? 0} peserta hadir
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Users className="w-4 h-4 text-gray-400" />
+            {attendanceCount ?? 0} peserta hadir
+          </div>
+          {(attendanceCount ?? 0) > 0 && <FeedbackRequestButton sessionId={session.id} />}
         </div>
 
         {/* Notification status */}
@@ -138,6 +148,24 @@ export default async function SessionDetailPage({
           day_of_week: cls.day_of_week,
         }}
       />
+
+      {/* Kritik & Saran — anonim, untuk konsumsi pribadi instruktur */}
+      {(feedbackList ?? []).length > 0 && (
+        <Card className="mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquareWarning className="w-4 h-4 text-gray-400" />
+            <h2 className="text-sm font-semibold text-gray-900">Kritik & Saran</h2>
+          </div>
+          <div className="space-y-2">
+            {(feedbackList as any[]).map(f => (
+              <div key={f.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-sm text-gray-700">{f.content}</p>
+                <p className="text-xs text-gray-400 mt-1">{formatDateShort(f.created_at)} · Anonim</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

@@ -41,8 +41,9 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/daftar') ||
     path.startsWith('/api/') ||
     path.match(/^\/[^/]+$/) !== null ||        // instructor landing pages /{slug}
-    path.match(/^\/[^/]+\/daftar/) !== null || // event registration /{slug}/daftar/...
-    path.match(/^\/[^/]+\/testimoni/) !== null // testimonial form /{slug}/testimoni/{memberId}
+    path.match(/^\/[^/]+\/daftar/) !== null ||   // event registration /{slug}/daftar/...
+    path.match(/^\/[^/]+\/testimoni/) !== null || // testimonial form /{slug}/testimoni/{memberId}
+    path.match(/^\/[^/]+\/feedback/) !== null    // feedback form /{slug}/feedback/{inviteId}
 
   // Unauthenticated → login
   if (!isPublicRoute && !user) {
