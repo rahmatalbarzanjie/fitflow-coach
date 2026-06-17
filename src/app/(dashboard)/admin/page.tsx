@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Users, Clock, CheckCircle, XCircle, Shield, Bell } from 'lucide-react'
+import { Users, Clock, CheckCircle, XCircle, Shield, Bell, MessageCircle } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils'
 import { TrialManager } from '@/components/admin/TrialManager'
 import { RequestActions } from '@/components/admin/RequestActions'
@@ -114,6 +114,7 @@ export default async function AdminPage() {
               ? Math.max(0, Math.ceil((new Date(p.trial_expires_at).getTime() - now.getTime()) / 86_400_000))
               : null
             const status = p.subscription_status ?? 'trial'
+            const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10)
 
             return (
               <div key={p.id} className="flex items-start justify-between p-4 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
@@ -129,6 +130,12 @@ export default async function AdminPage() {
                       'bg-blue-100 text-blue-700'
                     }`}>
                       {status === 'active' ? 'Aktif' : trialExpired ? 'Habis' : `Trial${trialDaysLeft !== null ? ` · ${trialDaysLeft}h` : ''}`}
+                    </span>
+                    <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      botConnected ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <MessageCircle className="w-2.5 h-2.5" />
+                      {botConnected ? 'Bot WA ✓' : 'Bot WA belum setup'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{p.phone ?? '—'}</p>

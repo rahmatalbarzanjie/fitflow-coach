@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users, Calendar, Clock, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Users, Calendar, Clock, BarChart3, MessageCircle, CheckCircle2, XCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { TrialManager } from '@/components/admin/TrialManager'
@@ -54,8 +54,10 @@ export default async function AdminInstructorDetailPage({
     serviceSupabase.from('members').select('*', { count: 'exact', head: true }).eq('user_id', profileId),
     serviceSupabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', profileId),
     serviceSupabase.from('sessions').select('id, session_date, class_id, classes(name)').eq('user_id', profileId).order('session_date', { ascending: false }).limit(5),
-    serviceSupabase.from('classes').select('id, name, class_price, revenue_share_pct, day_of_week').eq('user_id', profileId).eq('is_active', true).limit(10),
+    serviceSupabase.from('classes').select('id, name, class_price, revenue_share_pct, day_of_week, wa_group_id, wa_group_name').eq('user_id', profileId).eq('is_active', true).limit(10),
   ])
+
+  const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10)
 
   // Estimate monthly revenue
   const estimatedMonthly = (classes as any[] ?? []).reduce((sum: number, cls: any) => {
@@ -97,6 +99,34 @@ export default async function AdminInstructorDetailPage({
         </dl>
       </Card>
 
+      {/* Status WA Bot */}
+      <Card className="mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageCircle className="w-4 h-4 text-gray-400" />
+          <h2 className="text-sm font-semibold text-gray-900">Status WhatsApp Bot</h2>
+        </div>
+        <dl className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <dt className="text-gray-500">Nomor Bot</dt>
+            <dd className="text-gray-900 font-medium text-right">{p.bot_phone ?? '—'}</dd>
+          </div>
+          <div className="flex justify-between text-sm items-center">
+            <dt className="text-gray-500">Token Fonnte</dt>
+            <dd className={`flex items-center gap-1 font-medium text-xs px-2 py-0.5 rounded-full ${
+              botConnected ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'
+            }`}>
+              {botConnected ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+              {botConnected ? 'Terhubung' : 'Belum diisi'}
+            </dd>
+          </div>
+        </dl>
+        {!botConnected && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mt-3">
+            Instruktur ini belum setup bot WA-nya sendiri di Pengaturan — broadcast ke Member dan post ke grup komunitas belum bisa jalan.
+          </p>
+        )}
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {[
@@ -120,7 +150,12 @@ export default async function AdminInstructorDetailPage({
           <div className="space-y-2">
             {(classes as any[]).map((cls: any) => (
               <div key={cls.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
-                <span className="text-gray-700">{cls.name}</span>
+                <div>
+                  <span className="text-gray-700">{cls.name}</span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {cls.wa_group_id ? `Grup: ${cls.wa_group_name ?? 'terhubung'}` : 'Belum terhubung grup'}
+                  </p>
+                </div>
                 <span className="text-xs text-gray-400">
                   {cls.class_price ? `${formatRupiah(cls.class_price)} · ${cls.revenue_share_pct ?? 50}%` : '—'}
                 </span>
