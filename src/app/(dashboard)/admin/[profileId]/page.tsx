@@ -6,6 +6,7 @@ import { ArrowLeft, Users, Calendar, Clock, BarChart3, MessageCircle, CheckCircl
 import { Card } from '@/components/ui/card'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { TrialManager } from '@/components/admin/TrialManager'
+import { DeleteInstructorButton } from '@/components/admin/DeleteInstructorButton'
 
 export default async function AdminInstructorDetailPage({
   params,
@@ -179,6 +180,10 @@ export default async function AdminInstructorDetailPage({
           </div>
         </Card>
       )}
+
+      <div className="mt-4">
+        <DeleteInstructorButton profileId={profileId} confirmName={p.business_name ?? p.name} />
+      </div>
     </div>
   )
 }
