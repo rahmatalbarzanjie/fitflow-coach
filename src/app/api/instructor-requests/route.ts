@@ -29,6 +29,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Email ini ${label}.` }, { status: 409 })
     }
 
+    // Cek juga apakah email ini sudah punya akun Supabase Auth (misal pernah
+    // daftar sendiri lewat /register) — supaya tidak lolos sampai tahap
+    // konfirmasi admin baru ketahuan gagal.
+    const { data: userList } = await serviceSupabase.auth.admin.listUsers({ perPage: 1000 })
+    const emailExists = userList?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase())
+    if (emailExists) {
+      return NextResponse.json(
+        { error: 'Email ini sudah punya akun terdaftar. Silakan langsung login di halaman Masuk.' },
+        { status: 409 }
+      )
+    }
+
     const { error } = await serviceSupabase
       .from('instructor_requests')
       .insert({ name, business_name: business_name || null, email, phone, city: city || null })

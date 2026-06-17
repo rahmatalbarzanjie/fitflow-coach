@@ -43,7 +43,12 @@ export async function POST(request: Request) {
       email_confirm: true,
     })
 
-    if (authErr) throw new Error(`Gagal buat akun: ${authErr.message}`)
+    if (authErr) {
+      if (authErr.message.toLowerCase().includes('already')) {
+        throw new Error('Email ini sudah punya akun terdaftar sebelumnya. Klik Tolak untuk pendaftaran ini, lalu minta pendaftar login langsung di halaman Masuk.')
+      }
+      throw new Error(`Gagal buat akun: ${authErr.message}`)
+    }
     const newUserId = authData.user.id
 
     // Create profile
