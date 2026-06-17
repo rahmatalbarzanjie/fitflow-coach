@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-export function PublicNavbar({ studio }: { studio: string }) {
+export function PublicNavbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -33,15 +33,7 @@ export function PublicNavbar({ studio }: { studio: string }) {
             : 'bg-transparent'
         }`}
       >
-        <div className="flex justify-between items-center px-5 py-4 md:px-10">
-          {/* Logo */}
-          <div
-            className="font-montserrat text-xl font-bold text-on-surface truncate max-w-[60%]"
-            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.08)' }}
-          >
-            {studio}
-          </div>
-
+        <div className="flex justify-end items-center px-5 py-4 md:px-10">
           {/* Desktop nav */}
           <nav className="hidden md:flex gap-8">
             {navLinks.map((link, i) => (

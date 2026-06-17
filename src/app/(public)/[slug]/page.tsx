@@ -12,12 +12,12 @@ const CLASS_CONFIG: Record<string, {
 }> = {
   poundfit: {
     label: 'POUNDFIT', subtitle: 'Cardio Drumming • Rock Your Body 🤘',
-    icon: 'fitness_center', gradFrom: '#F87171', gradTo: '#F43F5E',
+    icon: 'bolt', gradFrom: '#F87171', gradTo: '#F43F5E',
     accentText: 'text-red-500', accentBg: 'bg-red-50', dayText: 'text-red-500',
   },
   barre: {
     label: 'BARRE', subtitle: 'Ballet-Inspired • Sculpt & Tone 💗',
-    icon: 'self_improvement', gradFrom: '#FDA4AF', gradTo: '#FB7185',
+    icon: 'sports_gymnastics', gradFrom: '#FDA4AF', gradTo: '#FB7185',
     accentText: 'text-rose-600', accentBg: 'bg-rose-50', dayText: 'text-rose-500',
   },
   zumba: {
@@ -25,12 +25,27 @@ const CLASS_CONFIG: Record<string, {
     icon: 'music_note', gradFrom: '#2DD4BF', gradTo: '#0D9488',
     accentText: 'text-teal-600', accentBg: 'bg-teal-50', dayText: 'text-teal-600',
   },
+  yoga: {
+    label: 'YOGA', subtitle: 'Mindful Movement • Find Your Balance 🧘',
+    icon: 'self_improvement', gradFrom: '#6EE7B7', gradTo: '#10B981',
+    accentText: 'text-emerald-600', accentBg: 'bg-emerald-50', dayText: 'text-emerald-600',
+  },
+  pilates: {
+    label: 'PILATES', subtitle: 'Core Strength • Build & Lengthen 🤍',
+    icon: 'accessibility_new', gradFrom: '#7DD3FC', gradTo: '#0EA5E9',
+    accentText: 'text-sky-600', accentBg: 'bg-sky-50', dayText: 'text-sky-600',
+  },
+  aerobic: {
+    label: 'AEROBIC', subtitle: 'High Energy • Cardio Blast 🔥',
+    icon: 'directions_run', gradFrom: '#FCD34D', gradTo: '#F59E0B',
+    accentText: 'text-amber-600', accentBg: 'bg-amber-50', dayText: 'text-amber-600',
+  },
 }
 
 function getTypeConfig(type: string) {
   return CLASS_CONFIG[type?.toLowerCase()] ?? {
     label: (type ?? 'KELAS').toUpperCase(), subtitle: 'Kelas Fitness',
-    icon: 'sports', gradFrom: '#8B5CF6', gradTo: '#7C3AED',
+    icon: 'fitness_center', gradFrom: '#8B5CF6', gradTo: '#7C3AED',
     accentText: 'text-violet-600', accentBg: 'bg-violet-50', dayText: 'text-violet-500',
   }
 }
@@ -63,12 +78,13 @@ export default async function InstructorLandingPage({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: extraData } = await (supabase.from('profiles') as any)
-    .select('photo_url, bio').eq('id', profileBase.id).single()
+    .select('photo_url, bio, bot_phone').eq('id', profileBase.id).single()
 
   const profile = {
     ...profileBase,
     photo_url: (extraData as any)?.photo_url ?? null,
     bio:       (extraData as any)?.bio ?? null,
+    bot_phone: (extraData as any)?.bot_phone ?? null,
   }
 
   const in7Days = new Date()
@@ -150,15 +166,15 @@ export default async function InstructorLandingPage({
   )
 
   const studio   = profile.business_name ?? profile.name
-  const waNumber = profile.phone?.replace(/\D/g, '').replace(/^0/, '62')
+  const waNumber = (profile.bot_phone ?? profile.phone)?.replace(/\D/g, '').replace(/^0/, '62')
   const waMsg    = encodeURIComponent(`Halo ${studio}! Aku mau tanya-tanya soal kelas 😊`)
+  const classesWithPhoto = classes.filter((c: any) => c.cover_image_url)
 
   const HERO_GRADIENT  = 'linear-gradient(135deg, #FFD1FF 0%, #D1E9FF 100%)'
-  const CLASS_SUBTITLE = classGroups.map(([t]) => getTypeConfig(t).label).join(' · ')
 
   return (
     <div className="min-h-screen bg-white text-on-surface font-sans">
-      <PublicNavbar studio={studio} />
+      <PublicNavbar />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
@@ -184,17 +200,16 @@ export default async function InstructorLandingPage({
           </div>
 
           {/* Name */}
-          <h1 className="font-montserrat text-4xl sm:text-5xl md:text-[72px] lg:text-[88px] font-extralight text-on-surface mb-2 leading-tight tracking-tight break-words max-w-[90vw] text-center">
+          <h1 className="font-montserrat uppercase text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-on-surface mb-6 leading-tight tracking-tight break-words max-w-[90vw] text-center">
             {studio}
           </h1>
-          <p className={`font-montserrat italic font-light text-on-surface/70 tracking-wide text-lg ${profile.bio ? 'mb-4' : 'mb-10'}`}>
-            {CLASS_SUBTITLE || 'Poundfit • Barre Intensity • Kelas Fitness'}
-          </p>
 
           {profile.bio && (
-            <p className="text-on-surface/70 max-w-xl mb-10 text-sm leading-relaxed">
-              {profile.bio}
-            </p>
+            <div className="bg-white/70 backdrop-blur-md rounded-2xl px-6 py-4 shadow-sm mb-10 max-w-xl">
+              <p className="text-on-surface/80 text-sm leading-relaxed">
+                {profile.bio}
+              </p>
+            </div>
           )}
 
           {/* WA Button */}
@@ -229,11 +244,7 @@ export default async function InstructorLandingPage({
               </p>
             </div>
 
-            <div className={`grid grid-cols-1 gap-6 ${
-              classGroups.length === 1 ? 'max-w-md' :
-              classGroups.length === 2 ? 'sm:grid-cols-2 max-w-3xl' :
-              'sm:grid-cols-2 lg:grid-cols-3'
-            }`}>
+            <div className="flex flex-col gap-12">
               {classGroups.map(([type, typeClasses]) => {
                 const cfg = getTypeConfig(type)
                 return (
@@ -251,7 +262,7 @@ export default async function InstructorLandingPage({
                     </div>
 
                     {/* Class cards */}
-                    <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {(typeClasses as any[]).map((cls: any) => {
                         const reschedSess = rescheduledMap.get(cls.id)
                         const locSess     = locationMap.get(cls.id)
@@ -262,14 +273,6 @@ export default async function InstructorLandingPage({
                           key={cls.id}
                           className="rounded-2xl bg-white border border-outline-variant hover-lift custom-shadow overflow-hidden"
                         >
-                          {cls.cover_image_url && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={cls.cover_image_url}
-                              alt={cls.name}
-                              className="w-full h-40 object-cover"
-                            />
-                          )}
                           <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex flex-col gap-1.5">
@@ -351,6 +354,29 @@ export default async function InstructorLandingPage({
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── GALERI KELAS ─────────────────────────────────────────────────── */}
+      {classesWithPhoto.length > 0 && (
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-container-max mx-auto px-4 md:px-10">
+            <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface text-center mb-10">Galeri Kelas</h2>
+            <div className="flex flex-wrap justify-center gap-8">
+              {classesWithPhoto.map((cls: any) => (
+                <div key={cls.id} className="flex flex-col items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={cls.cover_image_url}
+                    alt={cls.name}
+                    loading="lazy"
+                    className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
+                  />
+                  <p className="text-sm font-semibold text-on-surface text-center max-w-[140px]">{cls.name}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -512,19 +538,21 @@ export default async function InstructorLandingPage({
       <section className="py-24 bg-white" id="benefits">
         <div className="max-w-container-max mx-auto px-4 md:px-10">
           <div className="text-center mb-16">
-            <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface mb-3">Kenapa Jadi Member?</h2>
+            <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface mb-3">Kenapa Bergabung dengan Komunitas {studio}?</h2>
             <p className="text-on-surface-variant">Nikmati lebih banyak keuntungan sebagai member tetap</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
             {[
-              { icon: 'star', text: 'Info jadwal & event lebih awal', bg: 'bg-amber-50', color: 'text-amber-500' },
-              { icon: 'emoji_events', text: 'Harga spesial member tetap', bg: 'bg-emerald-50', color: 'text-emerald-500' },
-              { icon: 'favorite', text: 'Komunitas fitness eksklusif', bg: 'bg-rose-50', color: 'text-rose-500' },
-              { icon: 'groups', text: 'Prioritas slot event & workshop', bg: 'bg-violet-50', color: 'text-violet-500' },
-            ].map(({ icon, text, bg, color }) => (
+              { emoji: '💪', text: 'Lebih konsisten berolahraga bersama komunitas' },
+              { emoji: '📅', text: 'Dapat reminder kelas otomatis' },
+              { emoji: '🎉', text: 'Prioritas informasi event dan kelas spesial' },
+              { emoji: '🎟️', text: 'Akses promo dan reward khusus member' },
+              { emoji: '👭', text: 'Bertemu teman baru dengan tujuan hidup sehat yang sama' },
+              { emoji: '🔥', text: 'Menjadi bagian dari komunitas aktif dan suportif' },
+            ].map(({ emoji, text }) => (
               <div key={text} className="bg-white rounded-2xl p-6 border border-outline-variant custom-shadow hover-lift text-center">
-                <div className={`w-12 h-12 ${bg} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
-                  <span className={`material-symbols-outlined ${color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                  {emoji}
                 </div>
                 <p className="text-sm font-medium text-on-surface leading-snug">{text}</p>
               </div>
@@ -579,17 +607,17 @@ export default async function InstructorLandingPage({
       <footer className="py-20 px-4 md:px-10" style={{ background: HERO_GRADIENT }}>
         <div className="max-w-container-max mx-auto flex flex-col items-center text-center">
           {/* CTA */}
-          <div className="mb-12 space-y-4">
-            <h3 className="font-montserrat text-xl font-bold text-on-surface">Mau coba sistem ini?</h3>
-            <a
-              href="https://wa.me/6282254049695"
-              target="_blank"
-              rel="noopener noreferrer"
+          <div className="mb-12 space-y-4 max-w-md">
+            <h3 className="font-montserrat text-xl font-bold text-on-surface">Ingin Punya Sistem Seperti Ini?</h3>
+            <p className="text-on-surface/60 text-sm">
+              Kelola kelas, event, member, dan WhatsApp otomatis dalam satu platform.
+            </p>
+            <Link
+              href="/home"
               className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform"
             >
-              <span className="material-symbols-outlined">contact_support</span>
-              Kontak Developer
-            </a>
+              🚀 Lihat FitFlow Coach
+            </Link>
           </div>
 
           {/* Brand */}
