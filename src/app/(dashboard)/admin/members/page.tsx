@@ -20,7 +20,7 @@ export default async function AdminMembersPage({
   const supa = createServiceClient()
 
   const [profilesRes, membersRes] = await Promise.all([
-    supa.from('profiles').select('id, name, business_name').order('name'),
+    supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
           .from('members')
@@ -30,6 +30,7 @@ export default async function AdminMembersPage({
       : supa
           .from('members')
           .select('id, name, phone, status, created_at, user_id')
+          .neq('user_id', user.id)
           .order('name')
           .limit(200),
   ])

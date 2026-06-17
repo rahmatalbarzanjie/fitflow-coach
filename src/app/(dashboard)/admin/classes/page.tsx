@@ -20,7 +20,7 @@ export default async function AdminClassesPage({
   const supa = createServiceClient()
 
   const [profilesRes, classesRes] = await Promise.all([
-    supa.from('profiles').select('id, name, business_name').order('name'),
+    supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
           .from('classes')
@@ -31,6 +31,7 @@ export default async function AdminClassesPage({
           .from('classes')
           .select('id, name, type, day_of_week, start_time, end_time, class_price, revenue_share_pct, is_active, user_id')
           .eq('is_active', true)
+          .neq('user_id', user.id)
           .order('day_of_week').order('start_time')
           .limit(200),
   ])

@@ -24,7 +24,7 @@ export default async function AdminBroadcastsPage({
   const supa = createServiceClient()
 
   const [profilesRes, broadcastsRes] = await Promise.all([
-    supa.from('profiles').select('id, name, business_name').order('name'),
+    supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
           .from('broadcasts')
@@ -34,6 +34,7 @@ export default async function AdminBroadcastsPage({
       : supa
           .from('broadcasts')
           .select('id, title, target_audience, status, recipient_count, sent_at, created_at, user_id')
+          .neq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(200),
   ])

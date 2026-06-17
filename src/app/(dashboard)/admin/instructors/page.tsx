@@ -18,6 +18,7 @@ export default async function AdminInstructorsPage() {
   const { data: profilesRaw } = await serviceSupabase
     .from('profiles')
     .select('*')
+    .neq('id', user!.id)
     .order('created_at', { ascending: false })
 
   const profiles = (profilesRaw ?? []) as any[]

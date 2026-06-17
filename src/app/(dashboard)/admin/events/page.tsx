@@ -25,7 +25,7 @@ export default async function AdminEventsPage({
   const supa = createServiceClient()
 
   const [profilesRes, eventsRes] = await Promise.all([
-    supa.from('profiles').select('id, name, business_name').order('name'),
+    supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
           .from('events')
@@ -35,6 +35,7 @@ export default async function AdminEventsPage({
       : supa
           .from('events')
           .select('id, title, event_date, status, ots_price, early_bird_price, user_id')
+          .neq('user_id', user.id)
           .order('event_date', { ascending: false })
           .limit(200),
   ])

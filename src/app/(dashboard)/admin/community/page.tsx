@@ -18,7 +18,7 @@ export default async function AdminCommunityPage({
   const supa = createServiceClient()
 
   const [profilesRes, contactsRes] = await Promise.all([
-    supa.from('profiles').select('id, name, business_name').order('name'),
+    supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
           .from('community_contacts')
@@ -28,6 +28,7 @@ export default async function AdminCommunityPage({
       : supa
           .from('community_contacts')
           .select('id, name, phone, notes, created_at, user_id, converted_member_id, classes(name)')
+          .neq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(200),
   ])

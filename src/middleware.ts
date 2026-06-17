@@ -58,6 +58,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
+  // Admin: /settings is instructor-scoped (profil, nomor bot, halaman publik per
+  // instruktur) — tidak relevan untuk akun developer, arahkan ke Konfigurasi platform
+  if (path.startsWith('/settings') && isAdminUser) {
+    return NextResponse.redirect(new URL('/admin/config', request.url))
+  }
+
   // Trial expiry check for authenticated non-admin dashboard users
   const isDashboardRoute =
     !isPublicRoute &&

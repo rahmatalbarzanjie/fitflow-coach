@@ -28,7 +28,8 @@ export default async function AdminPage() {
       .order('created_at', { ascending: true }),
     serviceSupabase
       .from('profiles')
-      .select('subscription_status, trial_expires_at'),
+      .select('subscription_status, trial_expires_at')
+      .neq('id', user!.id),
     serviceSupabase
       .from('payments')
       .select('amount')
