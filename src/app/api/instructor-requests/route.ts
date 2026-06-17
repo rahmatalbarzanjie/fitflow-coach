@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { sendWhatsApp } from '@/lib/whatsapp'
+import { getSystemConfig } from '@/lib/system-config'
 
 // Public endpoint — no auth required. Creates a pending registration request.
 export async function POST(request: Request) {
@@ -48,6 +50,28 @@ export async function POST(request: Request) {
       .insert({ name, business_name: business_name || null, email, phone, city: city || null })
 
     if (error) throw new Error(error.message)
+
+    // Notifikasi ke developer/admin — best-effort, jangan gagalkan request kalau ini error
+    try {
+      const adminWa = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
+      if (adminWa) {
+        const message = [
+          `🔔 *Pendaftaran Instruktur Baru*`,
+          ``,
+          `Nama: ${name}`,
+          business_name ? `Studio: ${business_name}` : null,
+          `Email: ${email}`,
+          `WA: ${phone}`,
+          city ? `Kota: ${city}` : null,
+          ``,
+          `Cek & konfirmasi di halaman Admin Panel.`,
+        ].filter(Boolean).join('\n')
+
+        await sendWhatsApp(adminWa, message)
+      }
+    } catch {
+      // Notifikasi gagal tidak boleh menggagalkan pendaftaran
+    }
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
