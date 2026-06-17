@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { TrialManager } from '@/components/admin/TrialManager'
 import { DeleteInstructorButton } from '@/components/admin/DeleteInstructorButton'
+import { ImpersonateButton } from '@/components/admin/ImpersonateButton'
 
 export default async function AdminInstructorDetailPage({
   params,
@@ -58,6 +59,13 @@ export default async function AdminInstructorDetailPage({
     serviceSupabase.from('classes').select('id, name, class_price, revenue_share_pct, day_of_week, wa_group_id, wa_group_name').eq('user_id', profileId).eq('is_active', true).limit(10),
   ])
 
+  const { data: payments } = await serviceSupabase
+    .from('payments')
+    .select('id, amount, payment_date, method, duration_months, notes')
+    .eq('profile_id', profileId)
+    .order('payment_date', { ascending: false })
+    .limit(10)
+
   const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10)
 
   // Estimate monthly revenue
@@ -69,8 +77,8 @@ export default async function AdminInstructorDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/admin" className="text-gray-400 hover:text-gray-600 transition-colors">
+      <div className="flex items-center gap-3 mb-4">
+        <Link href="/admin/instructors" className="text-gray-400 hover:text-gray-600 transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1 min-w-0">
@@ -78,6 +86,10 @@ export default async function AdminInstructorDetailPage({
           {p.business_name && <p className="text-sm text-gray-400">{p.name}</p>}
         </div>
         <TrialManager profileId={profileId} currentStatus={status} trialExpiresAt={p.trial_expires_at ?? null} />
+      </div>
+
+      <div className="mb-6">
+        <ImpersonateButton profileId={profileId} name={p.business_name ?? p.name} />
       </div>
 
       {/* Profile info */}
@@ -175,6 +187,26 @@ export default async function AdminInstructorDetailPage({
               <div key={s.id} className="flex items-center justify-between text-sm py-1">
                 <span className="text-gray-500">{formatDateShort(s.session_date)}</span>
                 <span className="text-gray-700">{(s.classes as any)?.name ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Riwayat Pembayaran */}
+      {(payments as any[] ?? []).length > 0 && (
+        <Card className="mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">Riwayat Pembayaran</h2>
+          <div className="space-y-2">
+            {(payments as any[]).map((pay: any) => (
+              <div key={pay.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                <div>
+                  <span className="text-gray-700">{formatDateShort(pay.payment_date)}</span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {pay.method ?? '—'} · {pay.duration_months} bulan{pay.notes ? ` · ${pay.notes}` : ''}
+                  </p>
+                </div>
+                <span className="text-xs font-semibold text-green-600">{formatRupiah(pay.amount)}</span>
               </div>
             ))}
           </div>

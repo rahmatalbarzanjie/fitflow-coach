@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Users, Users2, Calendar, Zap, PenSquare, MessageSquare,
+  LayoutDashboard, Users, Users2, UserCog, Calendar, Zap, PenSquare, MessageSquare,
   Activity, Settings, Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,10 +21,14 @@ const instructorItems = [
 ]
 
 const adminItems = [
-  { href: '/admin',         icon: LayoutDashboard, label: 'Overview'      },
-  { href: '/admin/members', icon: Users,           label: 'Semua Member'  },
-  { href: '/admin/classes', icon: Calendar,        label: 'Semua Kelas'   },
-  { href: '/admin/config',  icon: Settings,        label: 'Konfigurasi'   },
+  { href: '/admin',             icon: LayoutDashboard, label: 'Overview'        },
+  { href: '/admin/instructors', icon: UserCog,         label: 'Instruktur'      },
+  { href: '/admin/members',     icon: Users,           label: 'Semua Member'    },
+  { href: '/admin/community',   icon: Users2,          label: 'Semua Komunitas' },
+  { href: '/admin/classes',     icon: Calendar,        label: 'Semua Kelas'     },
+  { href: '/admin/events',      icon: Zap,             label: 'Semua Event'     },
+  { href: '/admin/broadcasts',  icon: MessageSquare,   label: 'Semua Broadcast' },
+  { href: '/admin/config',      icon: Settings,        label: 'Konfigurasi'     },
 ]
 
 interface Props {

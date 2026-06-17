@@ -3,9 +3,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Users, Clock, CheckCircle, XCircle, Shield, Bell, MessageCircle } from 'lucide-react'
-import { formatDateShort } from '@/lib/utils'
-import { TrialManager } from '@/components/admin/TrialManager'
+import { Users, Clock, CheckCircle, XCircle, Shield, Bell, Wallet, ArrowRight } from 'lucide-react'
+import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { RequestActions } from '@/components/admin/RequestActions'
 
 export default async function AdminPage() {
@@ -17,7 +16,11 @@ export default async function AdminPage() {
 
   const serviceSupabase = createServiceClient()
 
-  const [pendingRes, profilesRes] = await Promise.all([
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
+
+  const [pendingRes, profilesRes, paymentsRes] = await Promise.all([
     serviceSupabase
       .from('instructor_requests')
       .select('*')
@@ -25,12 +28,16 @@ export default async function AdminPage() {
       .order('created_at', { ascending: true }),
     serviceSupabase
       .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false }),
+      .select('subscription_status, trial_expires_at'),
+    serviceSupabase
+      .from('payments')
+      .select('amount')
+      .gte('payment_date', startOfMonth.toISOString().split('T')[0]),
   ])
 
   const pendingRequests = (pendingRes.data ?? []) as any[]
   const profiles        = (profilesRes.data ?? []) as any[]
+  const monthlyRevenue  = ((paymentsRes.data ?? []) as any[]).reduce((sum, p) => sum + Number(p.amount), 0)
 
   const now = new Date()
   const stats = {
@@ -46,23 +53,24 @@ export default async function AdminPage() {
         <Shield className="w-5 h-5 text-gray-700" />
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
-          <p className="text-sm text-gray-400">Kelola instruktur terdaftar</p>
+          <p className="text-sm text-gray-400">Overview platform FitFlow Coach</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: 'Total Instruktur', value: stats.total,   icon: Users,       color: 'text-violet-600', bg: 'bg-violet-50' },
           { label: 'Free Trial',       value: stats.trial,   icon: Clock,       color: 'text-blue-600',   bg: 'bg-blue-50'   },
           { label: 'Berlangganan',     value: stats.active,  icon: CheckCircle, color: 'text-green-600',  bg: 'bg-green-50'  },
-          { label: 'Trial Habis',      value: stats.expired, icon: XCircle,     color: 'text-red-600',    bg: 'bg-red-50'    },
+          { label: 'Akses Habis',      value: stats.expired, icon: XCircle,     color: 'text-red-600',    bg: 'bg-red-50'    },
+          { label: 'Pendapatan Bulan Ini', value: formatRupiah(monthlyRevenue), icon: Wallet, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-gray-500">{label}</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
               </div>
               <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`w-4 h-4 ${color}`} />
@@ -102,66 +110,21 @@ export default async function AdminPage() {
         </Card>
       )}
 
-      {/* Daftar instruktur */}
-      <Card>
-        <h2 className="text-sm font-semibold text-gray-900 mb-5">Semua Instruktur</h2>
-        <div className="space-y-3">
-          {!profiles.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">Belum ada instruktur terdaftar.</p>
-          ) : profiles.map(p => {
-            const trialExpired = p.trial_expires_at && new Date(p.trial_expires_at) < now
-            const trialDaysLeft = p.trial_expires_at
-              ? Math.max(0, Math.ceil((new Date(p.trial_expires_at).getTime() - now.getTime()) / 86_400_000))
-              : null
-            const status = p.subscription_status ?? 'trial'
-            const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10)
-
-            return (
-              <div key={p.id} className="flex items-start justify-between p-4 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-gray-900">{p.business_name ?? p.name}</p>
-                    {p.slug && (
-                      <span className="text-xs text-gray-400 font-mono">/{p.slug}</span>
-                    )}
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      status === 'active'  ? 'bg-green-100 text-green-700' :
-                      trialExpired        ? 'bg-red-100 text-red-600'    :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {status === 'active' ? 'Aktif' : trialExpired ? 'Habis' : `Trial${trialDaysLeft !== null ? ` · ${trialDaysLeft}h` : ''}`}
-                    </span>
-                    <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                      botConnected ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <MessageCircle className="w-2.5 h-2.5" />
-                      {botConnected ? 'Bot WA ✓' : 'Bot WA belum setup'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{p.phone ?? '—'}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Daftar: {formatDateShort(p.created_at ?? new Date().toISOString())}
-                    {p.trial_expires_at && ` · Trial s/d ${formatDateShort(p.trial_expires_at)}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 ml-4">
-                  <Link
-                    href={`/admin/${p.id}`}
-                    className="text-xs text-gray-400 hover:text-violet-600 transition-colors"
-                  >
-                    Detail →
-                  </Link>
-                  <TrialManager
-                    profileId={p.id}
-                    currentStatus={status}
-                    trialExpiresAt={p.trial_expires_at ?? null}
-                  />
-                </div>
-              </div>
-            )
-          })}
+      <Link
+        href="/admin/instructors"
+        className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 hover:border-violet-200 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
+            <Users className="w-4 h-4 text-violet-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Lihat Semua Instruktur</p>
+            <p className="text-xs text-gray-400">Detail, status langganan, riwayat pembayaran per instruktur</p>
+          </div>
         </div>
-      </Card>
+        <ArrowRight className="w-4 h-4 text-gray-300" />
+      </Link>
     </div>
   )
 }

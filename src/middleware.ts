@@ -70,17 +70,15 @@ export async function middleware(request: NextRequest) {
   if (user && !isAdminUser && (isDashboardRoute || path === '/') && path !== '/expired') {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_status, trial_expires_at')
+      .select('trial_expires_at')
       .eq('id', user.id)
       .single()
 
-    if (profile) {
-      const isActive  = (profile as any).subscription_status === 'active'
-      const expiresAt = (profile as any).trial_expires_at
-
-      if (!isActive && expiresAt && new Date(expiresAt) < new Date()) {
-        return NextResponse.redirect(new URL('/expired', request.url))
-      }
+    // Expiry berlaku untuk status apapun (trial atau active) — pembayaran
+    // punya durasi nyata sekarang, jadi "active" tidak lagi berarti lifetime.
+    const expiresAt = (profile as any)?.trial_expires_at
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+      return NextResponse.redirect(new URL('/expired', request.url))
     }
   }
 

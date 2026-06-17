@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Users, Users2, Calendar, Zap, PenSquare, MessageSquare, Settings,
+  LayoutDashboard, Users, Users2, UserCog, Calendar, Zap, PenSquare, MessageSquare, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -20,10 +20,11 @@ const instructorItems = [
 ]
 
 const adminItems = [
-  { href: '/admin',         icon: LayoutDashboard, label: 'Overview' },
-  { href: '/admin/members', icon: Users,           label: 'Member'   },
-  { href: '/admin/classes', icon: Calendar,        label: 'Kelas'    },
-  { href: '/admin/config',  icon: Settings,        label: 'Config'   },
+  { href: '/admin',             icon: LayoutDashboard, label: 'Overview'   },
+  { href: '/admin/instructors', icon: UserCog,         label: 'Instruktur' },
+  { href: '/admin/members',     icon: Users,           label: 'Member'     },
+  { href: '/admin/classes',     icon: Calendar,        label: 'Kelas'      },
+  { href: '/admin/config',      icon: Settings,        label: 'Config'     },
 ]
 
 export function BottomNav() {
