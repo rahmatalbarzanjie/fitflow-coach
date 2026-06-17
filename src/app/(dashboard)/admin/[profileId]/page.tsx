@@ -30,6 +30,10 @@ export default async function AdminInstructorDetailPage({
 
   if (!profile) notFound()
 
+  // Fetch email from auth (profiles table doesn't store email)
+  const { data: { user: authUser } } = await serviceSupabase.auth.admin.getUserById(profileId)
+  const email = authUser?.email ?? '—'
+
   const p = profile as any
   const now = new Date()
   const trialExpired = p.trial_expires_at && new Date(p.trial_expires_at) < now
@@ -78,7 +82,7 @@ export default async function AdminInstructorDetailPage({
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Info Akun</h2>
         <dl className="space-y-2">
           {[
-            ['Email',    p.phone ?? '—'],
+            ['Email',   email],
             ['No. WA',  p.phone ?? '—'],
             ['Slug',    p.slug ? `/${p.slug}` : '—'],
             ['Status',  status === 'active' ? '✅ Berlangganan' : trialExpired ? '🔴 Trial Habis' : `🔵 Trial · ${trialDaysLeft} hari lagi`],

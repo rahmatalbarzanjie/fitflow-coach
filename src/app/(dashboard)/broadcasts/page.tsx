@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Plus, Send, FileText, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/DeleteButton'
+import { BroadcastSendButton } from '@/components/broadcasts/BroadcastSendButton'
 import { formatDateShort } from '@/lib/utils'
 
 const AUDIENCE_LABEL: Record<string, string> = {
@@ -108,12 +109,17 @@ export default async function BroadcastsPage({
                         : `Dibuat ${formatDateShort(bc.created_at ?? new Date().toISOString())}`}
                     </p>
                   </div>
-                  <DeleteButton
-                    table="broadcasts"
-                    id={bc.id}
-                    redirectTo="/broadcasts"
-                    confirmText="Hapus broadcast ini?"
-                  />
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    {bc.status === 'draft' && (
+                      <BroadcastSendButton broadcastId={bc.id} />
+                    )}
+                    <DeleteButton
+                      table="broadcasts"
+                      id={bc.id}
+                      redirectTo="/broadcasts"
+                      confirmText="Hapus broadcast ini?"
+                    />
+                  </div>
                 </div>
               </div>
             )

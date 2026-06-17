@@ -1,7 +1,13 @@
+import { getSystemConfig } from './system-config'
+
 export async function sendWhatsApp(phone: string, message: string): Promise<boolean> {
-  const token = process.env.FONNTE_TOKEN
-  if (!token || token.startsWith('GANTI')) {
-    console.warn('[WA] FONNTE_TOKEN belum diset di .env.local')
+  const dbToken = await getSystemConfig('fonnte_token').catch(() => null)
+  const token = dbToken && dbToken.trim().length > 10
+    ? dbToken.trim()
+    : process.env.FONNTE_TOKEN
+
+  if (!token || token.startsWith('GANTI') || token.trim() === '') {
+    console.warn('[WA] FONNTE_TOKEN belum diset')
     return false
   }
 

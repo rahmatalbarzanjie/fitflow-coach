@@ -24,6 +24,9 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
+  const adminEmail = process.env.ADMIN_EMAIL
+  const isAdminUser = user?.email === adminEmail
+
   // Routes accessible without login
   const isPublicRoute =
     path.startsWith('/login') ||
@@ -31,8 +34,8 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/home') ||
     path.startsWith('/daftar') ||
     path.startsWith('/api/') ||
-    path.match(/^\/[^/]+$/) !== null ||          // instructor landing pages /{slug}
-    path.match(/^\/[^/]+\/daftar/) !== null       // event registration /{slug}/daftar/...
+    path.match(/^\/[^/]+$/) !== null ||        // instructor landing pages /{slug}
+    path.match(/^\/[^/]+\/daftar/) !== null    // event registration /{slug}/daftar/...
 
   // Unauthenticated → login
   if (!isPublicRoute && !user) {
@@ -41,7 +44,7 @@ export async function middleware(request: NextRequest) {
 
   // Already logged in → away from auth pages
   if ((path === '/login' || path === '/register') && user) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return NextResponse.redirect(new URL(isAdminUser ? '/admin' : '/', request.url))
   }
 
   // Root for non-logged-in users → marketing page
@@ -49,16 +52,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/home', request.url))
   }
 
-  // Trial expiry check for authenticated dashboard users
-  const adminEmail = process.env.ADMIN_EMAIL
-  const isAdminUser = user?.email === adminEmail
+  // Admin: redirect from / (instructor dashboard) to /admin
+  if (path === '/' && isAdminUser) {
+    return NextResponse.redirect(new URL('/admin', request.url))
+  }
+
+  // Trial expiry check for authenticated non-admin dashboard users
   const isDashboardRoute =
     !isPublicRoute &&
     !path.startsWith('/expired') &&
     !path.startsWith('/settings') &&
     !path.startsWith('/api') &&
     !path.startsWith('/admin') &&
-    path !== '/'  // root is the dashboard, check it too
+    path !== '/'
 
   if (user && !isAdminUser && (isDashboardRoute || path === '/') && path !== '/expired') {
     const { data: profile } = await supabase

@@ -83,9 +83,9 @@ export async function POST(request: Request) {
       `Selamat bergabung! 💪`,
     ].join('\n')
 
-    await sendWhatsApp(req.phone, message)
+    const waOk = await sendWhatsApp(req.phone, message)
 
-    return NextResponse.json({ ok: true, email: req.email })
+    return NextResponse.json({ ok: true, email: req.email, waOk })
   } catch (err: unknown) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Konfirmasi gagal' },

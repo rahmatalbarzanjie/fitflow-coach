@@ -3,17 +3,27 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Users, Calendar, Zap, PenSquare, MessageSquare, Activity, Code2 } from 'lucide-react'
+import {
+  LayoutDashboard, Users, Calendar, Zap, PenSquare, MessageSquare,
+  Activity, Settings, Shield,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
-const navItems = [
+const instructorItems = [
   { href: '/',           icon: LayoutDashboard, label: 'Beranda'      },
   { href: '/members',    icon: Users,           label: 'Member'       },
   { href: '/classes',    icon: Calendar,        label: 'Kelas'        },
   { href: '/events',     icon: Zap,             label: 'Events'       },
   { href: '/content',    icon: PenSquare,       label: 'Buat Konten'  },
   { href: '/broadcasts', icon: MessageSquare,   label: 'Broadcast'    },
+]
+
+const adminItems = [
+  { href: '/admin',         icon: LayoutDashboard, label: 'Overview'      },
+  { href: '/admin/members', icon: Users,           label: 'Semua Member'  },
+  { href: '/admin/classes', icon: Calendar,        label: 'Semua Kelas'   },
+  { href: '/admin/config',  icon: Settings,        label: 'Konfigurasi'   },
 ]
 
 interface Props {
@@ -33,8 +43,18 @@ export function Sidebar({ open, onClose }: Props) {
     })
   }, [])
 
+  const items = isAdmin ? adminItems : instructorItems
+
   function handleNavClick() {
     if (window.innerWidth < 768) onClose()
+  }
+
+  function isActive(href: string) {
+    if (isAdmin) {
+      if (href === '/admin') return pathname === '/admin'
+      return pathname.startsWith(href)
+    }
+    return href === '/' ? pathname === '/' : pathname.startsWith(href)
   }
 
   return (
@@ -53,19 +73,24 @@ export function Sidebar({ open, onClose }: Props) {
       )}>
         {/* Brand */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-8 h-8 bg-violet-600 rounded-xl flex items-center justify-center shrink-0">
-            <Activity className="w-4 h-4 text-white" />
+          <div className={cn(
+            'w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
+            isAdmin ? 'bg-gray-900' : 'bg-violet-600'
+          )}>
+            {isAdmin ? <Shield className="w-4 h-4 text-white" /> : <Activity className="w-4 h-4 text-white" />}
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900 leading-none">FitFlow Coach</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">Dashboard Instruktur</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              {isAdmin ? 'Admin Panel' : 'Dashboard Instruktur'}
+            </p>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ href, icon: Icon, label }) => {
-            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
+          {items.map(({ href, icon: Icon, label }) => {
+            const active = isActive(href)
             return (
               <Link
                 key={href}
@@ -73,31 +98,38 @@ export function Sidebar({ open, onClose }: Props) {
                 onClick={handleNavClick}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all',
-                  isActive
-                    ? 'bg-violet-50 text-violet-700 font-medium'
+                  active
+                    ? isAdmin
+                      ? 'bg-gray-100 text-gray-900 font-medium'
+                      : 'bg-violet-50 text-violet-700 font-medium'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
                 )}
               >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-violet-600' : 'text-gray-400')} />
+                <Icon className={cn(
+                  'h-4 w-4 shrink-0',
+                  active
+                    ? isAdmin ? 'text-gray-700' : 'text-violet-600'
+                    : 'text-gray-400'
+                )} />
                 {label}
               </Link>
             )
           })}
 
-          {/* Developer link — admin only */}
-          {isAdmin && (
+          {/* Settings link — instructor only */}
+          {!isAdmin && (
             <Link
-              href="/admin"
+              href="/settings"
               onClick={handleNavClick}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all mt-4 border-t border-gray-100 pt-4',
-                pathname.startsWith('/admin')
-                  ? 'bg-gray-100 text-gray-900 font-medium'
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all mt-2 border-t border-gray-100 pt-4',
+                pathname.startsWith('/settings')
+                  ? 'bg-violet-50 text-violet-700 font-medium'
                   : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
               )}
             >
-              <Code2 className="h-4 w-4 shrink-0" />
-              Developer
+              <Settings className="h-4 w-4 shrink-0" />
+              Pengaturan
             </Link>
           )}
         </nav>
