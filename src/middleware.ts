@@ -27,10 +27,15 @@ export async function middleware(request: NextRequest) {
   const adminEmail = process.env.ADMIN_EMAIL
   const isAdminUser = user?.email === adminEmail
 
+  // /register dimatikan — semua pendaftaran instruktur wajib lewat /daftar
+  // (request + persetujuan admin), supaya tidak ada akun yang dibuat tanpa approval.
+  if (path.startsWith('/register')) {
+    return NextResponse.redirect(new URL('/daftar', request.url))
+  }
+
   // Routes accessible without login
   const isPublicRoute =
     path.startsWith('/login') ||
-    path.startsWith('/register') ||
     path.startsWith('/forgot-password') ||
     path.startsWith('/home') ||
     path.startsWith('/daftar') ||
@@ -44,7 +49,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Already logged in → away from auth pages
-  if ((path === '/login' || path === '/register') && user) {
+  if (path === '/login' && user) {
     return NextResponse.redirect(new URL(isAdminUser ? '/admin' : '/', request.url))
   }
 
