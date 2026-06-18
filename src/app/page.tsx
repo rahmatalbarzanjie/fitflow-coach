@@ -8,6 +8,7 @@ import { StatsSummary } from '@/components/dashboard/StatsSummary'
 import { WeekCalendar } from '@/components/dashboard/WeekCalendar'
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 import { ConfirmPaymentButton } from '@/components/dashboard/ConfirmPaymentButton'
+import { ApproveTestimonialButton } from '@/components/dashboard/ApproveTestimonialButton'
 import { AutoFillSessions } from '@/components/dashboard/AutoFillSessions'
 
 export default async function DashboardPage() {
@@ -31,7 +32,9 @@ export default async function DashboardPage() {
     profileRes,
     todayClassesRes,
     todaySessionsRes,
-    pendingRes,
+    pendingEventRes,
+    pendingClassRes,
+    pendingTestimonialsRes,
     atRiskRes,
     changedSessionsRes,
   ] = await Promise.all([
@@ -59,6 +62,22 @@ export default async function DashboardPage() {
       .select('id, event_id, registrant_name, amount_paid, events!inner(title, user_id)')
       .eq('events.user_id', user.id)
       .eq('payment_status', 'pending')
+      .order('registered_at', { ascending: false })
+      .limit(3),
+    // Pending class payments
+    supabase
+      .from('registrations')
+      .select('id, class_id, registrant_name, amount_paid, classes!inner(name, user_id)')
+      .eq('classes.user_id', user.id)
+      .eq('payment_status', 'pending')
+      .order('registered_at', { ascending: false })
+      .limit(3),
+    // Testimoni menunggu approval
+    supabase
+      .from('testimonials')
+      .select('id, name, content, rating')
+      .eq('user_id', user.id)
+      .eq('is_published', false)
       .order('created_at', { ascending: false })
       .limit(3),
     // At-risk members
@@ -79,12 +98,26 @@ export default async function DashboardPage() {
       .is('notified_at', null),
   ])
 
-  const instructorName   = profileRes.data?.name ?? 'Instruktur'
-  const todayClasses     = (todayClassesRes.data   as any[]) ?? []
-  const todaySessions    = (todaySessionsRes.data  as any[]) ?? []
-  const pendingRegs      = (pendingRes.data         as any[]) ?? []
-  const atRiskMembers    = (atRiskRes.data          as any[]) ?? []
-  const changedSessions  = (changedSessionsRes.data as any[]) ?? []
+  const instructorName      = profileRes.data?.name ?? 'Instruktur'
+  const todayClasses        = (todayClassesRes.data        as any[]) ?? []
+  const todaySessions       = (todaySessionsRes.data       as any[]) ?? []
+  const pendingEventRegs    = (pendingEventRes.data         as any[]) ?? []
+  const pendingClassRegs    = (pendingClassRes.data         as any[]) ?? []
+  const pendingTestimonials = (pendingTestimonialsRes.data  as any[]) ?? []
+  const atRiskMembers       = (atRiskRes.data               as any[]) ?? []
+  const changedSessions     = (changedSessionsRes.data      as any[]) ?? []
+
+  // Gabungkan pembayaran event + kelas pending jadi satu list konsisten
+  const pendingPayments = [
+    ...pendingEventRegs.map((r: any) => ({
+      id: r.id, name: r.registrant_name, amount: r.amount_paid,
+      title: (r.events as any)?.title, link: `/events/${r.event_id}/registrations`,
+    })),
+    ...pendingClassRegs.map((r: any) => ({
+      id: r.id, name: r.registrant_name, amount: r.amount_paid,
+      title: (r.classes as any)?.name, link: `/classes/${r.class_id}/registrations`,
+    })),
+  ]
 
   // Merge today's classes with their session info
   const todaySchedule = todayClasses.map((cls: any) => {
@@ -99,7 +132,7 @@ export default async function DashboardPage() {
   })
 
   const allDone         = todaySchedule.length > 0 && todaySchedule.every(s => s.attended_count > 0)
-  const hasPendingItems = pendingRegs.length > 0 || atRiskMembers.length > 0
+  const hasPendingItems = pendingPayments.length > 0 || atRiskMembers.length > 0 || pendingTestimonials.length > 0
 
   return (
     <DashboardLayout>
@@ -212,24 +245,46 @@ export default async function DashboardPage() {
             <h2 className="text-sm font-semibold text-gray-900">Perlu Tindakan Sekarang</h2>
           </div>
           <div className="space-y-1">
-            {pendingRegs.map((r: any) => (
+            {pendingPayments.map((r) => (
               <div key={r.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">
-                    💳 {r.registrant_name}
+                    💳 {r.name}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {(r.events as any)?.title} · {formatRupiah(Number(r.amount_paid ?? 0))}
+                    {r.title} · {formatRupiah(Number(r.amount ?? 0))}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Link
-                    href={`/events/${r.event_id}/registrations`}
+                    href={r.link}
                     className="h-8 px-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-xs transition-colors flex items-center"
                   >
                     Bukti
                   </Link>
                   <ConfirmPaymentButton registrationId={r.id} />
+                </div>
+              </div>
+            ))}
+
+            {pendingTestimonials.map((t: any) => (
+              <div key={t.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    💬 {t.name}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">
+                    Testimoni baru · &ldquo;{t.content}&rdquo;
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Link
+                    href="/settings?tab=testimoni"
+                    className="h-8 px-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-xs transition-colors flex items-center"
+                  >
+                    Lihat
+                  </Link>
+                  <ApproveTestimonialButton testimonialId={t.id} />
                 </div>
               </div>
             ))}
