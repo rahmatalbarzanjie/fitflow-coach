@@ -5,6 +5,7 @@ import { formatDate, formatTime, formatRupiah, DAY_NAMES } from '@/lib/utils'
 import { PublicNavbar } from '../_components/PublicNavbar'
 import { ScrollReveal } from '@/components/public/ScrollReveal'
 import { EventCountdown } from '@/components/public/EventCountdown'
+import { ParticipantsList } from '@/components/public/ParticipantsList'
 
 // Halaman ini pakai service-role client (key statis, tidak ada cookie per
 // user) — fetch-nya jadi kandidat sempurna untuk Next.js Data Cache, yang
@@ -395,12 +396,7 @@ export default async function InstructorLandingPage({
                                   </div>
                                 </div>
                               )}
-                              {regNames.length > 0 && (
-                                <p className="text-xs text-on-surface-variant/80">
-                                  Sudah daftar: {regNames.slice(0, 3).map(r => r.name).join(', ')}
-                                  {regNames.length > 3 && ` +${regNames.length - 3} lainnya`}
-                                </p>
-                              )}
+                              <ParticipantsList names={regNames.map(r => r.name)} />
                             </div>
                           )}
 
