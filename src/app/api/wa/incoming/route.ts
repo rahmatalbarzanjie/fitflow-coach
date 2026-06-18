@@ -122,14 +122,16 @@ export async function POST(request: Request) {
     .limit(HISTORY_LIMIT)
   const history = (historyRows ?? []).reverse()
 
-  const classLines = (classes ?? []).map((c: any) => {
+  function formatClassLine(c: any) {
     const price   = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
     const regLink = slug ? `${appUrl}/${slug}/daftar/kelas/${c.id}` : '(link belum tersedia)'
     return `- *${c.name}* (${c.type}): ${DAY_NAMES[c.day_of_week]}, ${formatTime(c.start_time)}–${formatTime(c.end_time)}` +
       `${c.location ? ` di ${c.location}` : ''}` +
       `${c.capacity ? ` (maks ${c.capacity} orang)` : ''}\n` +
       `  Harga: ${price}\n  Daftar: ${regLink}`
-  }).join('\n\n') || '- (belum ada kelas terdaftar)'
+  }
+
+  const classLines = (classes ?? []).map(formatClassLine).join('\n\n') || '- (belum ada kelas terdaftar)'
 
   const eventLines = (events ?? []).map((e: any) => {
     const ebAvail = Number(e.early_bird_price) > 0 &&
@@ -143,6 +145,37 @@ export async function POST(request: Request) {
       `${e.location ? ` di ${e.location}` : ''}\n  Harga: ${price}\n  Daftar: ${regLink}` +
       (e.description ? `\n  Info: ${e.description}` : '')
   }).join('\n\n') || '- (tidak ada event mendatang)'
+
+  // ── Fast-path: pertanyaan jadwal dijawab langsung tanpa panggil Claude ──────
+  // Ini intent paling sering & jawabannya selalu sama (daftar kelas/event apa
+  // adanya) — daripada bayar token Claude + tunggu API tiap kali, langsung
+  // kirim data jadwal yang sudah disusun di atas. AI tetap dipakai untuk
+  // pertanyaan lain (termasuk follow-up setelah fast-path ini, karena balasan
+  // ini juga disimpan ke riwayat).
+  const isScheduleQuery = /\bjadwal\b|kelas apa (aja|saja)|ada kelas apa/i.test(message)
+  if (isScheduleQuery) {
+    const asksToday     = /hari ini/i.test(message)
+    const todayClasses  = (classes ?? []).filter((c: any) => c.day_of_week === now.getDay())
+    const scopedClasses = asksToday ? todayClasses : (classes ?? [])
+    const scopedLines   = scopedClasses.length > 0
+      ? scopedClasses.map(formatClassLine).join('\n\n')
+      : (asksToday ? '- (tidak ada kelas hari ini)' : '- (belum ada kelas terdaftar)')
+
+    const fastReply =
+      `Halo! 👋 ${asksToday ? `Jadwal hari ini (${todayLabel}):` : `Ini jadwal kelas di *${studioName}*:`}\n\n${scopedLines}` +
+      (!asksToday && events && events.length > 0 ? `\n\nEvent mendatang:\n\n${eventLines}` : '') +
+      `\n\nMau daftar kelas/event yang mana? Tinggal sebutin aja ya 😊`
+
+    await supabase.from('wa_conversations').insert([
+      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
+      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: fastReply },
+    ])
+
+    const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
+    await sendWhatsApp(senderPhone, fastReply, instructorProfile.fonnte_token ?? null)
+
+    return NextResponse.json({ ok: true, fastPath: true })
+  }
 
   const systemPrompt =
     `Kamu adalah asisten WhatsApp untuk *${studioName}*, studio fitness yang dikelola oleh ${instructorProfile.name}.

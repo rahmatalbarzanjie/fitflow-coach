@@ -69,9 +69,15 @@ export function ClassRegistrationForm({
     const paymentMethod = isFree ? null : method
     const paymentStatus = isFree || method === 'cash' ? 'confirmed' : 'pending'
 
-    const { data: inserted, error: regErr } = await supabase
+    // ID di-generate di client supaya tidak perlu .select() setelah insert —
+    // peserta publik (anon) cuma punya izin INSERT, bukan SELECT, jadi
+    // .select().single() setelah insert akan gagal kena RLS.
+    const registrationId = crypto.randomUUID()
+
+    const { error: regErr } = await supabase
       .from('registrations')
       .insert({
+        id:                registrationId,
         class_id:         classId,
         session_date:     targetDate,
         user_id:          userId,
@@ -83,8 +89,6 @@ export function ClassRegistrationForm({
         payment_status:   paymentStatus,
         proof_url:        proofUrl,
       })
-      .select('id')
-      .single()
 
     if (regErr) {
       setError('Gagal mendaftar. Coba lagi dalam beberapa saat.')
@@ -92,15 +96,13 @@ export function ClassRegistrationForm({
       return
     }
 
-    if (inserted?.id) {
-      fetch('/api/notifications/class-registration', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ registrationId: inserted.id }),
-      }).catch(() => {
-        // notifikasi WA gagal tidak perlu blokir UI
-      })
-    }
+    fetch('/api/notifications/class-registration', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ registrationId }),
+    }).catch(() => {
+      // notifikasi WA gagal tidak perlu blokir UI
+    })
 
     setSuccess(true)
     setSubmitting(false)

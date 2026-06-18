@@ -27,10 +27,11 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('fonnte_token')
+    .select('phone, fonnte_token')
     .eq('id', reg.user_id)
     .single()
-  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+  const instructorToken = (profile as { phone: string | null; fonnte_token: string | null } | null)?.fonnte_token ?? null
+  const instructorPhone = (profile as { phone: string | null; fonnte_token: string | null } | null)?.phone ?? null
 
   const name      = reg.registrant_name
   const className = (reg.classes as any)?.name ?? 'kelas'
@@ -45,5 +46,18 @@ export async function POST(request: Request) {
   }
 
   const sent = await sendWhatsApp(reg.registrant_phone, message, instructorToken)
+
+  // Kabari instruktur juga — supaya tidak perlu cek manual ke web tiap saat
+  if (instructorPhone) {
+    const methodLabel = reg.payment_method === 'transfer' ? 'Transfer (menunggu konfirmasi)'
+      : reg.payment_method === 'cash' ? 'OTS (sudah confirmed)'
+      : 'Gratis'
+    const instructorMsg =
+      `🔔 *Pendaftaran Baru*\n\n` +
+      `${name} (${reg.registrant_phone}) baru daftar *${className}*\n` +
+      `Metode: ${methodLabel}`
+    await sendWhatsApp(instructorPhone, instructorMsg, instructorToken)
+  }
+
   return NextResponse.json({ ok: true, sent })
 }
