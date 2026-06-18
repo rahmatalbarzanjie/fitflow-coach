@@ -18,7 +18,7 @@ interface Props {
 
 async function notifyRegistrant(
   registrationId: string,
-  type: 'confirm' | 'reject',
+  type: 'confirm' | 'reject' | 'invite',
   reason?: string
 ) {
   try {
@@ -48,7 +48,7 @@ export function RegistrationActions({
   const [rejecting,   setRejecting]   = useState(false)
   const [rejectNote,  setRejectNote]  = useState('')
   const [inviting,    setInviting]    = useState(false)
-  const [notifSent,   setNotifSent]   = useState<'confirm' | 'reject' | null>(null)
+  const [notifSent,   setNotifSent]   = useState<'confirm' | 'reject' | 'invite' | null>(null)
   const [error,       setError]       = useState<string | null>(null)
 
   async function confirm() {
@@ -110,8 +110,12 @@ export function RegistrationActions({
       p_registration_id: registrationId,
       p_member_id:       memberId,
     })
-    if (inviteErr) setError(inviteErr.message)
-    else router.refresh()
+    if (inviteErr) {
+      setError(inviteErr.message)
+    } else {
+      notifyRegistrant(registrationId, 'invite').then(() => setNotifSent('invite'))
+      router.refresh()
+    }
     setInviting(false)
   }
 
@@ -123,7 +127,7 @@ export function RegistrationActions({
       {notifSent && (
         <span className="flex items-center gap-1 text-[10px] text-green-600 font-medium">
           <Send className="w-2.5 h-2.5" />
-          WA {notifSent === 'confirm' ? 'konfirmasi' : 'penolakan'} terkirim
+          WA {notifSent === 'confirm' ? 'konfirmasi' : notifSent === 'invite' ? 'undangan member' : 'penolakan'} terkirim
         </span>
       )}
 

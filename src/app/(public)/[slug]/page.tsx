@@ -6,6 +6,12 @@ import { PublicNavbar } from '../_components/PublicNavbar'
 import { ScrollReveal } from '@/components/public/ScrollReveal'
 import { EventCountdown } from '@/components/public/EventCountdown'
 
+// Halaman ini pakai service-role client (key statis, tidak ada cookie per
+// user) — fetch-nya jadi kandidat sempurna untuk Next.js Data Cache, yang
+// menyebabkan data baru (registrasi, toggle show_registrations, dst) tidak
+// langsung kelihatan. Paksa selalu fetch ulang per request.
+export const dynamic = 'force-dynamic'
+
 // ── Class type config ─────────────────────────────────────────────────────────
 const CLASS_CONFIG: Record<string, {
   label: string; subtitle: string; icon: string

@@ -47,6 +47,11 @@ export async function POST(request: Request) {
       `Pendaftaranmu untuk *${itemTitle}* belum bisa kami konfirmasi.` +
       (reason ? `\n\nAlasan: ${reason}` : '') +
       `\n\nSilakan hubungi kami jika ada pertanyaan ya 😊`
+  } else if (type === 'invite') {
+    message =
+      `Halo *${name}*! 🎉\n\n` +
+      `Kamu sekarang resmi jadi member tetap kami! Terima kasih sudah ikut *${itemTitle}* 💪\n\n` +
+      `Sampai jumpa di kelas berikutnya ya!`
   } else {
     return NextResponse.json({ error: 'type tidak valid' }, { status: 400 })
   }

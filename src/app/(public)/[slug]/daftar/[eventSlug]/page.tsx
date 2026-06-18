@@ -4,6 +4,10 @@ import { RegistrationForm } from '@/components/public/RegistrationForm'
 import { formatDate, formatTime, formatRupiah } from '@/lib/utils'
 import { CalendarDays, Clock, MapPin, Users } from 'lucide-react'
 
+// Service-role client (key statis) + GET fetch → rentan kena Next.js Data
+// Cache, jadi kuota/isFull bisa basi. Paksa selalu fetch ulang per request.
+export const dynamic = 'force-dynamic'
+
 export default async function PublicRegistrationPage({
   params,
 }: {

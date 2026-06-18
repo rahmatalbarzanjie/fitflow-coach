@@ -4,6 +4,10 @@ import { ClassRegistrationForm } from '@/components/public/ClassRegistrationForm
 import { formatTime, formatRupiah, DAY_NAMES } from '@/lib/utils'
 import { CalendarDays, Clock, MapPin, Users } from 'lucide-react'
 
+// Service-role client (key statis) + GET fetch → rentan kena Next.js Data
+// Cache, jadi kuota/isFull bisa basi. Paksa selalu fetch ulang per request.
+export const dynamic = 'force-dynamic'
+
 // Tentukan tanggal kemunculan kelas berikutnya: pakai tanggal reschedule
 // kalau ada override dalam 14 hari ke depan, kalau tidak hitung dari
 // day_of_week (kuota harus reset tiap minggu, jadi bukan FK ke sessions).

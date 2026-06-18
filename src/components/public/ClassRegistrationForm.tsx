@@ -69,7 +69,7 @@ export function ClassRegistrationForm({
     const paymentMethod = isFree ? null : method
     const paymentStatus = isFree || method === 'cash' ? 'confirmed' : 'pending'
 
-    const { error: regErr } = await supabase
+    const { data: inserted, error: regErr } = await supabase
       .from('registrations')
       .insert({
         class_id:         classId,
@@ -83,11 +83,23 @@ export function ClassRegistrationForm({
         payment_status:   paymentStatus,
         proof_url:        proofUrl,
       })
+      .select('id')
+      .single()
 
     if (regErr) {
       setError('Gagal mendaftar. Coba lagi dalam beberapa saat.')
       setSubmitting(false)
       return
+    }
+
+    if (inserted?.id) {
+      fetch('/api/notifications/class-registration', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ registrationId: inserted.id }),
+      }).catch(() => {
+        // notifikasi WA gagal tidak perlu blokir UI
+      })
     }
 
     setSuccess(true)

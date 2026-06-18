@@ -3,6 +3,10 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { Activity, Heart } from 'lucide-react'
 import { FeedbackSubmitForm } from '@/components/public/FeedbackSubmitForm'
 
+// Service-role client (key statis) + GET fetch → rentan kena Next.js Data
+// Cache. Paksa selalu fetch ulang per request.
+export const dynamic = 'force-dynamic'
+
 export default async function FeedbackFormPage({
   params,
 }: {
