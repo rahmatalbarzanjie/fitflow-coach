@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   profileId: string
@@ -18,7 +17,6 @@ export function TrialManager({ profileId, currentStatus, trialExpiresAt }: Props
   const [saving,      setSaving]      = useState(false)
   const [done,        setDone]        = useState(false)
   const [error,       setError]       = useState('')
-  const supabase = createClient()
 
   const [amount,   setAmount]   = useState('')
   const [method,   setMethod]   = useState('transfer')
@@ -27,17 +25,15 @@ export function TrialManager({ profileId, currentStatus, trialExpiresAt }: Props
 
   async function extend(months: number) {
     setSaving(true)
-    const base = trialExpiresAt && new Date(trialExpiresAt) > new Date()
-      ? new Date(trialExpiresAt)
-      : new Date()
-    base.setMonth(base.getMonth() + months)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles') as any)
-      .update({ trial_expires_at: base.toISOString(), subscription_status: 'trial' })
-      .eq('id', profileId)
-
+    setError('')
+    const res = await fetch('/api/admin/extend-trial', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ profileId, action: 'extend', months }),
+    })
+    const data = await res.json()
     setSaving(false)
+    if (!res.ok) { setError(data.error ?? 'Gagal memperpanjang trial'); return }
     setDone(true)
     setOpen(false)
     setTimeout(() => { setDone(false); window.location.reload() }, 1200)
@@ -69,11 +65,15 @@ export function TrialManager({ profileId, currentStatus, trialExpiresAt }: Props
 
   async function endAccessNow() {
     setSaving(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles') as any)
-      .update({ trial_expires_at: new Date().toISOString() })
-      .eq('id', profileId)
+    setError('')
+    const res = await fetch('/api/admin/extend-trial', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ profileId, action: 'end' }),
+    })
+    const data = await res.json()
     setSaving(false)
+    if (!res.ok) { setError(data.error ?? 'Gagal mengakhiri akses'); return }
     setDone(true)
     setOpen(false)
     setConfirmEnd(false)
@@ -95,6 +95,7 @@ export function TrialManager({ profileId, currentStatus, trialExpiresAt }: Props
         <div className="absolute right-0 top-6 z-10 bg-white border border-gray-100 rounded-xl shadow-lg p-3 w-56 space-y-1.5">
           {confirmEnd ? (
             <>
+              {error && <p className="text-[10px] text-red-500 px-1">{error}</p>}
               <p className="text-xs text-gray-600 px-1 mb-1">
                 Akhiri {currentStatus === 'active' ? 'langganan' : 'trial'} sekarang? Instruktur ini akan langsung diarahkan ke halaman akses habis.
               </p>
@@ -135,6 +136,7 @@ export function TrialManager({ profileId, currentStatus, trialExpiresAt }: Props
             </>
           ) : (
             <>
+              {error && <p className="text-[10px] text-red-500 px-1 mb-1">{error}</p>}
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Perpanjang Trial (gratis)</p>
               {[1, 3, 6].map(m => (
                 <button
