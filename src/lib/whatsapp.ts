@@ -190,7 +190,10 @@ export async function fonnteGetQr(
 
 export async function fonnteGetDeviceProfile(deviceToken: string): Promise<string | null> {
   try {
-    const res = await fetch('https://api.fonnte.com/device-profile', {
+    // Endpoint resmi Fonnte adalah /device, bukan /device-profile (yang
+    // sebelumnya dipakai di sini selalu 404 — connect-status jadi tidak
+    // pernah benar-benar berhasil ambil nomor device otomatis).
+    const res = await fetch('https://api.fonnte.com/device', {
       method:  'POST',
       headers: { Authorization: deviceToken },
     })

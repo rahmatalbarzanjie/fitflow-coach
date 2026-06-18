@@ -948,6 +948,7 @@ export type Database = {
           created_at: string | null
           fonnte_token: string | null
           id: string
+          is_platform_admin: boolean
           max_active_classes: number | null
           max_broadcast_per_month: number | null
           name: string
@@ -968,6 +969,7 @@ export type Database = {
           created_at?: string | null
           fonnte_token?: string | null
           id: string
+          is_platform_admin?: boolean
           max_active_classes?: number | null
           max_broadcast_per_month?: number | null
           name: string
@@ -988,6 +990,7 @@ export type Database = {
           created_at?: string | null
           fonnte_token?: string | null
           id?: string
+          is_platform_admin?: boolean
           max_active_classes?: number | null
           max_broadcast_per_month?: number | null
           name?: string

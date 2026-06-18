@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   if (instructor_id) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, name, business_name, phone, slug, fonnte_token')
+      .select('id, name, business_name, phone, slug, fonnte_token, is_platform_admin')
       .eq('id', instructor_id)
       .single()
     instructorProfile = data ?? null
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     for (const phone of deviceVariants) {
       const { data } = await supabase
         .from('profiles')
-        .select('id, name, business_name, phone, slug, fonnte_token')
+        .select('id, name, business_name, phone, slug, fonnte_token, is_platform_admin')
         .ilike('bot_phone', `%${phone!.slice(-9)}%`)
         .single()
       if (data) { instructorProfile = data; break }
@@ -98,6 +98,87 @@ export async function POST(request: Request) {
 
   if (!instructorProfile) {
     return NextResponse.json({ ok: true })
+  }
+
+  // ── Bot khusus developer/platform admin — device terpisah, akses laporan
+  // lintas-instruktur (bukan data satu instruktur seperti flow normal di
+  // bawah). Read-only, deterministik, tidak lewat Claude.
+  if (instructorProfile.is_platform_admin) {
+    const adminPhoneKey = normalizePhone(cleanSender)
+    const greet = senderName ? `Kak ${senderName}` : 'Kak'
+
+    async function sendAdminReply(text: string) {
+      await supabase.from('wa_conversations').insert([
+        { user_id: instructorProfile.id, phone: adminPhoneKey, role: 'user', message },
+        { user_id: instructorProfile.id, phone: adminPhoneKey, role: 'assistant', message: text },
+      ])
+      const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
+      await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
+      return NextResponse.json({ ok: true, adminPath: true })
+    }
+
+    const { data: allProfiles } = await supabase
+      .from('profiles')
+      .select('id, name, business_name, subscription_status, trial_expires_at, plan_name')
+      .eq('is_platform_admin', false)
+
+    const profiles = allProfiles ?? []
+    const ids = profiles.map((p: any) => p.id)
+    const [{ data: allMembers }, { data: allClasses }] = await Promise.all([
+      ids.length > 0 ? supabase.from('members').select('user_id').in('user_id', ids) : Promise.resolve({ data: [] as any[] }),
+      ids.length > 0 ? supabase.from('classes').select('user_id').eq('is_active', true).in('user_id', ids) : Promise.resolve({ data: [] as any[] }),
+    ])
+
+    const memberCount: Record<string, number> = {}
+    ;(allMembers ?? []).forEach((m: any) => { memberCount[m.user_id] = (memberCount[m.user_id] ?? 0) + 1 })
+    const classCount: Record<string, number> = {}
+    ;(allClasses ?? []).forEach((c: any) => { classCount[c.user_id] = (classCount[c.user_id] ?? 0) + 1 })
+
+    function summarize(p: any) {
+      const expiresAt = p.trial_expires_at ? new Date(p.trial_expires_at) : null
+      const isActive = expiresAt ? expiresAt > new Date() : false
+      const statusLabel = isActive
+        ? `Aktif (${p.subscription_status === 'active' ? 'berbayar' : 'trial'}, sampai ${formatDate(p.trial_expires_at)})`
+        : expiresAt ? `Expired (${formatDate(p.trial_expires_at)})` : 'Belum ada tanggal expired'
+      return `*${p.business_name ?? p.name}* (${p.name})\n` +
+        `Member: ${memberCount[p.id] ?? 0} · Kelas aktif: ${classCount[p.id] ?? 0}\n` +
+        `Status: ${statusLabel}${p.plan_name ? ` · Paket: ${p.plan_name}` : ''}`
+    }
+
+    if (/list instruktur|daftar instruktur|semua instruktur/i.test(message)) {
+      const lines = profiles.map(summarize).join('\n\n') || '(belum ada instruktur terdaftar)'
+      return sendAdminReply(`Halo ${greet}! 📋 Daftar instruktur (${profiles.length}):\n\n${lines}`)
+    }
+
+    if (/member.*(paling banyak|terbanyak)/i.test(message)) {
+      const sorted = [...profiles].sort((a: any, b: any) => (memberCount[b.id] ?? 0) - (memberCount[a.id] ?? 0)).slice(0, 5)
+      const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${memberCount[p.id] ?? 0} member`).join('\n')
+      return sendAdminReply(`Halo ${greet}! 🏆 Ranking member terbanyak:\n\n${lines || '(belum ada data)'}`)
+    }
+
+    if (/kelas.*(paling banyak|terbanyak)/i.test(message)) {
+      const sorted = [...profiles].sort((a: any, b: any) => (classCount[b.id] ?? 0) - (classCount[a.id] ?? 0)).slice(0, 5)
+      const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${classCount[p.id] ?? 0} kelas aktif`).join('\n')
+      return sendAdminReply(`Halo ${greet}! 🏆 Ranking kelas terbanyak:\n\n${lines || '(belum ada data)'}`)
+    }
+
+    const statusMatch = /status\s+(?:langganan\s+)?(.+)/i.exec(message)
+    if (statusMatch) {
+      const query = statusMatch[1].trim().toLowerCase()
+      const found = profiles.find((p: any) =>
+        p.name.toLowerCase().includes(query) || (p.business_name ?? '').toLowerCase().includes(query)
+      )
+      if (found) return sendAdminReply(`Halo ${greet}! 📋 ${summarize(found)}`)
+      return sendAdminReply(`Halo ${greet}! Maaf, tidak ketemu instruktur dengan nama "${statusMatch[1].trim()}" 🙏`)
+    }
+
+    return sendAdminReply(
+      `Halo ${greet}! 👋 Aku asisten developer FitFlow Coach.\n\n` +
+      `Kamu bisa tanya:\n` +
+      `- "list instruktur"\n` +
+      `- "member terbanyak" / "kelas terbanyak"\n` +
+      `- "status langganan {nama instruktur}"`
+    )
   }
 
   const today = new Date().toISOString().split('T')[0]
