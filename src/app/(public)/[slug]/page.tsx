@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/service'
 import { formatDate, formatTime, formatRupiah, DAY_NAMES } from '@/lib/utils'
 import { PublicNavbar } from '../_components/PublicNavbar'
+import { ScrollReveal } from '@/components/public/ScrollReveal'
+import { EventCountdown } from '@/components/public/EventCountdown'
 
 // ── Class type config ─────────────────────────────────────────────────────────
 const CLASS_CONFIG: Record<string, {
@@ -183,13 +185,16 @@ export default async function InstructorLandingPage({
       >
         <div className="relative z-10 flex flex-col items-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-indigo-700 mb-6 shadow-sm">
+          <div
+            className="animate-on-load inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-indigo-700 mb-6 shadow-sm"
+            style={{ animationDelay: '0ms' }}
+          >
             <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-            <span className="text-xs font-bold tracking-widest uppercase">Fitness Studio</span>
+            <span className="text-xs font-bold tracking-widest uppercase">{profile.business_name ?? 'Fitness Studio'}</span>
           </div>
 
           {/* Photo */}
-          <div className="relative mb-8 group">
+          <div className="animate-on-load relative mb-8 group" style={{ animationDelay: '120ms' }}>
             <div className="absolute inset-0 bg-indigo-400/20 rounded-full blur-3xl group-hover:bg-pink-400/30 transition-all duration-500" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -200,12 +205,15 @@ export default async function InstructorLandingPage({
           </div>
 
           {/* Name */}
-          <h1 className="font-montserrat uppercase text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-on-surface mb-6 leading-tight tracking-tight break-words max-w-[90vw] text-center">
-            {studio}
+          <h1
+            className="animate-on-load font-montserrat uppercase text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-on-surface mb-6 leading-tight tracking-tight break-words max-w-[90vw] text-center"
+            style={{ animationDelay: '240ms' }}
+          >
+            {profile.name}
           </h1>
 
           {profile.bio && (
-            <div className="bg-white/70 backdrop-blur-md rounded-2xl px-6 py-4 shadow-sm mb-10 max-w-xl">
+            <div className="animate-on-load bg-white/70 backdrop-blur-md rounded-2xl px-6 py-4 shadow-sm mb-10 max-w-xl" style={{ animationDelay: '360ms' }}>
               <p className="text-on-surface/80 text-sm leading-relaxed">
                 {profile.bio}
               </p>
@@ -215,10 +223,11 @@ export default async function InstructorLandingPage({
           {/* WA Button */}
           {waNumber && (
             <a
+              style={{ animationDelay: '480ms' }}
               href={`https://wa.me/${waNumber}?text=${waMsg}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group"
+              className="animate-on-load bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group"
             >
               <span className="material-symbols-outlined">chat</span>
               Chat WhatsApp
@@ -236,7 +245,7 @@ export default async function InstructorLandingPage({
       {/* ── CLASS SCHEDULE ───────────────────────────────────────────────── */}
       {classGroups.length > 0 && (
         <section className="py-24 md:py-32 bg-white" id="schedules">
-          <div className="max-w-container-max mx-auto px-4 md:px-10">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
             <div className="mb-16">
               <h2 className="font-montserrat text-4xl md:text-5xl font-bold text-on-surface mb-3">Jadwal Kelas</h2>
               <p className="text-on-surface-variant max-w-xl">
@@ -355,14 +364,14 @@ export default async function InstructorLandingPage({
                 )
               })}
             </div>
-          </div>
+          </div></ScrollReveal>
         </section>
       )}
 
       {/* ── GALERI KELAS ─────────────────────────────────────────────────── */}
       {classesWithPhoto.length > 0 && (
         <section className="py-16 bg-gray-50">
-          <div className="max-w-container-max mx-auto px-4 md:px-10">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
             <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface text-center mb-10">Galeri Kelas</h2>
             <div className="flex flex-wrap justify-center gap-8">
               {classesWithPhoto.map((cls: any) => (
@@ -378,14 +387,14 @@ export default async function InstructorLandingPage({
                 </div>
               ))}
             </div>
-          </div>
+          </div></ScrollReveal>
         </section>
       )}
 
       {/* ── KELAS TAMBAHAN MINGGU INI ─────────────────────────────────── */}
       {extraSessions.length > 0 && (
         <section className="py-16 bg-emerald-50/50">
-          <div className="max-w-container-max mx-auto px-4 md:px-10">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
             <div className="flex items-center gap-3 mb-8">
               <span className="material-symbols-outlined text-emerald-600 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
               <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface">⚡ Kelas Tambahan Minggu Ini</h2>
@@ -413,7 +422,7 @@ export default async function InstructorLandingPage({
                 )
               })}
             </div>
-          </div>
+          </div></ScrollReveal>
         </section>
       )}
 
@@ -422,7 +431,7 @@ export default async function InstructorLandingPage({
         <section className="py-24 bg-gray-50 relative overflow-hidden" id="events">
           <div className="absolute top-0 left-0 w-full h-1 opacity-20"
             style={{ background: 'linear-gradient(to right, #4f46e5, #fd56a7, #2DD4BF)' }} />
-          <div className="max-w-container-max mx-auto px-4 md:px-10">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
             <div className="flex items-center gap-3 mb-12">
               <span className="material-symbols-outlined text-indigo-700 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                 event_upcoming
@@ -461,8 +470,14 @@ export default async function InstructorLandingPage({
                           style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #fd56a7 100%)' }}
                         />
                       )}
-                      <div className={`absolute top-4 right-4 ${badge.bg} text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg`}>
-                        {badge.label}
+                      <div className="absolute top-4 right-4">
+                        {daysUntil <= 1 ? (
+                          <EventCountdown eventDate={ev.event_date} startTime={ev.start_time} />
+                        ) : (
+                          <div className={`${badge.bg} text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg`}>
+                            {badge.label}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -530,16 +545,16 @@ export default async function InstructorLandingPage({
                 )
               })}
             </div>
-          </div>
+          </div></ScrollReveal>
         </section>
       )}
 
       {/* ── BENEFITS ─────────────────────────────────────────────────────── */}
       <section className="py-24 bg-white" id="benefits">
-        <div className="max-w-container-max mx-auto px-4 md:px-10">
+        <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
           <div className="text-center mb-16">
             <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface mb-3">Kenapa Bergabung dengan Komunitas {studio}?</h2>
-            <p className="text-on-surface-variant">Nikmati lebih banyak keuntungan sebagai member tetap</p>
+            <p className="text-on-surface-variant">Nikmati lebih banyak keuntungan sebagai bagian dari komunitas kami</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
             {[
@@ -561,23 +576,23 @@ export default async function InstructorLandingPage({
           {waNumber && (
             <div className="mt-12 text-center">
               <a
-                href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo! Aku mau daftar jadi member tetap ${studio} 😊`)}`}
+                href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo! Aku mau ikut gabung komunitas ${studio} 😊`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-gradient inline-flex items-center gap-2 text-white font-bold px-10 py-4 rounded-full shadow-lg hover:opacity-90 hover:scale-105 transition-all"
               >
                 <span className="material-symbols-outlined">chat</span>
-                Daftar Jadi Member
+                Gabung Komunitas Kami
               </a>
             </div>
           )}
-        </div>
+        </div></ScrollReveal>
       </section>
 
       {/* ── TESTIMONI ────────────────────────────────────────────────────── */}
       {testimonials.length > 0 && (
         <section className="py-24 bg-gray-50" id="testimonials">
-          <div className="max-w-container-max mx-auto px-4 md:px-10">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
             <div className="text-center mb-16">
               <h2 className="font-montserrat text-3xl md:text-5xl font-bold text-on-surface mb-3">Kata Mereka</h2>
               <p className="text-on-surface-variant">Pengalaman langsung dari peserta kelas</p>
@@ -612,7 +627,7 @@ export default async function InstructorLandingPage({
                 </div>
               ))}
             </div>
-          </div>
+          </div></ScrollReveal>
         </section>
       )}
 
