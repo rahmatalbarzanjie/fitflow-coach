@@ -948,9 +948,12 @@ export type Database = {
           created_at: string | null
           fonnte_token: string | null
           id: string
+          max_active_classes: number | null
+          max_broadcast_per_month: number | null
           name: string
           phone: string | null
           photo_url: string | null
+          plan_name: string | null
           slug: string | null
           subscription_status: string | null
           trial_expires_at: string | null
@@ -965,9 +968,12 @@ export type Database = {
           created_at?: string | null
           fonnte_token?: string | null
           id: string
+          max_active_classes?: number | null
+          max_broadcast_per_month?: number | null
           name: string
           phone?: string | null
           photo_url?: string | null
+          plan_name?: string | null
           slug?: string | null
           subscription_status?: string | null
           trial_expires_at?: string | null
@@ -982,9 +988,12 @@ export type Database = {
           created_at?: string | null
           fonnte_token?: string | null
           id?: string
+          max_active_classes?: number | null
+          max_broadcast_per_month?: number | null
           name?: string
           phone?: string | null
           photo_url?: string | null
+          plan_name?: string | null
           slug?: string | null
           subscription_status?: string | null
           trial_expires_at?: string | null

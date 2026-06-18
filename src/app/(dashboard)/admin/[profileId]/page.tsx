@@ -6,6 +6,7 @@ import { ArrowLeft, Users, Calendar, Clock, BarChart3, MessageCircle, CheckCircl
 import { Card } from '@/components/ui/card'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { TrialManager } from '@/components/admin/TrialManager'
+import { PlanManager } from '@/components/admin/PlanManager'
 import { DeleteInstructorButton } from '@/components/admin/DeleteInstructorButton'
 import { ImpersonateButton } from '@/components/admin/ImpersonateButton'
 
@@ -85,6 +86,12 @@ export default async function AdminInstructorDetailPage({
           <h1 className="text-xl font-semibold text-gray-900">{p.business_name ?? p.name}</h1>
           {p.business_name && <p className="text-sm text-gray-400">{p.name}</p>}
         </div>
+        <PlanManager
+          profileId={profileId}
+          currentPlanName={p.plan_name ?? null}
+          currentMaxClasses={p.max_active_classes ?? null}
+          currentMaxBroadcast={p.max_broadcast_per_month ?? null}
+        />
         <TrialManager profileId={profileId} currentStatus={status} trialExpiresAt={p.trial_expires_at ?? null} />
       </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendWhatsAppToGroup } from '@/lib/whatsapp'
+import { checkBroadcastQuota } from '@/lib/quota'
 
 export async function POST(
   _request: Request,
@@ -10,6 +11,14 @@ export async function POST(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const quota = await checkBroadcastQuota(supabase, user.id)
+  if (!quota.ok) {
+    return NextResponse.json(
+      { error: `Kuota broadcast bulan ini sudah habis (${quota.used}/${quota.limit}). Upgrade paket untuk kirim lebih banyak.` },
+      { status: 403 }
+    )
+  }
 
   const { data: bc } = await supabase
     .from('broadcasts')
