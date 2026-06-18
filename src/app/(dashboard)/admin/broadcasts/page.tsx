@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatDateShort } from '@/lib/utils'
 
 const AUDIENCE_LABEL: Record<string, string> = {
-  all: 'Semua Member', active: 'Member Aktif', at_risk: 'Perlu Perhatian', inactive: 'Tidak Aktif', new: 'Member Baru',
+  all: 'Semua Member', active: 'Member Aktif', at_risk: 'Perlu Follow Up', inactive: 'Tidak Aktif', new: 'Member Baru',
 }
 
 export default async function AdminBroadcastsPage({

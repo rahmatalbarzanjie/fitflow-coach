@@ -9,7 +9,7 @@ const STATUS_TABS = [
   { value: 'all',      label: 'Semua'       },
   { value: 'active',   label: 'Aktif'       },
   { value: 'new',      label: 'Baru'        },
-  { value: 'at_risk',  label: 'Perlu Perhatian' },
+  { value: 'at_risk',  label: 'Perlu Follow Up' },
   { value: 'inactive', label: 'Tidak Aktif' },
 ]
 

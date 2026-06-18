@@ -25,9 +25,9 @@ export default function NewEventPage() {
     resolver: zodResolver(eventSchema),
     defaultValues: {
       pricing_mode: 'tiered',
-      tier1_label:  'Gelombang 1',
+      tier1_label:  'Early Bird',
       tier1_price:  0,
-      tier2_label:  'Gelombang 2',
+      tier2_label:  'Regular',
       tier2_price:  0,
       ots_price:    0,
       status:       'draft',
@@ -77,8 +77,8 @@ export default function NewEventPage() {
         status:              data.status,
         pricing_mode:        data.pricing_mode,
         // tiered
-        tier1_label:         data.tier1_label || 'Gelombang 1',
-        tier2_label:         data.tier2_label || 'Gelombang 2',
+        tier1_label:         data.tier1_label || 'Early Bird',
+        tier2_label:         data.tier2_label || 'Regular',
         early_bird_price:    isTimered ? data.tier1_price  : 0,
         early_bird_quota:    isTimered ? (data.tier1_quota || null) : null,
         ots_price:           isTimered ? data.tier2_price  : data.ots_price,
@@ -185,7 +185,7 @@ export default function NewEventPage() {
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
                 {pricingMode === 'tiered'
-                  ? 'Gelombang 1 → Gelombang 2 otomatis saat kuota habis'
+                  ? 'Early Bird → Regular otomatis saat kuota habis'
                   : 'Satu harga untuk semua peserta'}
               </p>
             </div>
@@ -207,7 +207,7 @@ export default function NewEventPage() {
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wider">Tier 1 (Awal)</p>
                 <div className="space-y-1.5">
                   <label className={lbl}>Label</label>
-                  <input {...register('tier1_label')} placeholder="Gelombang 1" className={inp} />
+                  <input {...register('tier1_label')} placeholder="Early Bird" className={inp} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -226,7 +226,7 @@ export default function NewEventPage() {
                 <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">Tier 2 (Lanjutan)</p>
                 <div className="space-y-1.5">
                   <label className={lbl}>Label</label>
-                  <input {...register('tier2_label')} placeholder="Gelombang 2" className={inp} />
+                  <input {...register('tier2_label')} placeholder="Regular" className={inp} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">

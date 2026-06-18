@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 const AUDIENCE_OPTIONS = [
   { value: 'all',      label: 'Semua Member'        },
   { value: 'active',   label: 'Member Aktif'         },
-  { value: 'at_risk',  label: 'Member Perlu Perhatian' },
+  { value: 'at_risk',  label: 'Member Perlu Follow Up' },
   { value: 'inactive', label: 'Member Tidak Aktif'   },
   { value: 'new',      label: 'Member Baru'          },
 ]

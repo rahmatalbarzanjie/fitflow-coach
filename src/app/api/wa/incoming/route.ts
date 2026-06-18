@@ -405,7 +405,7 @@ CARA MENJAWAB:
         `Halo Kak! 📋 Ringkasan member:\n\n` +
         `Total: ${total ?? 0} member\n` +
         `✅ Aktif: ${active ?? 0}\n` +
-        `⚠️ Perlu perhatian: ${atRisk ?? 0}\n` +
+        `⚠️ Perlu Follow Up: ${atRisk ?? 0}\n` +
         `💤 Tidak aktif: ${inactive ?? 0}`
       )
     }

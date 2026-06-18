@@ -1,7 +1,7 @@
 export const MEMBER_STATUS = {
   new:      { label: 'Baru',        color: 'blue'   },
   active:   { label: 'Aktif',       color: 'green'  },
-  at_risk:  { label: 'Perlu Perhatian', color: 'orange' },
+  at_risk:  { label: 'Perlu Follow Up', color: 'orange' },
   inactive: { label: 'Tidak Aktif', color: 'red'    },
 } as const
 

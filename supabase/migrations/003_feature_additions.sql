@@ -11,8 +11,8 @@
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pricing_mode TEXT DEFAULT 'tiered';
 
 -- Tier labels (mapping: tier1 = early_bird, tier2 = ots)
-ALTER TABLE events ADD COLUMN IF NOT EXISTS tier1_label TEXT DEFAULT 'Gelombang 1';
-ALTER TABLE events ADD COLUMN IF NOT EXISTS tier2_label TEXT DEFAULT 'Gelombang 2';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS tier1_label TEXT DEFAULT 'Early Bird';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS tier2_label TEXT DEFAULT 'Regular';
 
 -- Cover / flyer image
 ALTER TABLE events ADD COLUMN IF NOT EXISTS cover_image_url TEXT;

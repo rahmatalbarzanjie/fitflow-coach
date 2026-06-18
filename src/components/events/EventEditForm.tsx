@@ -76,10 +76,10 @@ export function EventEditForm({ ev }: Props) {
       location:            ev.location ?? '',
       status:              ev.status as EventFormData['status'],
       pricing_mode:        (ev.pricing_mode as any) ?? 'tiered',
-      tier1_label:         ev.tier1_label ?? 'Gelombang 1',
+      tier1_label:         ev.tier1_label ?? 'Early Bird',
       tier1_price:         Number(ev.early_bird_price),
       tier1_quota:         ev.early_bird_quota ?? undefined,
-      tier2_label:         ev.tier2_label ?? 'Gelombang 2',
+      tier2_label:         ev.tier2_label ?? 'Regular',
       tier2_price:         Number(ev.ots_price),
       tier2_quota:         ev.max_capacity ?? undefined,
       ots_price:           Number(ev.ots_price),
@@ -105,8 +105,8 @@ export function EventEditForm({ ev }: Props) {
         location:            data.location || null,
         status:              data.status,
         pricing_mode:        data.pricing_mode,
-        tier1_label:         data.tier1_label || 'Gelombang 1',
-        tier2_label:         data.tier2_label || 'Gelombang 2',
+        tier1_label:         data.tier1_label || 'Early Bird',
+        tier2_label:         data.tier2_label || 'Regular',
         early_bird_price:    isTiered ? data.tier1_price : 0,
         early_bird_quota:    isTiered ? (data.tier1_quota || null) : null,
         ots_price:           isTiered ? data.tier2_price : data.ots_price,
@@ -168,7 +168,7 @@ export function EventEditForm({ ev }: Props) {
         <p className="text-xs font-semibold text-green-700 uppercase tracking-wider">Tier 1 (Gelombang Awal)</p>
         <div className="space-y-1.5">
           <label className={lbl}>Label</label>
-          <input {...register('tier1_label')} placeholder="Gelombang 1" className={inp} />
+          <input {...register('tier1_label')} placeholder="Early Bird" className={inp} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
@@ -187,7 +187,7 @@ export function EventEditForm({ ev }: Props) {
         <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">Tier 2 / OTS (Gelombang Lanjutan)</p>
         <div className="space-y-1.5">
           <label className={lbl}>Label</label>
-          <input {...register('tier2_label')} placeholder="Gelombang 2" className={inp} />
+          <input {...register('tier2_label')} placeholder="Regular" className={inp} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
