@@ -132,19 +132,23 @@ export async function fonnteAddDevice(
 
 export async function fonnteUpdateDeviceWebhook(
   deviceToken: string,
-  webhookUrl: string
-): Promise<boolean> {
+  webhookUrl: string,
+  deviceName: string,
+  deviceId: string
+): Promise<{ ok: boolean; reason?: string }> {
   try {
+    // name & device wajib diisi di endpoint ini (selain webhook) — tanpa itu
+    // Fonnte balas "input invalid" dan webhook tidak pernah benar ter-set.
     const res = await fetch('https://api.fonnte.com/update-device', {
       method:  'POST',
       headers: { Authorization: deviceToken, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ webhook: webhookUrl }),
+      body:    JSON.stringify({ name: deviceName, device: deviceId, webhook: webhookUrl }),
     })
     const json = await res.json()
-    return json.status === true
+    return json.status === true ? { ok: true } : { ok: false, reason: json.reason ?? json.detail }
   } catch (err) {
     console.error('[WA] Gagal update-device webhook:', err)
-    return false
+    return { ok: false, reason: 'Koneksi ke Fonnte gagal' }
   }
 }
 

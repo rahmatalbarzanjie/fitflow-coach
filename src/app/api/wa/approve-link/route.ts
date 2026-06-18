@@ -40,13 +40,16 @@ export async function POST(request: Request) {
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
   const webhookUrl = `${appUrl}/api/wa/incoming?key=${process.env.FONNTE_WEBHOOK_KEY}`
-  await fonnteUpdateDeviceWebhook(added.token, webhookUrl)
+  const webhookResult = await fonnteUpdateDeviceWebhook(added.token, webhookUrl, deviceName, profileId)
 
-  let orderWarning: string | undefined
+  const warnings: string[] = []
+  if (!webhookResult.ok) {
+    warnings.push(`Gagal set webhook otomatis (${webhookResult.reason ?? 'tidak diketahui'}). Bot tidak akan bisa balas pesan sampai webhook di-set manual di dashboard Fonnte.`)
+  }
   if (plan && FONNTE_PLAN_IDS[plan] && durationMonths) {
     const order = await fonnteOrderPackage(added.token, FONNTE_PLAN_IDS[plan], Number(durationMonths))
     if (!order.ok) {
-      orderWarning = `Device terhubung, tapi gagal pasang paket: ${order.reason ?? 'tidak diketahui'}. Device masih di paket Free — bisa diassign manual di dashboard Fonnte.`
+      warnings.push(`Gagal pasang paket: ${order.reason ?? 'tidak diketahui'}. Device masih di paket Free — bisa diassign manual di dashboard Fonnte.`)
     }
   }
 
@@ -57,5 +60,5 @@ export async function POST(request: Request) {
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
-  return NextResponse.json({ ok: true, warning: orderWarning })
+  return NextResponse.json({ ok: true, warning: warnings.length > 0 ? `Device terhubung, tapi: ${warnings.join(' ')}` : undefined })
 }
