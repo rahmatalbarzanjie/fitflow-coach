@@ -331,6 +331,7 @@ export type Database = {
           id: string
           type: string
           user_id: string
+          wa_invite_link: string | null
         }
         Insert: {
           benefits?: string | null
@@ -338,6 +339,7 @@ export type Database = {
           id?: string
           type: string
           user_id: string
+          wa_invite_link?: string | null
         }
         Update: {
           benefits?: string | null
@@ -345,6 +347,7 @@ export type Database = {
           id?: string
           type?: string
           user_id?: string
+          wa_invite_link?: string | null
         }
         Relationships: []
       }

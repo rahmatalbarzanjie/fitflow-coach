@@ -111,6 +111,12 @@ export async function POST(request: Request) {
   const now        = new Date()
   const todayLabel = `${DAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
 
+  // Nomor pribadi instruktur (beda dari nomor bot) — dipakai untuk fallback
+  // "hubungi langsung" yang sebenarnya mengarah ke kontak lain, bukan ke
+  // nomor bot yang sedang dipakai untuk chat ini.
+  const personalPhone = instructorProfile.phone ? normalizePhone(instructorProfile.phone) : null
+  const hasDistinctPersonalPhone = !!personalPhone && personalPhone !== cleanDevice
+
   // ── Riwayat percakapan thread ini (instruktur + nomor pengirim) ────────────
   const senderPhoneKey = normalizePhone(cleanSender)
   const { data: historyRows } = await supabase
@@ -201,7 +207,8 @@ CARA MENJAWAB:
 - Kalau orang menyatakan niat daftar/ikut kelas atau event TERTENTU, cocokkan namanya dengan data di atas dan balas dengan link "Daftar" yang SESUAI dengan item itu — jangan sampai ketuker kasih link kelas/event lain
 - Kalau tidak jelas kelas/event mana yang dimaksud (nama disebut umum, atau ada beberapa kandidat yang cocok), tanya dulu mau yang mana sebelum kasih link apa pun — jangan menebak
 - Kalau cuma tanya-tanya info tanpa niat daftar, jawab informatif saja tanpa otomatis menyodorkan link
-- Jika pertanyaan tidak bisa dijawab → sarankan hubungi ${instructorProfile.name} langsung di nomor yang sama
+- Kalau orang bilang mau "gabung komunitas"/"join grup" — ini BUKAN niat daftar kelas/event, jangan cocokkan ke kelas manapun dan jangan kasih link registrasi. Cukup jawab ramah dan arahkan sesuai instruksi kontak di bawah
+- Jika pertanyaan tidak bisa dijawab dari data di atas${hasDistinctPersonalPhone ? `, atau orang minta ngobrol langsung dengan manusia` : ''} → ${hasDistinctPersonalPhone ? `sarankan hubungi ${instructorProfile.name} langsung di ${instructorProfile.phone} (nomor pribadi, beda dari nomor chat ini)` : `sarankan hubungi ${instructorProfile.name} langsung`}
 - JANGAN membuat info, harga, atau jadwal yang tidak ada di data di atas
 - Mulai jawaban langsung tanpa sapaan panjang`
 

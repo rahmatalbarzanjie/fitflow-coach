@@ -6,6 +6,7 @@ import { PublicNavbar } from '../_components/PublicNavbar'
 import { ScrollReveal } from '@/components/public/ScrollReveal'
 import { EventCountdown } from '@/components/public/EventCountdown'
 import { ParticipantsList } from '@/components/public/ParticipantsList'
+import { CLASS_TYPES } from '@/lib/constants'
 
 // Halaman ini pakai service-role client (key statis, tidak ada cookie per
 // user) — fetch-nya jadi kandidat sempurna untuk Next.js Data Cache, yang
@@ -138,7 +139,7 @@ export default async function InstructorLandingPage({
       .order('created_at', { ascending: false }),
     supabase
       .from('class_type_benefits')
-      .select('type, benefits')
+      .select('type, benefits, wa_invite_link')
       .eq('user_id', profile.id),
   ])
 
@@ -149,6 +150,9 @@ export default async function InstructorLandingPage({
   const benefitsMap = Object.fromEntries(
     ((benefitsRes.data ?? []) as any[]).filter(b => b.benefits).map(b => [b.type, b.benefits])
   )
+  const communityGroups = ((benefitsRes.data ?? []) as any[])
+    .filter(b => b.wa_invite_link)
+    .map(b => ({ type: b.type, link: b.wa_invite_link }))
 
   // Build maps for quick lookup
   const rescheduledMap = new Map<string, any>() // class_id → session (rescheduled)
@@ -626,7 +630,25 @@ export default async function InstructorLandingPage({
               </div>
             ))}
           </div>
-          {waNumber && (
+          {communityGroups.length > 0 ? (
+            <div className="mt-12 flex flex-wrap justify-center gap-3">
+              {communityGroups.map(g => {
+                const typeLabel = CLASS_TYPES.find(t => t.value === g.type)?.label ?? g.type
+                return (
+                  <a
+                    key={g.type}
+                    href={g.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-gradient inline-flex items-center gap-2 text-white font-bold px-8 py-4 rounded-full shadow-lg hover:opacity-90 hover:scale-105 transition-all"
+                  >
+                    <span className="material-symbols-outlined">groups</span>
+                    Gabung Grup {typeLabel}
+                  </a>
+                )
+              })}
+            </div>
+          ) : waNumber && (
             <div className="mt-12 text-center">
               <a
                 href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo! Aku mau ikut gabung komunitas ${studio} 😊`)}`}

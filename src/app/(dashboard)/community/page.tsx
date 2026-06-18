@@ -2,8 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { Users2 } from 'lucide-react'
 import { AddContactForm } from '@/components/community/AddContactForm'
 import { ConvertToMemberButton } from '@/components/community/ConvertToMemberButton'
+import { ClassTypeWaGroupForm } from '@/components/community/ClassTypeWaGroupForm'
 import { DeleteButton } from '@/components/ui/DeleteButton'
+import { Card } from '@/components/ui/card'
 import { formatDateShort } from '@/lib/utils'
+import { CLASS_TYPES } from '@/lib/constants'
 
 export default async function CommunityPage({
   searchParams,
@@ -14,8 +17,8 @@ export default async function CommunityPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [classesRes, contactsRes] = await Promise.all([
-    supabase.from('classes').select('id, name').eq('user_id', user!.id).order('name'),
+  const [classesRes, contactsRes, typeBenefitsRes] = await Promise.all([
+    supabase.from('classes').select('id, name, type').eq('user_id', user!.id).order('name'),
     (() => {
       let q = supabase
         .from('community_contacts')
@@ -25,10 +28,16 @@ export default async function CommunityPage({
       if (classFilter) q = q.eq('class_id', classFilter)
       return q
     })(),
+    supabase.from('class_type_benefits').select('type, wa_invite_link').eq('user_id', user!.id),
   ])
 
-  const classes  = (classesRes.data ?? []) as { id: string; name: string }[]
+  const classes  = (classesRes.data ?? []) as { id: string; name: string; type: string }[]
   const contacts = (contactsRes.data ?? []) as any[]
+  const usedTypes = Array.from(new Set(classes.map(c => c.type)))
+  const inviteLinkMap = Object.fromEntries(
+    ((typeBenefitsRes.data ?? []) as any[]).map(b => [b.type, b.wa_invite_link ?? ''])
+  )
+  const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
   return (
     <div className="max-w-2xl">
@@ -44,6 +53,28 @@ export default async function CommunityPage({
           Ini bukan daftar Member berbayar. Konversi ke Member kalau orang ini sudah mendaftar & bayar resmi.
         </p>
       </div>
+
+      {usedTypes.length > 0 && (
+        <Card className="mb-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-1">Grup WA Komunitas</h2>
+          <p className="text-xs text-gray-400 mb-4">
+            Tempel link invite grup WA per olahraga di sini (Info Grup → Undang via Tautan → Salin Link di WhatsApp).
+            Link ini yang ditampilkan di landing page untuk orang yang mau join komunitas — kalau belum diisi,
+            landing page tetap pakai tombol chat WA seperti biasa.
+          </p>
+          <div className="space-y-2">
+            {usedTypes.map(type => (
+              <ClassTypeWaGroupForm
+                key={type}
+                userId={user!.id}
+                type={type}
+                label={typeLabel[type] ?? type}
+                initialLink={inviteLinkMap[type] ?? ''}
+              />
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <AddContactForm classes={classes} />
