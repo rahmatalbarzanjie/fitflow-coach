@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Activity, Users, Calendar, BarChart3, MessageCircle, CheckCircle, Smartphone, Sparkles, Wrench } from 'lucide-react'
+import { Activity, Users, Calendar, BarChart3, MessageCircle, CheckCircle, Smartphone, Sparkles, Wrench, ArrowRight } from 'lucide-react'
 import { PricingSection } from '@/components/home/PricingSection'
 import { ScrollReveal } from '@/components/public/ScrollReveal'
 import { getSystemConfig } from '@/lib/system-config'
@@ -119,13 +119,14 @@ export default async function HomePage() {
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
               href="/daftar"
-              className="h-12 px-8 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-violet-200 hover:scale-105"
+              className="inline-flex items-center justify-center gap-1.5 h-12 px-8 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm leading-none transition-all shadow-lg shadow-violet-200 hover:scale-105"
             >
               Daftar Sekarang — Gratis 30 Hari
+              <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/login"
-              className="h-12 px-6 border border-gray-200 hover:border-gray-300 bg-white text-gray-700 rounded-xl font-medium text-sm transition-colors"
+              className="inline-flex items-center justify-center h-12 px-6 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 bg-white text-gray-700 rounded-xl font-semibold text-sm leading-none transition-all"
             >
               Masuk ke Dashboard
             </Link>
