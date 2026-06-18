@@ -100,12 +100,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  // ── Bot khusus developer/platform admin — device terpisah, akses laporan
-  // lintas-instruktur (bukan data satu instruktur seperti flow normal di
-  // bawah). Read-only, deterministik, tidak lewat Claude.
+  // ── Bot khusus developer/platform admin — device terpisah dari bot
+  // instruktur manapun. Device ini dobel fungsi:
+  //  1. Developer sendiri (nomor pribadinya) → laporan lintas-instruktur,
+  //     read-only, deterministik, tidak lewat Claude.
+  //  2. Siapa pun yang lain (calon klien yang tertarik FitFlow Coach,
+  //     biasanya nyasar dari landing page instruktur → /home) → asisten AI
+  //     yang jawab soal aplikasi FitFlow Coach itu sendiri (fitur, harga,
+  //     trial, cara daftar) — BUKAN data instruktur mana pun.
   if (instructorProfile.is_platform_admin) {
     const adminPhoneKey = normalizePhone(cleanSender)
     const greet = senderName ? `Kak ${senderName}` : 'Kak'
+    const devPersonalPhone = instructorProfile.phone ? normalizePhone(instructorProfile.phone) : null
+    const isDeveloperSender = !!devPersonalPhone && cleanSender === devPersonalPhone
 
     async function sendAdminReply(text: string) {
       await supabase.from('wa_conversations').insert([
@@ -117,68 +124,129 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, adminPath: true })
     }
 
-    const { data: allProfiles } = await supabase
-      .from('profiles')
-      .select('id, name, business_name, subscription_status, trial_expires_at, plan_name')
-      .eq('is_platform_admin', false)
+    if (isDeveloperSender) {
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, business_name, subscription_status, trial_expires_at, plan_name')
+        .eq('is_platform_admin', false)
 
-    const profiles = allProfiles ?? []
-    const ids = profiles.map((p: any) => p.id)
-    const [{ data: allMembers }, { data: allClasses }] = await Promise.all([
-      ids.length > 0 ? supabase.from('members').select('user_id').in('user_id', ids) : Promise.resolve({ data: [] as any[] }),
-      ids.length > 0 ? supabase.from('classes').select('user_id').eq('is_active', true).in('user_id', ids) : Promise.resolve({ data: [] as any[] }),
-    ])
+      const profiles = allProfiles ?? []
+      const ids = profiles.map((p: any) => p.id)
+      const [{ data: allMembers }, { data: allClasses }] = await Promise.all([
+        ids.length > 0 ? supabase.from('members').select('user_id').in('user_id', ids) : Promise.resolve({ data: [] as any[] }),
+        ids.length > 0 ? supabase.from('classes').select('user_id').eq('is_active', true).in('user_id', ids) : Promise.resolve({ data: [] as any[] }),
+      ])
 
-    const memberCount: Record<string, number> = {}
-    ;(allMembers ?? []).forEach((m: any) => { memberCount[m.user_id] = (memberCount[m.user_id] ?? 0) + 1 })
-    const classCount: Record<string, number> = {}
-    ;(allClasses ?? []).forEach((c: any) => { classCount[c.user_id] = (classCount[c.user_id] ?? 0) + 1 })
+      const memberCount: Record<string, number> = {}
+      ;(allMembers ?? []).forEach((m: any) => { memberCount[m.user_id] = (memberCount[m.user_id] ?? 0) + 1 })
+      const classCount: Record<string, number> = {}
+      ;(allClasses ?? []).forEach((c: any) => { classCount[c.user_id] = (classCount[c.user_id] ?? 0) + 1 })
 
-    function summarize(p: any) {
-      const expiresAt = p.trial_expires_at ? new Date(p.trial_expires_at) : null
-      const isActive = expiresAt ? expiresAt > new Date() : false
-      const statusLabel = isActive
-        ? `Aktif (${p.subscription_status === 'active' ? 'berbayar' : 'trial'}, sampai ${formatDate(p.trial_expires_at)})`
-        : expiresAt ? `Expired (${formatDate(p.trial_expires_at)})` : 'Belum ada tanggal expired'
-      return `*${p.business_name ?? p.name}* (${p.name})\n` +
-        `Member: ${memberCount[p.id] ?? 0} · Kelas aktif: ${classCount[p.id] ?? 0}\n` +
-        `Status: ${statusLabel}${p.plan_name ? ` · Paket: ${p.plan_name}` : ''}`
-    }
+      function summarize(p: any) {
+        const expiresAt = p.trial_expires_at ? new Date(p.trial_expires_at) : null
+        const isActive = expiresAt ? expiresAt > new Date() : false
+        const statusLabel = isActive
+          ? `Aktif (${p.subscription_status === 'active' ? 'berbayar' : 'trial'}, sampai ${formatDate(p.trial_expires_at)})`
+          : expiresAt ? `Expired (${formatDate(p.trial_expires_at)})` : 'Belum ada tanggal expired'
+        return `*${p.business_name ?? p.name}* (${p.name})\n` +
+          `Member: ${memberCount[p.id] ?? 0} · Kelas aktif: ${classCount[p.id] ?? 0}\n` +
+          `Status: ${statusLabel}${p.plan_name ? ` · Paket: ${p.plan_name}` : ''}`
+      }
 
-    if (/list instruktur|daftar instruktur|semua instruktur/i.test(message)) {
-      const lines = profiles.map(summarize).join('\n\n') || '(belum ada instruktur terdaftar)'
-      return sendAdminReply(`Halo ${greet}! 📋 Daftar instruktur (${profiles.length}):\n\n${lines}`)
-    }
+      if (/list instruktur|daftar instruktur|semua instruktur/i.test(message)) {
+        const lines = profiles.map(summarize).join('\n\n') || '(belum ada instruktur terdaftar)'
+        return sendAdminReply(`Halo ${greet}! 📋 Daftar instruktur (${profiles.length}):\n\n${lines}`)
+      }
 
-    if (/member.*(paling banyak|terbanyak)/i.test(message)) {
-      const sorted = [...profiles].sort((a: any, b: any) => (memberCount[b.id] ?? 0) - (memberCount[a.id] ?? 0)).slice(0, 5)
-      const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${memberCount[p.id] ?? 0} member`).join('\n')
-      return sendAdminReply(`Halo ${greet}! 🏆 Ranking member terbanyak:\n\n${lines || '(belum ada data)'}`)
-    }
+      if (/member.*(paling banyak|terbanyak)/i.test(message)) {
+        const sorted = [...profiles].sort((a: any, b: any) => (memberCount[b.id] ?? 0) - (memberCount[a.id] ?? 0)).slice(0, 5)
+        const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${memberCount[p.id] ?? 0} member`).join('\n')
+        return sendAdminReply(`Halo ${greet}! 🏆 Ranking member terbanyak:\n\n${lines || '(belum ada data)'}`)
+      }
 
-    if (/kelas.*(paling banyak|terbanyak)/i.test(message)) {
-      const sorted = [...profiles].sort((a: any, b: any) => (classCount[b.id] ?? 0) - (classCount[a.id] ?? 0)).slice(0, 5)
-      const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${classCount[p.id] ?? 0} kelas aktif`).join('\n')
-      return sendAdminReply(`Halo ${greet}! 🏆 Ranking kelas terbanyak:\n\n${lines || '(belum ada data)'}`)
-    }
+      if (/kelas.*(paling banyak|terbanyak)/i.test(message)) {
+        const sorted = [...profiles].sort((a: any, b: any) => (classCount[b.id] ?? 0) - (classCount[a.id] ?? 0)).slice(0, 5)
+        const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${classCount[p.id] ?? 0} kelas aktif`).join('\n')
+        return sendAdminReply(`Halo ${greet}! 🏆 Ranking kelas terbanyak:\n\n${lines || '(belum ada data)'}`)
+      }
 
-    const statusMatch = /status\s+(?:langganan\s+)?(.+)/i.exec(message)
-    if (statusMatch) {
-      const query = statusMatch[1].trim().toLowerCase()
-      const found = profiles.find((p: any) =>
-        p.name.toLowerCase().includes(query) || (p.business_name ?? '').toLowerCase().includes(query)
+      const statusMatch = /status\s+(?:langganan\s+)?(.+)/i.exec(message)
+      if (statusMatch) {
+        const query = statusMatch[1].trim().toLowerCase()
+        const found = profiles.find((p: any) =>
+          p.name.toLowerCase().includes(query) || (p.business_name ?? '').toLowerCase().includes(query)
+        )
+        if (found) return sendAdminReply(`Halo ${greet}! 📋 ${summarize(found)}`)
+        return sendAdminReply(`Halo ${greet}! Maaf, tidak ketemu instruktur dengan nama "${statusMatch[1].trim()}" 🙏`)
+      }
+
+      return sendAdminReply(
+        `Halo ${greet}! 👋 Aku asisten developer FitFlow Coach.\n\n` +
+        `Kamu bisa tanya:\n` +
+        `- "list instruktur"\n` +
+        `- "member terbanyak" / "kelas terbanyak"\n` +
+        `- "status langganan {nama instruktur}"`
       )
-      if (found) return sendAdminReply(`Halo ${greet}! 📋 ${summarize(found)}`)
-      return sendAdminReply(`Halo ${greet}! Maaf, tidak ketemu instruktur dengan nama "${statusMatch[1].trim()}" 🙏`)
     }
 
-    return sendAdminReply(
-      `Halo ${greet}! 👋 Aku asisten developer FitFlow Coach.\n\n` +
-      `Kamu bisa tanya:\n` +
-      `- "list instruktur"\n` +
-      `- "member terbanyak" / "kelas terbanyak"\n` +
-      `- "status langganan {nama instruktur}"`
-    )
+    // ── Bukan developer → calon klien yang tertarik FitFlow Coach ──────────
+    const platformAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+    const { data: prospectHistoryRows } = await supabase
+      .from('wa_conversations')
+      .select('role, message')
+      .eq('user_id', instructorProfile.id)
+      .eq('phone', adminPhoneKey)
+      .order('created_at', { ascending: false })
+      .limit(HISTORY_LIMIT)
+    const prospectHistory = (prospectHistoryRows ?? []).reverse()
+
+    const productSystemPrompt =
+      `Kamu adalah asisten WhatsApp resmi untuk *FitFlow Coach* — aplikasi SaaS untuk instruktur fitness Indonesia (kelola kelas, member, event, absensi digital, broadcast WhatsApp, AI bot WA otomatis, dan laporan pendapatan).
+
+TENTANG FITFLOW COACH:
+- Trial: 30 hari GRATIS, akses SEMUA fitur tanpa batas, tanpa kartu kredit
+- Cara mulai: isi form di ${platformAppUrl}/daftar — tim kami konfirmasi manual, biasanya cepat
+- Info & demo lengkap: ${platformAppUrl}/home
+
+PAKET HARGA (semua paket dapat AI Caption Generator & AI Bot WA — bedanya cuma kuota):
+- Starter Rp99.000/bulan — 3 kelas aktif, 150 broadcast WA/bulan
+- Pro Rp199.000/bulan (PALING POPULER) — 10 kelas aktif, 600 broadcast WA/bulan
+- Studio Rp349.000/bulan — kelas & broadcast unlimited
+- Diskon: 3 bulan -10%, 6 bulan -15%, 12 bulan bayar 10 gratis 2 bulan
+- Pembayaran manual via transfer, dicatat tim kami — tidak ada kontrak jangka panjang, bisa ganti paket kapan saja
+
+CARA MENJAWAB:
+- WAJIB selalu panggil orang yang chat dengan sebutan "Kak" — contoh: "Halo ${greet}!", "Boleh, Kak!"
+- Selalu suportif, hangat, dan memotivasi — buat calon klien merasa disambut baik
+- Bahasa Indonesia santai, emoji secukupnya
+- Jawaban ringkas, kalau ada beberapa topik pisah jadi paragraf baru (baris kosong) — jangan satu paragraf panjang
+- PENTING: WhatsApp cuma pakai SATU bintang untuk bold (*teks*) — JANGAN PERNAH dua bintang (**teks**)
+- Kalau orang tertarik daftar/coba, arahkan ke ${platformAppUrl}/daftar (trial 30 hari dulu, baru pilih paket)
+- Kalau pertanyaannya di luar soal FitFlow Coach (misal nanya soal kelas/jadwal instruktur tertentu), jelaskan ini bot khusus info aplikasi FitFlow Coach, sarankan hubungi instruktur terkait langsung
+- JANGAN mengarang fitur/harga yang tidak ada di atas
+- Mulai jawaban langsung tanpa sapaan panjang`
+
+    let prospectReply = ''
+    try {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const userMsg = senderName ? `[${senderName}]: ${message}` : message
+      const res = await anthropic.messages.create({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        system:     productSystemPrompt,
+        messages:   [
+          ...prospectHistory.map(h => ({ role: h.role as 'user' | 'assistant', content: h.message })),
+          { role: 'user', content: userMsg },
+        ],
+      })
+      prospectReply = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
+      prospectReply = prospectReply.replace(/\*\*/g, '*')
+    } catch (err) {
+      console.error('[WA Bot] Claude error (product assistant):', err)
+      prospectReply = `Halo ${greet}! Maaf, asisten kami sedang sibuk 🙏 Coba cek ${platformAppUrl}/home untuk info lengkap ya.`
+    }
+
+    return sendAdminReply(prospectReply)
   }
 
   const today = new Date().toISOString().split('T')[0]

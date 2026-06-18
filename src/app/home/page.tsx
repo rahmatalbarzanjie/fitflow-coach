@@ -40,7 +40,11 @@ const FAQ = [
 export default async function HomePage() {
   const enabledFlag = await getSystemConfig('home_page_enabled')
   const isEnabled = enabledFlag !== 'false'
-  const adminWA = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
+  // Tombol "Tanya dulu via WhatsApp" di pricing diarahkan ke nomor BOT
+  // developer (bukan nomor pribadi admin_wa) — supaya calon klien yang
+  // chat langsung dilayani asisten AI seputar FitFlow Coach, bukan ke
+  // chat pribadi yang belum tentu langsung dibalas.
+  const adminWA = (await getSystemConfig('platform_bot_phone')) || (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
 
   if (!isEnabled) {
     return (
