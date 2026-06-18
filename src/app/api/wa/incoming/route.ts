@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp'
-import { DAY_NAMES, formatTime, formatRupiah } from '@/lib/utils'
+import { DAY_NAMES, formatTime, formatRupiah, formatDate } from '@/lib/utils'
 
 const HISTORY_LIMIT = 20
 
@@ -12,6 +12,15 @@ const TYPE_TITLE: Record<string, string> = {
   poundfit: 'Pro',
   barre:    'Teacher',
   zumba:    'Zin',
+}
+
+// Tanggal kemunculan kelas berikutnya dari day_of_week (kelas berulang
+// mingguan, jadi kuota/peserta per sesi minggu berjalan, bukan kumulatif).
+function nextOccurrence(dayOfWeek: number, from: Date) {
+  const diff = (dayOfWeek - from.getDay() + 7) % 7
+  const d = new Date(from)
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split('T')[0]
 }
 
 /*
@@ -167,6 +176,92 @@ export async function POST(request: Request) {
       (e.description ? `\n  Info: ${e.description}` : '')
   }).join('\n\n') || '- (tidak ada event mendatang)'
 
+  // Kirim balasan deterministik (tanpa panggil Claude), simpan ke riwayat,
+  // lalu selesai. Dipakai semua fast-path di bawah (jadwal & laporan).
+  async function sendFastReply(text: string) {
+    await supabase.from('wa_conversations').insert([
+      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
+      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: text },
+    ])
+    const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
+    await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
+    return NextResponse.json({ ok: true, fastPath: true })
+  }
+
+  // ── Laporan khusus instruktur (read-only) — hanya aktif kalau pengirim
+  // adalah nomor pribadi instruktur sendiri, BUKAN calon member/peserta yang
+  // sedang chat ke bot. Mencegah orang luar minta data peserta/member orang.
+  const isInstructorSender = !!personalPhone && cleanSender === personalPhone
+  if (isInstructorSender) {
+    // 1) Peserta kelas tertentu — "siapa yang daftar kelas Barre", "peserta poundfit"
+    const pesertaMatch = /(?:siapa(?:\s+yang)?\s+(?:daftar|ikut)|peserta|daftar\s+peserta)\s*(?:kelas\s+)?(.+)/i.exec(message)
+    if (pesertaMatch) {
+      const query = pesertaMatch[1].trim().toLowerCase()
+      const matchedClasses = (classes ?? []).filter((c: any) =>
+        c.name.toLowerCase().includes(query) || c.type.toLowerCase().includes(query) || query.includes(c.type.toLowerCase())
+      )
+      if (matchedClasses.length > 0) {
+        const blocks = await Promise.all(matchedClasses.map(async (c: any) => {
+          const targetDate = nextOccurrence(c.day_of_week, now)
+          const { data: regs } = await supabase
+            .from('registrations')
+            .select('registrant_name, payment_status')
+            .eq('class_id', c.id)
+            .eq('session_date', targetDate)
+            .in('payment_status', ['pending', 'confirmed'])
+          const lines = (regs ?? []).map((r: any) =>
+            `- ${r.registrant_name}${r.payment_status === 'pending' ? ' (belum konfirmasi)' : ''}`
+          ).join('\n') || '(belum ada yang daftar)'
+          return `*${c.name}* — ${formatDate(targetDate)}\n${lines}\nTotal: ${regs?.length ?? 0} orang`
+        }))
+        return sendFastReply(`Halo Kak! 📋 Ini daftar peserta yang Kakak minta:\n\n${blocks.join('\n\n')}`)
+      }
+    }
+
+    // 2) Absensi/kehadiran hari ini — "absensi hari ini", "siapa yang hadir"
+    if (/absensi|kehadiran|siapa.*hadir|yang hadir/i.test(message)) {
+      const { data: todaySessions } = await supabase
+        .from('sessions')
+        .select('id, classes(name)')
+        .eq('user_id', instructorProfile.id)
+        .eq('session_date', today)
+      const sessionIds = (todaySessions ?? []).map((s: any) => s.id)
+      const { data: attendanceRows } = sessionIds.length > 0
+        ? await supabase.from('attendance').select('session_id, members(name)').in('session_id', sessionIds)
+        : { data: [] as any[] }
+
+      if (!todaySessions || todaySessions.length === 0) {
+        return sendFastReply(`Halo Kak! 📋 Tidak ada kelas hari ini, jadi belum ada absensi untuk dilaporkan ya 😊`)
+      }
+
+      const blocks = todaySessions.map((s: any) => {
+        const names = (attendanceRows ?? [])
+          .filter((a: any) => a.session_id === s.id)
+          .map((a: any) => `- ${(a.members as any)?.name ?? '(tanpa nama)'}`)
+          .join('\n') || '(belum ada yang absen)'
+        return `*${s.classes?.name ?? 'Kelas'}*\n${names}`
+      })
+      return sendFastReply(`Halo Kak! 📋 Absensi hari ini (${todayLabel}):\n\n${blocks.join('\n\n')}`)
+    }
+
+    // 3) Ringkasan member — "berapa member aktif", "member at risk"
+    if (/berapa\s+member|member\s+aktif|member\s+at.?risk|jumlah\s+member/i.test(message)) {
+      const [{ count: total }, { count: active }, { count: atRisk }, { count: inactive }] = await Promise.all([
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'active'),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'at_risk'),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'inactive'),
+      ])
+      return sendFastReply(
+        `Halo Kak! 📋 Ringkasan member:\n\n` +
+        `Total: ${total ?? 0} member\n` +
+        `✅ Aktif: ${active ?? 0}\n` +
+        `⚠️ Perlu perhatian: ${atRisk ?? 0}\n` +
+        `💤 Tidak aktif: ${inactive ?? 0}`
+      )
+    }
+  }
+
   // ── Fast-path: pertanyaan jadwal dijawab langsung tanpa panggil Claude ──────
   // Ini intent paling sering & jawabannya selalu sama (daftar kelas/event apa
   // adanya) — daripada bayar token Claude + tunggu API tiap kali, langsung
@@ -187,15 +282,7 @@ export async function POST(request: Request) {
       (!asksToday && events && events.length > 0 ? `\n\nEvent mendatang:\n\n${eventLines}` : '') +
       `\n\nMau daftar kelas/event yang mana, Kak? Tinggal sebutin aja ya 😊`
 
-    await supabase.from('wa_conversations').insert([
-      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
-      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: fastReply },
-    ])
-
-    const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
-    await sendWhatsApp(senderPhone, fastReply, instructorProfile.fonnte_token ?? null)
-
-    return NextResponse.json({ ok: true, fastPath: true })
+    return sendFastReply(fastReply)
   }
 
   const systemPrompt =
