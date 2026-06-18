@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   const [{ data: classes }, { data: events }] = await Promise.all([
     supabase
       .from('classes')
-      .select('name, type, day_of_week, start_time, end_time, location, capacity')
+      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, class_price')
       .eq('user_id', instructorProfile.id)
       .order('day_of_week')
       .order('start_time'),
@@ -106,11 +106,14 @@ export async function POST(request: Request) {
   const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const slug       = instructorProfile.slug ?? ''
 
-  const classLines = (classes ?? []).map((c: any) =>
-    `- ${c.name} (${c.type}): ${DAY_NAMES[c.day_of_week]}, ${formatTime(c.start_time)}–${formatTime(c.end_time)}` +
-    `${c.location ? ` di ${c.location}` : ''}` +
-    `${c.capacity ? ` (maks ${c.capacity} orang)` : ''}`
-  ).join('\n') || '- (belum ada kelas terdaftar)'
+  const classLines = (classes ?? []).map((c: any) => {
+    const price   = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
+    const regLink = slug ? `${appUrl}/${slug}/daftar/kelas/${c.id}` : '(link belum tersedia)'
+    return `- *${c.name}* (${c.type}): ${DAY_NAMES[c.day_of_week]}, ${formatTime(c.start_time)}–${formatTime(c.end_time)}` +
+      `${c.location ? ` di ${c.location}` : ''}` +
+      `${c.capacity ? ` (maks ${c.capacity} orang)` : ''}\n` +
+      `  Harga: ${price}\n  Daftar: ${regLink}`
+  }).join('\n\n') || '- (belum ada kelas terdaftar)'
 
   const eventLines = (events ?? []).map((e: any) => {
     const ebAvail = Number(e.early_bird_price) > 0 &&
@@ -144,7 +147,9 @@ CARA MENJAWAB:
 - Jawaban SINGKAT — maks 3-4 kalimat (ini WhatsApp, bukan email)
 - Gunakan emoji secukupnya agar terasa personal
 - Untuk pertanyaan jadwal atau event → berikan info yang ada di atas
-- Untuk link pendaftaran event → copy-paste link yang ada
+- Kalau orang menyatakan niat daftar/ikut kelas atau event TERTENTU, cocokkan namanya dengan data di atas dan balas dengan link "Daftar" yang SESUAI dengan item itu — jangan sampai ketuker kasih link kelas/event lain
+- Kalau tidak jelas kelas/event mana yang dimaksud (nama disebut umum, atau ada beberapa kandidat yang cocok), tanya dulu mau yang mana sebelum kasih link apa pun — jangan menebak
+- Kalau cuma tanya-tanya info tanpa niat daftar, jawab informatif saja tanpa otomatis menyodorkan link
 - Jika pertanyaan tidak bisa dijawab → sarankan hubungi ${instructorProfile.name} langsung di nomor yang sama
 - JANGAN membuat info, harga, atau jadwal yang tidak ada di data di atas
 - Mulai jawaban langsung tanpa sapaan panjang`
