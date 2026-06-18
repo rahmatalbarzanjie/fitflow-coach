@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, CheckSquare } from 'lucide-react'
+import { ArrowLeft, Calendar, CheckSquare, Users } from 'lucide-react'
 import { ClassEditForm } from '@/components/classes/ClassEditForm'
 import { DeleteButton } from '@/components/ui/DeleteButton'
 import { Card } from '@/components/ui/card'
@@ -58,6 +58,13 @@ export default async function ClassDetailPage({
             {typeLabel[cls.type] ?? cls.type}
           </Badge>
         </div>
+        <Link
+          href={`/classes/${id}/registrations`}
+          className="flex items-center gap-1.5 h-8 px-3 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-lg text-xs font-medium transition-colors shrink-0"
+        >
+          <Users className="w-3.5 h-3.5" />
+          Kelola Peserta
+        </Link>
         <DeleteButton table="classes" id={id} redirectTo="/classes" />
       </div>
 

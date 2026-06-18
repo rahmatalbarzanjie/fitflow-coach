@@ -20,6 +20,7 @@ export const classSchema = z.object({
   description:        z.string().optional(),
   class_price:        z.coerce.number().min(0).optional().nullable(),
   revenue_share_pct:  z.coerce.number().int().min(0).max(100).default(50),
+  show_registrations: z.boolean().default(false),
 })
 
 export type ClassFormData = z.infer<typeof classSchema>

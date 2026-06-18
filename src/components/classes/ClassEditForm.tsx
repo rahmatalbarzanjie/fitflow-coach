@@ -24,6 +24,7 @@ interface Props {
     class_price?: number | null
     revenue_share_pct?: number | null
     cover_image_url?: string | null
+    show_registrations?: boolean | null
   }
 }
 
@@ -57,6 +58,7 @@ export function ClassEditForm({ cls }: Props) {
       description:       cls.description ?? '',
       class_price:       cls.class_price ?? undefined,
       revenue_share_pct: cls.revenue_share_pct ?? 50,
+      show_registrations: cls.show_registrations ?? false,
     },
   })
 
@@ -83,6 +85,7 @@ export function ClassEditForm({ cls }: Props) {
         description:       data.description || null,
         class_price:       data.class_price || null,
         revenue_share_pct: data.revenue_share_pct,
+        show_registrations: data.show_registrations,
       })
       .eq('id', cls.id)
 
@@ -160,6 +163,14 @@ export function ClassEditForm({ cls }: Props) {
           <input {...register('capacity')} type="number" min="1" placeholder="Tak terbatas" className={inputClass} />
         </div>
       </div>
+
+      <label className="flex items-center gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50 cursor-pointer">
+        <input {...register('show_registrations')} type="checkbox" className="w-4 h-4 rounded accent-violet-600" />
+        <span className="text-sm text-gray-700">
+          Tampilkan peserta &amp; kuota di landing page
+          <span className="block text-xs text-gray-400">Pengunjung bisa lihat siapa saja yang sudah daftar dan sisa kuota kelas ini</span>
+        </span>
+      </label>
 
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">

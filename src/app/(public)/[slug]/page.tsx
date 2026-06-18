@@ -52,6 +52,13 @@ function getTypeConfig(type: string) {
   }
 }
 
+function nextOccurrence(dayOfWeek: number, from: Date) {
+  const diff = (dayOfWeek - from.getDay() + 7) % 7
+  const d = new Date(from)
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split('T')[0]
+}
+
 function countdownBadge(daysUntil: number) {
   if (daysUntil <= 0)  return { label: 'Hari Ini!',           bg: 'bg-red-600' }
   if (daysUntil === 1) return { label: '1 Hari Lagi',          bg: 'bg-red-600' }
@@ -97,7 +104,7 @@ export default async function InstructorLandingPage({
   const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes] = await Promise.all([
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, description, cover_image_url')
+      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, description, cover_image_url, class_price, show_registrations')
       .eq('user_id', profile.id)
       .order('day_of_week').order('start_time'),
     supabase
@@ -156,6 +163,29 @@ export default async function InstructorLandingPage({
       .in('event_id', events.map(e => e.id))
       .in('payment_status', ['pending', 'confirmed'])
     regs?.forEach((r: any) => { regCountMap[r.event_id] = (regCountMap[r.event_id] || 0) + 1 })
+  }
+
+  // Kelas dengan registrasi ditampilkan publik — hitung target tanggal sesi
+  // berikutnya per kelas (pakai reschedule kalau ada), lalu ambil peserta
+  // yang terdaftar untuk tanggal itu.
+  const visibleClasses = classes.filter((c: any) => c.show_registrations)
+  const classTargetDateMap = new Map<string, string>()
+  visibleClasses.forEach((c: any) => {
+    const resched = rescheduledMap.get(c.id)
+    classTargetDateMap.set(c.id, resched?.session_date ?? nextOccurrence(c.day_of_week, new Date()))
+  })
+
+  const classRegMap: Record<string, { name: string }[]> = {}
+  if (visibleClasses.length > 0) {
+    const { data: classRegs } = await supabase
+      .from('registrations')
+      .select('class_id, session_date, registrant_name')
+      .in('class_id', visibleClasses.map((c: any) => c.id))
+      .in('payment_status', ['pending', 'confirmed'])
+    classRegs?.forEach((r: any) => {
+      if (classTargetDateMap.get(r.class_id) !== r.session_date) return
+      ;(classRegMap[r.class_id] ??= []).push({ name: r.registrant_name.split(' ')[0] })
+    })
   }
 
   // Group classes by type
@@ -276,7 +306,7 @@ export default async function InstructorLandingPage({
                         const reschedSess = rescheduledMap.get(cls.id)
                         const locSess     = locationMap.get(cls.id)
                         const displayLoc  = locSess?.override_location ?? cls.location
-                        const classWaMsg = encodeURIComponent(`Halo ${studio}! Saya mau daftar kelas ${cls.name} 😊`)
+                        const regNames    = classRegMap[cls.id] ?? []
                         return (
                         <div
                           key={cls.id}
@@ -344,17 +374,37 @@ export default async function InstructorLandingPage({
                             </details>
                           )}
 
-                          {waNumber && (
-                            <a
-                              href={`https://wa.me/${waNumber}?text=${classWaMsg}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`mt-4 w-full flex items-center justify-center gap-1.5 ${cfg.accentBg} ${cfg.accentText} font-bold py-2.5 rounded-xl text-sm hover:opacity-80 transition-opacity`}
-                            >
-                              Daftar Kelas
-                              <span className="material-symbols-outlined text-base">chevron_right</span>
-                            </a>
+                          {cls.show_registrations && (
+                            <div className="mt-3 pt-3 border-t border-outline-variant/50">
+                              {cls.capacity && (
+                                <div className="mb-1.5">
+                                  <div className="flex items-center justify-between text-xs text-on-surface-variant mb-1">
+                                    <span>{regNames.length} dari {cls.capacity} kuota</span>
+                                  </div>
+                                  <div className="h-1.5 bg-surface-variant rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full ${cfg.accentBg.replace('-50', '-400')}`}
+                                      style={{ width: `${Math.min(100, (regNames.length / cls.capacity) * 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {regNames.length > 0 && (
+                                <p className="text-xs text-on-surface-variant/80">
+                                  Sudah daftar: {regNames.slice(0, 3).map(r => r.name).join(', ')}
+                                  {regNames.length > 3 && ` +${regNames.length - 3} lainnya`}
+                                </p>
+                              )}
+                            </div>
                           )}
+
+                          <Link
+                            href={`/${slug}/daftar/kelas/${cls.id}`}
+                            className={`mt-3 w-full flex items-center justify-center gap-1.5 ${cfg.accentBg} ${cfg.accentText} font-bold py-2.5 rounded-xl text-sm hover:opacity-80 transition-opacity`}
+                          >
+                            Daftar Kelas
+                            <span className="material-symbols-outlined text-base">chevron_right</span>
+                          </Link>
                           </div>
                         </div>
                         )

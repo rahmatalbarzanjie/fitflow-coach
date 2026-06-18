@@ -17,11 +17,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Param tidak lengkap' }, { status: 400 })
   }
 
-  // Ambil data registrasi + event title (pastikan milik instruktur ini)
+  // Ambil data registrasi + judul event/kelas (pastikan milik instruktur ini)
   const [{ data: reg }, { data: profile }] = await Promise.all([
     supabase
       .from('registrations')
-      .select('registrant_name, registrant_phone, events(title)')
+      .select('registrant_name, registrant_phone, events(title), classes(name)')
       .eq('id', registrationId)
       .eq('user_id', user.id)
       .single(),
@@ -33,18 +33,18 @@ export async function POST(request: Request) {
 
   const name      = reg.registrant_name
   const phone     = reg.registrant_phone
-  const eventTitle = (reg.events as any)?.title ?? 'event'
+  const itemTitle = (reg.events as any)?.title ?? (reg.classes as any)?.name ?? 'kelas/event'
 
   let message = ''
   if (type === 'confirm') {
     message =
       `Halo *${name}*! 🎉\n\n` +
-      `Pembayaranmu untuk *${eventTitle}* sudah kami konfirmasi ✅\n\n` +
+      `Pembayaranmu untuk *${itemTitle}* sudah kami konfirmasi ✅\n\n` +
       `Sampai jumpa di acara, ya! Jangan lupa simpan tiket ini 💪`
   } else if (type === 'reject') {
     message =
       `Halo *${name}*, mohon maaf 🙏\n\n` +
-      `Pendaftaranmu untuk *${eventTitle}* belum bisa kami konfirmasi.` +
+      `Pendaftaranmu untuk *${itemTitle}* belum bisa kami konfirmasi.` +
       (reason ? `\n\nAlasan: ${reason}` : '') +
       `\n\nSilakan hubungi kami jika ada pertanyaan ya 😊`
   } else {

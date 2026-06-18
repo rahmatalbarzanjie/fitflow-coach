@@ -27,6 +27,11 @@ export const REGISTRATION_TIER = {
   ots:        { label: 'OTS'        },
 } as const
 
+export const PAYMENT_METHOD = {
+  cash:     { label: 'OTS'      },
+  transfer: { label: 'Transfer' },
+} as const
+
 export const PAYMENT_STATUS = {
   pending:   { label: 'Menunggu Konfirmasi', color: 'yellow' },
   confirmed: { label: 'Terkonfirmasi',       color: 'green'  },
