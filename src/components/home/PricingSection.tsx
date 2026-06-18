@@ -53,29 +53,33 @@ export function PricingSection() {
   return (
     <section className="py-16" id="pricing">
       <div className="max-w-5xl mx-auto px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Harga Transparan, Tanpa Kejutan</h2>
-        <p className="text-gray-500 text-center text-sm mb-3">Trial 30 hari akses penuh dulu, baru pilih paket yang cocok.</p>
+        <h2 className="font-montserrat text-2xl font-bold text-gray-900 text-center mb-2">Harga Transparan, Tanpa Kejutan</h2>
+        <p className="text-gray-500 text-center text-sm mb-5">Trial 30 hari akses penuh dulu, baru pilih paket yang cocok.</p>
 
         {/* Promo banner */}
-        <div className="max-w-md mx-auto mb-8 text-center">
-          <span className="inline-block text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-full">
-            🔥 Promo Peluncuran — Diskon tambahan 20% untuk 30 instruktur pertama
+        <div className="flex justify-center mb-8">
+          <span className="inline-flex items-center text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-100 px-4 py-2 rounded-full whitespace-nowrap">
+            🔥 Promo Peluncuran — 20% OFF untuk 30 instruktur pertama
           </span>
         </div>
 
         {/* Duration toggle */}
-        <div className="flex justify-center mb-10">
+        <div className="flex flex-col items-center gap-2 mb-10">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
             {DURATIONS.map(d => (
               <button
                 key={d.months}
                 onClick={() => setMonths(d.months)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   months === d.months ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 {d.label}
-                {d.months === 12 && <span className="ml-1 text-[10px] text-green-600 font-bold">Hemat!</span>}
+                {d.months === 12 && (
+                  <span className="absolute -top-2 -right-2 text-[9px] leading-none text-white bg-green-500 font-bold px-1.5 py-0.5 rounded-full">
+                    Hemat
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -91,7 +95,7 @@ export function PricingSection() {
             return (
               <div
                 key={plan.key}
-                className={`relative rounded-2xl border-2 p-6 hover-lift transition-all ${
+                className={`relative rounded-2xl border-2 p-6 pt-8 hover-lift transition-all h-full flex flex-col ${
                   plan.badge ? 'border-violet-500 shadow-lg shadow-violet-100' : 'border-gray-200'
                 }`}
               >
@@ -102,17 +106,17 @@ export function PricingSection() {
                 )}
                 <h3 className="font-bold text-gray-900 mb-1">{plan.name}</h3>
 
-                <div className="mb-1">
+                <div className="mb-1 min-h-[4.5rem]">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-gray-900">{formatRupiah(price.perMonth)}</span>
                     <span className="text-xs text-gray-400">/bulan</span>
                   </div>
-                  {hasDiscount && (
+                  {hasDiscount ? (
                     <p className="text-xs text-gray-400">
                       <span className="line-through">{formatRupiah(plan.monthly)}/bulan</span>
                       {' '}<span className="text-green-600 font-semibold">Hemat {Math.round((1 - price.total / price.normalTotal) * 100)}%</span>
                     </p>
-                  )}
+                  ) : <p className="text-xs text-gray-400">&nbsp;</p>}
                   <p className="text-xs text-gray-400 mt-0.5">
                     Total {formatRupiah(price.total)} {months > 1 && `untuk ${months} bulan`}
                     {months === 12 && <span className="text-green-600 font-medium"> (bayar 10, gratis 2!)</span>}
@@ -123,7 +127,7 @@ export function PricingSection() {
                   ✨ Semua paket dapat AI Caption Generator & AI Bot WA
                 </p>
 
-                <ul className="space-y-2 mb-5">
+                <ul className="space-y-2 mb-5 flex-1">
                   {plan.quotaItems.map(item => (
                     <li key={item} className="flex items-start gap-2 text-xs text-gray-700 font-medium">
                       <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
@@ -138,27 +142,29 @@ export function PricingSection() {
                   ))}
                 </ul>
 
-                <Link
-                  href="/daftar"
-                  className={`block text-center h-10 leading-10 rounded-xl text-sm font-semibold transition-colors mb-2 ${
-                    plan.badge
-                      ? 'bg-violet-600 hover:bg-violet-700 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  Pilih Paket Ini
-                </Link>
-                {waLink && (
-                  <a
-                    href={waLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-violet-600 transition-colors"
+                <div className="mt-auto">
+                  <Link
+                    href="/daftar"
+                    className={`block text-center h-10 leading-10 rounded-xl text-sm font-semibold transition-colors mb-2 ${
+                      plan.badge
+                        ? 'bg-violet-600 hover:bg-violet-700 text-white'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                    }`}
                   >
-                    <MessageCircle className="w-3 h-3" />
-                    Tanya dulu via WhatsApp
-                  </a>
-                )}
+                    Pilih Paket Ini
+                  </Link>
+                  {waLink && (
+                    <a
+                      href={waLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-violet-600 transition-colors"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      Tanya dulu via WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
             )
           })}

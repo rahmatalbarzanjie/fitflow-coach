@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Settings } from 'lucide-react'
 import { ConfigForm } from '@/components/admin/ConfigForm'
+import { LandingPageToggle } from '@/components/admin/LandingPageToggle'
 
 const CONFIG_FIELDS = [
   {
@@ -52,6 +53,8 @@ export default async function AdminConfigPage() {
           <p className="text-sm text-gray-400">Setting aplikasi tersimpan di database — tidak perlu edit .env</p>
         </div>
       </div>
+
+      <LandingPageToggle initialEnabled={config.home_page_enabled !== 'false'} />
 
       <Card className="mb-4">
         <ConfigForm fields={CONFIG_FIELDS} initialValues={config} />

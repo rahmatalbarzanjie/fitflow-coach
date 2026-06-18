@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/service'
 
 let _cache: Record<string, string> | null = null
@@ -8,6 +9,10 @@ export async function getSystemConfig(key: string): Promise<string | null> {
   try {
     const now = Date.now()
     if (!_cache || now - _cacheAt > TTL) {
+      // Supabase-js issues fetch di bawah tangan — tanpa ini, Next.js bisa
+      // nge-cache response-nya ke disk (.next/cache) lintas request/restart,
+      // jadi config baru tidak pernah terbaca sampai cache di-clear manual.
+      noStore()
       const supa = createServiceClient()
       const { data } = await supa.from('system_config').select('key, value')
       _cache = {}
