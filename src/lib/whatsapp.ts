@@ -139,10 +139,13 @@ export async function fonnteUpdateDeviceWebhook(
   try {
     // name & device wajib diisi di endpoint ini (selain webhook) — tanpa itu
     // Fonnte balas "input invalid" dan webhook tidak pernah benar ter-set.
+    // autoread+personal JUGA wajib true — tanpa ini Fonnte tidak meneruskan
+    // pesan masuk personal ke webhook sama sekali (device tetap "connect"
+    // tapi bot tidak pernah menerima/membalas apa pun).
     const res = await fetch('https://api.fonnte.com/update-device', {
       method:  'POST',
       headers: { Authorization: deviceToken, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name: deviceName, device: deviceId, webhook: webhookUrl }),
+      body:    JSON.stringify({ name: deviceName, device: deviceId, webhook: webhookUrl, autoread: true, personal: true }),
     })
     const json = await res.json()
     return json.status === true ? { ok: true } : { ok: false, reason: json.reason ?? json.detail }
