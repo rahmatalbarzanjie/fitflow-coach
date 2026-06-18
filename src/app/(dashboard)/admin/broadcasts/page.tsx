@@ -83,7 +83,7 @@ export default async function AdminBroadcastsPage({
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
                     <Link href={`/admin/${bc.user_id}`} className="hover:text-violet-600 transition-colors">
-                      {profileMap[bc.user_id] ?? '—'}
+                      {profileMap[bc.user_id] ?? '-'}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400 hidden md:table-cell">

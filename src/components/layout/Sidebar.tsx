@@ -121,7 +121,7 @@ export function Sidebar({ open, onClose }: Props) {
             )
           })}
 
-          {/* Settings link — instructor only */}
+          {/* Settings link - instructor only */}
           {!isAdmin && (
             <Link
               href="/settings"

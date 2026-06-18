@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
   const serviceSupabase = createServiceClient()
 
-  // instructor_requests.profile_id tidak ON DELETE CASCADE — lepaskan
+  // instructor_requests.profile_id tidak ON DELETE CASCADE - lepaskan
   // referensinya dulu supaya riwayat pendaftaran tetap ada tapi tidak
   // menghalangi penghapusan akun (semua tabel lain sudah CASCADE).
   await serviceSupabase

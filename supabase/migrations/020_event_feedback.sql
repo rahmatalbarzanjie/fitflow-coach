@@ -1,5 +1,5 @@
 -- Perluas feedback_invites/session_feedback (dibuat di migration 019 untuk
--- kelas) supaya bisa juga dipakai untuk Event — tabel tidak di-rename,
+-- kelas) supaya bisa juga dipakai untuk Event - tabel tidak di-rename,
 -- cukup ditambah kolom event_id/registration_id (nullable, salah satu jalur
 -- session_id+member_id ATAU event_id+registration_id yang terisi).
 ALTER TABLE feedback_invites

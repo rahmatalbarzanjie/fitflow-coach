@@ -9,7 +9,7 @@ import { ParticipantsList } from '@/components/public/ParticipantsList'
 import { CLASS_TYPES } from '@/lib/constants'
 
 // Halaman ini pakai service-role client (key statis, tidak ada cookie per
-// user) — fetch-nya jadi kandidat sempurna untuk Next.js Data Cache, yang
+// user) - fetch-nya jadi kandidat sempurna untuk Next.js Data Cache, yang
 // menyebabkan data baru (registrasi, toggle show_registrations, dst) tidak
 // langsung kelihatan. Paksa selalu fetch ulang per request.
 export const dynamic = 'force-dynamic'
@@ -176,7 +176,7 @@ export default async function InstructorLandingPage({
     regs?.forEach((r: any) => { regCountMap[r.event_id] = (regCountMap[r.event_id] || 0) + 1 })
   }
 
-  // Kelas dengan registrasi ditampilkan publik — hitung target tanggal sesi
+  // Kelas dengan registrasi ditampilkan publik - hitung target tanggal sesi
   // berikutnya per kelas (pakai reschedule kalau ada), lalu ambil peserta
   // yang terdaftar untuk tanggal itu.
   const visibleClasses = classes.filter((c: any) => c.show_registrations)

@@ -30,7 +30,7 @@ export function RegistrationForm({
 }: Props) {
   const [name,     setName]     = useState('')
   const [phone,    setPhone]    = useState('')
-  // Tier is auto-determined by quota — no manual user choice
+  // Tier is auto-determined by quota - no manual user choice
   const tier = earlyBirdAvailable ? 'early_bird' : 'ots'
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -69,7 +69,7 @@ export function RegistrationForm({
       // Upload gagal → lanjutkan tanpa proof (bisa kirim via WA)
     }
 
-    // ID di-generate di client supaya tidak perlu .select() setelah insert —
+    // ID di-generate di client supaya tidak perlu .select() setelah insert -
     // peserta publik (anon) cuma punya izin INSERT, bukan SELECT, jadi
     // .select().single() setelah insert akan gagal kena RLS.
     const registrationId = crypto.randomUUID()
@@ -196,7 +196,7 @@ export function RegistrationForm({
           <p className="text-xs text-gray-400">Untuk konfirmasi pendaftaran</p>
         </div>
 
-        {/* Total — auto-priced, no manual tier choice */}
+        {/* Total - auto-priced, no manual tier choice */}
         <div className={`flex items-center justify-between p-3 rounded-xl ${tier === 'early_bird' ? 'bg-green-50 border border-green-100' : 'bg-violet-50 border border-violet-100'}`}>
           <div>
             <p className="text-xs font-medium text-gray-500">

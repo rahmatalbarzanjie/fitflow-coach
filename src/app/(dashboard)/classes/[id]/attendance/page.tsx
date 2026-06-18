@@ -17,7 +17,7 @@ export default async function AttendancePage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch class — 404 if not owner
+  // Fetch class - 404 if not owner
   const { data: cls } = await (supabase.from('classes') as any)
     .select('id, name, type, start_time, end_time, user_id, payment_mode, class_price')
     .eq('id', id)

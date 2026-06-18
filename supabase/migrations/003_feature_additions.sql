@@ -1,6 +1,6 @@
 -- ============================================================
--- FitFlow Coach — Migration 003: Feature Additions
--- Jalankan di Supabase SQL Editor (aman diulang — IF NOT EXISTS)
+-- FitFlow Coach - Migration 003: Feature Additions
+-- Jalankan di Supabase SQL Editor (aman diulang - IF NOT EXISTS)
 -- ============================================================
 
 -- ────────────────────────────────────────────
@@ -54,13 +54,13 @@ SET trial_expires_at = NOW() + INTERVAL '30 days'
 WHERE trial_expires_at IS NULL;
 
 -- ============================================================
--- STORAGE BUCKETS — Buat manual di Supabase Dashboard:
+-- STORAGE BUCKETS - Buat manual di Supabase Dashboard:
 -- Storage → New Bucket → isi nama → centang "Public bucket"
 --
 -- Bucket yang diperlukan:
---   1. event-covers   (public) — flyer / cover event
---   2. member-photos  (public) — foto profil member
---   3. payment-proofs (public) — bukti transfer peserta
+--   1. event-covers   (public) - flyer / cover event
+--   2. member-photos  (public) - foto profil member
+--   3. payment-proofs (public) - bukti transfer peserta
 --
 -- Atau jalankan SQL berikut jika ekstensi storage aktif:
 -- ============================================================

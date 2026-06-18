@@ -34,7 +34,7 @@ export function ImpersonateButton({ profileId, name }: Props) {
     return (
       <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
         <p className="text-xs text-amber-700 mb-2">
-          Masuk sebagai <strong>{name}</strong>? Sesi developer Anda akan diganti — setelah selesai, logout lalu login lagi pakai akun developer.
+          Masuk sebagai <strong>{name}</strong>? Sesi developer Anda akan diganti - setelah selesai, logout lalu login lagi pakai akun developer.
         </p>
         {error && (
           <p className="flex items-center gap-1 text-xs text-red-600 mb-2">

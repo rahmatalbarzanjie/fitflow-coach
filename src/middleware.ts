@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
   const adminEmail = process.env.ADMIN_EMAIL
   const isAdminUser = user?.email === adminEmail
 
-  // /register dimatikan — semua pendaftaran instruktur wajib lewat /daftar
+  // /register dimatikan - semua pendaftaran instruktur wajib lewat /daftar
   // (request + persetujuan admin), supaya tidak ada akun yang dibuat tanpa approval.
   if (path.startsWith('/register')) {
     return NextResponse.redirect(new URL('/daftar', request.url))
@@ -66,7 +66,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin: /settings is instructor-scoped (profil, nomor bot, halaman publik per
-  // instruktur) — tidak relevan untuk akun developer, arahkan ke Konfigurasi platform
+  // instruktur) - tidak relevan untuk akun developer, arahkan ke Konfigurasi platform
   if (path.startsWith('/settings') && isAdminUser) {
     return NextResponse.redirect(new URL('/admin/config', request.url))
   }
@@ -87,7 +87,7 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    // Expiry berlaku untuk status apapun (trial atau active) — pembayaran
+    // Expiry berlaku untuk status apapun (trial atau active) - pembayaran
     // punya durasi nyata sekarang, jadi "active" tidak lagi berarti lifetime.
     const expiresAt = (profile as any)?.trial_expires_at
     if (expiresAt && new Date(expiresAt) < new Date()) {

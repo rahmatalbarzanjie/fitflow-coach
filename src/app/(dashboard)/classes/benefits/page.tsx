@@ -33,7 +33,7 @@ export default async function ClassBenefitsPage() {
 
       {!usedTypes.length ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-          <p className="text-sm text-gray-400">Belum ada kelas — tambah kelas dulu untuk atur manfaatnya.</p>
+          <p className="text-sm text-gray-400">Belum ada kelas - tambah kelas dulu untuk atur manfaatnya.</p>
         </div>
       ) : (
         <div className="space-y-3">

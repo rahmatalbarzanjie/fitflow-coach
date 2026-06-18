@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { ExtraClassForm } from './ExtraClassForm'
 
-export const metadata = { title: 'Kelas Ekstra — FitFlow Coach' }
+export const metadata = { title: 'Kelas Ekstra - FitFlow Coach' }
 
 export default async function ExtraClassPage() {
   const supabase = await createClient()

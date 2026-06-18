@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: linkErr?.message ?? 'Gagal membuat sesi' }, { status: 500 })
   }
 
-  // Verifikasi token langsung server-side — ini set cookie sesi instruktur
+  // Verifikasi token langsung server-side - ini set cookie sesi instruktur
   // tersebut pada response ini, tanpa lewat email/redirect Supabase sama sekali.
   const { error: verifyErr } = await supabase.auth.verifyOtp({
     type:       'magiclink',

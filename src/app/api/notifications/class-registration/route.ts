@@ -6,7 +6,7 @@ import { formatDate, formatTime } from '@/lib/utils'
 /*
  * POST /api/notifications/class-registration
  * Dipanggil dari ClassRegistrationForm (publik, tanpa login) tepat setelah
- * insert sukses — kasih kabar ke peserta bahwa pendaftarannya sudah diterima,
+ * insert sukses - kasih kabar ke peserta bahwa pendaftarannya sudah diterima,
  * lengkap dengan detail kelas, dan ke instruktur dengan link langsung ke
  * halaman validasi (tinggal klik, tidak perlu buka browser & navigasi manual).
  * Body: { registrationId: string }
@@ -36,9 +36,9 @@ export async function POST(request: Request) {
   const instructorToken = (profile as { phone: string | null; fonnte_token: string | null } | null)?.fonnte_token ?? null
   const instructorPhone = (profile as { phone: string | null; fonnte_token: string | null } | null)?.phone ?? null
 
-  const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const name      = reg.registrant_name
-  const cls       = reg.classes as any
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const name = reg.registrant_name
+  const cls = reg.classes as any
   const className = cls?.name ?? 'kelas'
 
   const detailLines =
@@ -57,15 +57,15 @@ export async function POST(request: Request) {
 
   const sent = await sendWhatsApp(reg.registrant_phone, message, instructorToken)
 
-  // Kabari instruktur juga — supaya tidak perlu cek manual ke web tiap saat
+  // Kabari instruktur juga - supaya tidak perlu cek manual ke web tiap saat
   if (instructorPhone) {
     const methodLabel = reg.payment_method === 'transfer' ? 'Transfer (menunggu konfirmasi)'
       : reg.payment_method === 'cash' ? 'OTS (sudah confirmed)'
-      : 'Gratis'
+        : 'Gratis'
     const validateLink = appUrl ? `${appUrl}/classes/${reg.class_id}/registrations` : null
     const instructorMsg =
       `🔔 *Pendaftaran Baru*\n\n` +
-      `${name} (${reg.registrant_phone}) baru daftar *${className}*\n` +
+      `${name} (${reg.registrant_phone ?? '-'}) baru daftar *${className}*\n` +
       `${formatDate(reg.session_date)}\n` +
       `Metode: ${methodLabel}` +
       (validateLink ? `\n\n👉 Lihat & validasi:\n${validateLink}` : '')

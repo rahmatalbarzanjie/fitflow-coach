@@ -109,7 +109,7 @@ export function ProfileForm({ profile, appUrl }: Props) {
       {/* Business name */}
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">Nama Studio / Usaha</label>
-        <input {...register('business_name')} placeholder="Opsional — tampil di halaman publik" className={inp} />
+        <input {...register('business_name')} placeholder="Opsional - tampil di halaman publik" className={inp} />
       </div>
 
       {/* Phone / WhatsApp */}

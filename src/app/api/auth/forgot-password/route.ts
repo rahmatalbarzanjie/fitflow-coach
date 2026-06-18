@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp'
 
-// Endpoint publik — tidak butuh login. Selalu balas sukses generik supaya
+// Endpoint publik - tidak butuh login. Selalu balas sukses generik supaya
 // tidak bisa dipakai mengecek nomor mana yang terdaftar (anti-enumeration).
 const GENERIC_RESPONSE = NextResponse.json({
   ok: true,

@@ -90,17 +90,17 @@ export default async function AdminMembersPage({
               {members.map(m => (
                 <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{m.phone ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{m.phone ?? '-'}</td>
                   <td className="px-4 py-3">
                     <MemberStatusBadge status={(m.status ?? 'inactive') as any} />
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden sm:table-cell">
                     <Link href={`/admin/${m.user_id}`} className="hover:text-violet-600 transition-colors">
-                      {profileMap[m.user_id] ?? '—'}
+                      {profileMap[m.user_id] ?? '-'}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400 hidden md:table-cell">
-                    {m.created_at ? formatDateShort(m.created_at) : '—'}
+                    {m.created_at ? formatDateShort(m.created_at) : '-'}
                   </td>
                 </tr>
               ))}

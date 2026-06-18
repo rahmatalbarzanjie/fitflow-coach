@@ -1,4 +1,4 @@
--- Tracking siapa diundang & sudah pakai jatahnya — TIDAK terhubung ke isi
+-- Tracking siapa diundang & sudah pakai jatahnya - TIDAK terhubung ke isi
 -- feedback, hanya untuk kirim WA & cegah double-submit per attendee per sesi.
 CREATE TABLE IF NOT EXISTS feedback_invites (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -19,7 +19,7 @@ CREATE POLICY "feedback_invites: update own" ON feedback_invites FOR UPDATE USIN
 
 CREATE INDEX IF NOT EXISTS idx_feedback_invites_session ON feedback_invites(session_id);
 
--- Isi feedback — SENGAJA tidak ada member_id/nama sama sekali, demi anonimitas penuh.
+-- Isi feedback - SENGAJA tidak ada member_id/nama sama sekali, demi anonimitas penuh.
 CREATE TABLE IF NOT EXISTS session_feedback (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS session_feedback (
 
 ALTER TABLE session_feedback ENABLE ROW LEVEL SECURITY;
 
--- Hanya select own (instruktur baca) — tidak ada policy insert publik,
+-- Hanya select own (instruktur baca) - tidak ada policy insert publik,
 -- insert dilakukan lewat API route dengan service client saja.
 CREATE POLICY "session_feedback: select own" ON session_feedback FOR SELECT USING (auth.uid() = user_id);
 

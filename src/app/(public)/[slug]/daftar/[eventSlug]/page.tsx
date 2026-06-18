@@ -148,7 +148,7 @@ export default async function PublicRegistrationPage({
             <div className="mb-2">
               {Number(event.early_bird_price) > 0 && (
                 <p className="text-xs text-gray-400 line-through text-center mb-1">
-                  Early Bird: {formatRupiah(Number(event.early_bird_price))} — Habis
+                  Early Bird: {formatRupiah(Number(event.early_bird_price))} - Habis
                 </p>
               )}
               <div className="p-3 bg-violet-50 border-2 border-violet-300 rounded-xl">

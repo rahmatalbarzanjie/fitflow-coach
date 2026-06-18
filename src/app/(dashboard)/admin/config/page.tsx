@@ -50,7 +50,7 @@ export default async function AdminConfigPage() {
         <Settings className="w-5 h-5 text-violet-600" />
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Konfigurasi Sistem</h1>
-          <p className="text-sm text-gray-400">Setting aplikasi tersimpan di database — tidak perlu edit .env</p>
+          <p className="text-sm text-gray-400">Setting aplikasi tersimpan di database - tidak perlu edit .env</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export default async function AdminConfigPage() {
           ].map(([k, d]) => (
             <li key={k} className="text-xs text-amber-700">
               <code className="bg-amber-100 px-1 rounded">{k}</code>
-              <span className="text-amber-600 ml-1">— {d}</span>
+              <span className="text-amber-600 ml-1">- {d}</span>
             </li>
           ))}
         </ul>

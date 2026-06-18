@@ -68,7 +68,7 @@ export default async function AdminInstructorsPage() {
                       {botConnected ? 'Bot WA ✓' : 'Bot WA belum setup'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{p.phone ?? '—'}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{p.phone ?? '-'}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     Daftar: {formatDateShort(p.created_at ?? new Date().toISOString())}
                     {p.trial_expires_at && ` · Trial s/d ${formatDateShort(p.trial_expires_at)}`}

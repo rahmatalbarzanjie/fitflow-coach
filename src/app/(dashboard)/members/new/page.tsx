@@ -99,7 +99,7 @@ export default function NewMemberPage() {
               </div>
               <input type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoChange} />
             </label>
-            <p className="text-xs text-gray-400">Foto opsional — klik untuk upload atau foto langsung</p>
+            <p className="text-xs text-gray-400">Foto opsional - klik untuk upload atau foto langsung</p>
           </div>
 
           {/* Name */}

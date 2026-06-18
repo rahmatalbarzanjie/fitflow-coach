@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
--- Tidak ada policy publik — hanya service role (pola sama seperti system_config, migration 012)
+-- Tidak ada policy publik - hanya service role (pola sama seperti system_config, migration 012)
 
 CREATE INDEX IF NOT EXISTS idx_payments_profile ON payments(profile_id);

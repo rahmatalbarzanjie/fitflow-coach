@@ -105,7 +105,7 @@ export default async function BroadcastsPage({
                       <Badge color="violet">{AUDIENCE_LABEL[bc.target_audience] ?? bc.target_audience}</Badge>
                       {(bc as any).target_class_id && (
                         <Badge color={(bc as any).group_sent_at ? 'green' : 'blue'}>
-                          {(bc as any).group_sent_at ? 'Terkirim ke grup' : `Grup: ${groupName ?? '—'}`}
+                          {(bc as any).group_sent_at ? 'Terkirim ke grup' : `Grup: ${groupName ?? '-'}`}
                         </Badge>
                       )}
                     </div>

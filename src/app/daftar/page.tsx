@@ -70,7 +70,7 @@ export default function DaftarPage() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900">FitFlow Coach</h1>
           </Link>
-          <p className="text-sm text-gray-500 mt-1">Daftar sebagai instruktur — trial 30 hari gratis</p>
+          <p className="text-sm text-gray-500 mt-1">Daftar sebagai instruktur - trial 30 hari gratis</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

@@ -7,7 +7,7 @@ import { createServiceClient } from '@/lib/supabase/service'
  * Body: { profileId: string, action: 'extend', months: number } | { profileId: string, action: 'end' }
  *
  * TrialManager sebelumnya update `profiles` langsung dari browser (RLS-bound),
- * tapi policy update cuma izinkan auth.uid() = id — gagal diam-diam saat admin
+ * tapi policy update cuma izinkan auth.uid() = id - gagal diam-diam saat admin
  * mengubah profil instruktur lain. Pakai service-role di sini supaya benar.
  */
 export async function POST(request: Request) {

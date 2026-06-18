@@ -172,7 +172,7 @@ export default async function RegistrationsPage({
         </div>
       )}
 
-      {/* Kritik & Saran — anonim, untuk konsumsi pribadi instruktur */}
+      {/* Kritik & Saran - anonim, untuk konsumsi pribadi instruktur */}
       {(feedbackList ?? []).length > 0 && (
         <Card className="mt-4">
           <div className="flex items-center gap-2 mb-3">

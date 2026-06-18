@@ -83,7 +83,7 @@ export default async function ClassDetailPage({
         />
       </div>
 
-      {/* Schedule manager — reschedule / ubah lokasi */}
+      {/* Schedule manager - reschedule / ubah lokasi */}
       <ClassScheduleManager
         classId={cls.id}
         className={cls.name}

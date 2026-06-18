@@ -69,7 +69,7 @@ export function ClassRegistrationForm({
     const paymentMethod = isFree ? null : method
     const paymentStatus = isFree || method === 'cash' ? 'confirmed' : 'pending'
 
-    // ID di-generate di client supaya tidak perlu .select() setelah insert —
+    // ID di-generate di client supaya tidak perlu .select() setelah insert -
     // peserta publik (anon) cuma punya izin INSERT, bukan SELECT, jadi
     // .select().single() setelah insert akan gagal kena RLS.
     const registrationId = crypto.randomUUID()

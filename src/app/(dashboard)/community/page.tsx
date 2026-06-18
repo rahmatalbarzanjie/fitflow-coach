@@ -44,7 +44,7 @@ export default async function CommunityPage({
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Komunitas</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{contacts.length} kontak — orang di grup WA, belum tentu Member</p>
+          <p className="text-sm text-gray-400 mt-0.5">{contacts.length} kontak - orang di grup WA, belum tentu Member</p>
         </div>
       </div>
 
@@ -59,7 +59,7 @@ export default async function CommunityPage({
           <h2 className="text-sm font-semibold text-gray-900 mb-1">Grup WA Komunitas</h2>
           <p className="text-xs text-gray-400 mb-4">
             Tempel link invite grup WA per olahraga di sini (Info Grup → Undang via Tautan → Salin Link di WhatsApp).
-            Link ini yang ditampilkan di landing page untuk orang yang mau join komunitas — kalau belum diisi,
+            Link ini yang ditampilkan di landing page untuk orang yang mau join komunitas - kalau belum diisi,
             landing page tetap pakai tombol chat WA seperti biasa.
           </p>
           <div className="space-y-2">

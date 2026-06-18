@@ -74,7 +74,7 @@ export default function NewBroadcastPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Selalu simpan sebagai draft dulu — status 'sent' hanya diset setelah
+    // Selalu simpan sebagai draft dulu - status 'sent' hanya diset setelah
     // benar-benar berhasil dikirim lewat API send (bukan diasumsikan terkirim).
     const { data: bc, error: bcErr } = await supabase
       .from('broadcasts')
@@ -166,7 +166,7 @@ export default function NewBroadcastPage() {
               <select value={targetClassId} onChange={e => setTargetClassId(e.target.value)} className={inp}>
                 <option value="">Pilih kelas / grup...</option>
                 {groupClasses.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} — {c.wa_group_name}</option>
+                  <option key={c.id} value={c.id}>{c.name} - {c.wa_group_name}</option>
                 ))}
               </select>
             )}

@@ -22,7 +22,7 @@
     background-clip: text;
   }
 
-  /* Animasi landing page — CSS murni, tanpa dependency */
+  /* Animasi landing page - CSS murni, tanpa dependency */
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }

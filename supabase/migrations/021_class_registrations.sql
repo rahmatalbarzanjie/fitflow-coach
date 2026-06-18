@@ -1,4 +1,4 @@
--- Registrasi kelas sungguhan (form publik) — reuse tabel `registrations`
+-- Registrasi kelas sungguhan (form publik) - reuse tabel `registrations`
 -- yang sebelumnya khusus event. event_id dijadikan nullable, ditambah
 -- class_id + session_date (tanggal kemunculan kelas yang didaftar, bukan
 -- FK ke `sessions` karena kelas berulang mingguan dan kuota harus reset
@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_registrations_class_session
 ALTER TABLE classes
   ADD COLUMN IF NOT EXISTS show_registrations BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Ringkasan registrasi kelas — mirror event_registration_summary
+-- Ringkasan registrasi kelas - mirror event_registration_summary
 CREATE OR REPLACE VIEW class_registration_summary AS
 SELECT
   r.id,

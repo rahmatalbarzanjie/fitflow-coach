@@ -202,7 +202,7 @@ export function ClassEditForm({ cls }: Props) {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-medium text-gray-600">Bagi Hasil — Instruktur</label>
+            <label className="block text-xs font-medium text-gray-600">Bagi Hasil - Instruktur</label>
             <span className="text-xs text-gray-400">Studio mendapat {100 - shareNum}%</span>
           </div>
           <div className="flex items-center gap-2">

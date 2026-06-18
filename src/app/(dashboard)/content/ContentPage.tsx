@@ -173,10 +173,10 @@ export function ContentPage({ initialHistory }: { initialHistory: RawHistoryItem
       {tab === 'generate' && (
         <div className="space-y-6">
 
-          {/* Step 1 — jenis konten */}
+          {/* Step 1 - jenis konten */}
           <div>
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-              Step 1 — Pilih jenis konten
+              Step 1 - Pilih jenis konten
             </p>
             <div className="grid grid-cols-2 gap-3">
               {CONTENT_TYPES.map(ct => (
@@ -199,11 +199,11 @@ export function ContentPage({ initialHistory }: { initialHistory: RawHistoryItem
             </div>
           </div>
 
-          {/* Step 2 — mood (muncul setelah step 1) */}
+          {/* Step 2 - mood (muncul setelah step 1) */}
           {selType && (
             <div>
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-                Step 2 — Pilih mood
+                Step 2 - Pilih mood
               </p>
               <div className="flex flex-wrap gap-2">
                 {MOODS.map(m => (
@@ -223,11 +223,11 @@ export function ContentPage({ initialHistory }: { initialHistory: RawHistoryItem
             </div>
           )}
 
-          {/* Step 3 — konteks opsional (muncul setelah step 2) */}
+          {/* Step 3 - konteks opsional (muncul setelah step 2) */}
           {selMood && (
             <div>
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-                Step 3 — Ceritain sedikit{' '}
+                Step 3 - Ceritain sedikit{' '}
                 <span className="normal-case font-normal text-gray-300">(opsional)</span>
               </p>
               <textarea
@@ -243,7 +243,7 @@ export function ContentPage({ initialHistory }: { initialHistory: RawHistoryItem
             </div>
           )}
 
-          {/* Step 4 — generate button (muncul setelah step 2) */}
+          {/* Step 4 - generate button (muncul setelah step 2) */}
           {selMood && (
             <div>
               <button
@@ -378,7 +378,7 @@ export function ContentPage({ initialHistory }: { initialHistory: RawHistoryItem
               const isExp     = expandedId === item.id
               const preview   = item.result?.instagram
                 ? item.result.instagram.split('\n').filter(Boolean).slice(0, 2).join(' ')
-                : '—'
+                : '-'
               const typeLabel = TYPE_LABELS[item.type] ?? item.type
               const moodEmoji = MOOD_EMOJIS[item.mood] ?? ''
               const date      = new Date(item.created_at).toLocaleDateString('id-ID', {

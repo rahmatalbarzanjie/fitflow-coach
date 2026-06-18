@@ -81,11 +81,11 @@ export default async function AdminClassesPage({
                     {getDayName(cls.day_of_week)}, {formatTime(cls.start_time)}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
-                    {cls.class_price ? `${formatRupiah(cls.class_price)} · ${cls.revenue_share_pct ?? 50}%` : '—'}
+                    {cls.class_price ? `${formatRupiah(cls.class_price)} · ${cls.revenue_share_pct ?? 50}%` : '-'}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     <Link href={`/admin/${cls.user_id}`} className="text-gray-500 hover:text-violet-600 transition-colors">
-                      {profileMap[cls.user_id] ?? '—'}
+                      {profileMap[cls.user_id] ?? '-'}
                     </Link>
                   </td>
                 </tr>

@@ -83,11 +83,11 @@ export default async function AdminEventsPage({
                     <Badge color={STATUS_COLOR[ev.status] ?? 'gray'}>{EVENT_STATUS[ev.status as keyof typeof EVENT_STATUS]?.label ?? ev.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
-                    {ev.ots_price ? formatRupiah(ev.ots_price) : '—'}
+                    {ev.ots_price ? formatRupiah(ev.ots_price) : '-'}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
                     <Link href={`/admin/${ev.user_id}`} className="hover:text-violet-600 transition-colors">
-                      {profileMap[ev.user_id] ?? '—'}
+                      {profileMap[ev.user_id] ?? '-'}
                     </Link>
                   </td>
                 </tr>

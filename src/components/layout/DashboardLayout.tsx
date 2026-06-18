@@ -20,7 +20,7 @@ export function DashboardLayout({ children, title }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sidebar — desktop only */}
+      {/* Sidebar - desktop only */}
       <div className="hidden md:block">
         <Sidebar open={open} onClose={() => setOpen(false)} />
       </div>
@@ -53,7 +53,7 @@ export function DashboardLayout({ children, title }: Props) {
         </main>
       </div>
 
-      {/* Bottom nav — mobile only */}
+      {/* Bottom nav - mobile only */}
       <BottomNav />
     </div>
   )

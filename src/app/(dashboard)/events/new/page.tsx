@@ -291,7 +291,7 @@ export default function NewEventPage() {
                 <X className="w-4 h-4" />
               </button>
               <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
-                Preview — akan diupload saat simpan
+                Preview - akan diupload saat simpan
               </div>
             </div>
           ) : (

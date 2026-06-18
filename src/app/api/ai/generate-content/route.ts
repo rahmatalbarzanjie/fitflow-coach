@@ -43,7 +43,7 @@ KARAKTER PENULISAN:
 - Jangan terlalu formal, jangan terlalu alay
 - Boleh pakai kata: "Alhamdulillah", "yuk", "dong", "banget", "sih", "nih", "kak"
 - Boleh pakai kata Inggris natural: "full effort", "proud of you", "keep going", "vibes", "worth it"
-- Jangan pakai kata: "mari kita", "kami", "dapatkan", "segera", "jangan lewatkan" — terlalu salesy
+- Jangan pakai kata: "mari kita", "kami", "dapatkan", "segera", "jangan lewatkan" - terlalu salesy
 
 ATURAN PER PLATFORM:
 
@@ -51,7 +51,7 @@ Instagram Feed (caption panjang 150-300 kata):
 - Baris pertama = hook kuat (buat orang berhenti scroll)
 - Ada cerita atau insight kecil di tengah
 - CTA di akhir (cek bio, DM, dll)
-- Emoji secukupnya — jangan setiap kalimat
+- Emoji secukupnya - jangan setiap kalimat
 - Paragraf pendek, ada line break
 
 TikTok/Reels (caption pendek 30-50 kata):
@@ -76,7 +76,7 @@ PENTING:
 - Selalu sebutkan nama kelas jika ada dalam konteks
 - Selalu ada CTA untuk kelas berikutnya atau cek jadwal
 - Jangan buat caption yang terasa copy-paste atau template
-- Variasikan struktur kalimat — jangan semua pakai pola sama
+- Variasikan struktur kalimat - jangan semua pakai pola sama
 - Hasil harus terasa ditulis manusia, bukan AI
 
 OUTPUT FORMAT (JSON):
@@ -103,7 +103,7 @@ Mood: ${MOOD_LABEL[mood] ?? mood}${context ? `\nKonteks tambahan: ${context}` : 
 
     const rawText = aiResponse.content[0].type === 'text' ? aiResponse.content[0].text.trim() : ''
 
-    // Parse JSON — strip optional markdown code fence
+    // Parse JSON - strip optional markdown code fence
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('AI tidak menghasilkan JSON yang valid')
     const result = JSON.parse(jsonMatch[0]) as {

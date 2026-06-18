@@ -92,7 +92,7 @@ export async function POST(request: Request) {
   }
 
   // ── Action: get_stats ─────────────────────────────────────────────────────
-  // Ringkasan cepat untuk satu instruktur — bisa Node-RED kirim ke WA instruktur.
+  // Ringkasan cepat untuk satu instruktur - bisa Node-RED kirim ke WA instruktur.
   // Payload: { user_id: string }
   if (action === 'get_stats') {
     const { user_id } = body

@@ -62,7 +62,7 @@ export function RequestActions({ requestId, name }: Props) {
       </span>
       <span className={`flex items-center gap-1 text-[10px] ${waOk ? 'text-green-500' : 'text-orange-500'}`}>
         <MessageCircle className="w-3 h-3" />
-        {waOk ? 'WA terkirim' : 'WA gagal — kirim manual'}
+        {waOk ? 'WA terkirim' : 'WA gagal - kirim manual'}
       </span>
     </div>
   )

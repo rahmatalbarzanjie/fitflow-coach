@@ -158,7 +158,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* ── AKSI HARI INI — always shown ── */}
+      {/* ── AKSI HARI INI - always shown ── */}
       {todaySchedule.length === 0 ? (
         <div className="mb-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 text-center">
           <p className="text-base font-medium text-gray-600">Tidak ada kelas hari ini 🎉</p>
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
                   }
                   return (
                     <p key={s.id} className="text-xs text-orange-700">
-                      • {(s.classes as any)?.name} — {TYPE_LABEL[s.session_type] ?? s.session_type}
+                      • {(s.classes as any)?.name} - {TYPE_LABEL[s.session_type] ?? s.session_type}
                     </p>
                   )
                 })}
@@ -237,7 +237,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ── PERLU TINDAKAN — only when there are items ── */}
+      {/* ── PERLU TINDAKAN - only when there are items ── */}
       {hasPendingItems && (
         <Card className="mb-4">
           <div className="flex items-center gap-2 mb-4">

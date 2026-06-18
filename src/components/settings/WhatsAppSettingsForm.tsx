@@ -112,7 +112,7 @@ export function WhatsAppSettingsForm({ initialBotPhone, initialBotPhoneRequested
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">Nomor WhatsApp untuk Bot</label>
         <p className="text-xs text-amber-600">
-          Gunakan nomor khusus, bukan nomor pribadi — nomor ini akan terlihat oleh member kamu.
+          Gunakan nomor khusus, bukan nomor pribadi - nomor ini akan terlihat oleh member kamu.
         </p>
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div className="flex gap-2">

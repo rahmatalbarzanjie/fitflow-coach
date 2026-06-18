@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS system_config (
 );
 
 ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
--- No public RLS policies — only service role key can access
+-- No public RLS policies - only service role key can access
 
 INSERT INTO system_config (key, value, description) VALUES
   ('fonnte_token', '', 'Token API Fonnte untuk kirim WhatsApp. Dapatkan di fonnte.com'),

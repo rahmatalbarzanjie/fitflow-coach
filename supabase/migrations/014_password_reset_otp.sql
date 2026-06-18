@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS password_reset_otps (
 );
 
 ALTER TABLE password_reset_otps ENABLE ROW LEVEL SECURITY;
--- Tidak ada policy publik — hanya service role yang boleh akses (pola sama seperti system_config, migration 012)
+-- Tidak ada policy publik - hanya service role yang boleh akses (pola sama seperti system_config, migration 012)
 
 CREATE INDEX IF NOT EXISTS idx_password_reset_otps_profile ON password_reset_otps(profile_id);

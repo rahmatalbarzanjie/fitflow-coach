@@ -96,7 +96,7 @@ export async function fetchWhatsAppGroups(
 }
 
 // Mapping nama paket Fonnte -> parameter `plan` (integer 1-7) di API Order.
-// TEBAKAN AWAL berdasarkan urutan wajar di pricing page Fonnte — dokumentasi
+// TEBAKAN AWAL berdasarkan urutan wajar di pricing page Fonnte - dokumentasi
 // publik tidak menjelaskan angka mana = paket apa. Validasi di percobaan
 // pertama: cek paket yang benar-benar terpasang di dashboard Fonnte setelah
 // order, koreksi mapping ini kalau ternyata salah.
@@ -137,9 +137,9 @@ export async function fonnteUpdateDeviceWebhook(
   deviceId: string
 ): Promise<{ ok: boolean; reason?: string }> {
   try {
-    // name & device wajib diisi di endpoint ini (selain webhook) — tanpa itu
+    // name & device wajib diisi di endpoint ini (selain webhook) - tanpa itu
     // Fonnte balas "input invalid" dan webhook tidak pernah benar ter-set.
-    // autoread+personal JUGA wajib true — tanpa ini Fonnte tidak meneruskan
+    // autoread+personal JUGA wajib true - tanpa ini Fonnte tidak meneruskan
     // pesan masuk personal ke webhook sama sekali (device tetap "connect"
     // tapi bot tidak pernah menerima/membalas apa pun).
     const res = await fetch('https://api.fonnte.com/update-device', {
@@ -198,7 +198,7 @@ export async function fonnteGetQr(
 export async function fonnteGetDeviceProfile(deviceToken: string): Promise<string | null> {
   try {
     // Endpoint resmi Fonnte adalah /device, bukan /device-profile (yang
-    // sebelumnya dipakai di sini selalu 404 — connect-status jadi tidak
+    // sebelumnya dipakai di sini selalu 404 - connect-status jadi tidak
     // pernah benar-benar berhasil ambil nomor device otomatis).
     const res = await fetch('https://api.fonnte.com/device', {
       method:  'POST',

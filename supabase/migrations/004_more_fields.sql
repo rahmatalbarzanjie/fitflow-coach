@@ -1,6 +1,6 @@
 -- ============================================================
--- FitFlow Coach — Migration 004: More Fields
--- Jalankan di Supabase SQL Editor (aman diulang — IF NOT EXISTS)
+-- FitFlow Coach - Migration 004: More Fields
+-- Jalankan di Supabase SQL Editor (aman diulang - IF NOT EXISTS)
 -- ============================================================
 
 -- ────────────────────────────────────────────
@@ -17,7 +17,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS instagram TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS photo_url TEXT;
 
 -- ============================================================
--- STORAGE BUCKET — Buat manual di Supabase Dashboard:
+-- STORAGE BUCKET - Buat manual di Supabase Dashboard:
 -- Storage → New Bucket → "instructor-photos" → centang Public
 --
 -- Atau:

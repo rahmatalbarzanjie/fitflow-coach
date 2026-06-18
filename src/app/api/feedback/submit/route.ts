@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Kamu sudah pernah mengirim feedback ini' }, { status: 409 })
   }
 
-  // Sengaja tidak menyimpan member_id/registration_id apa pun di sini — anonim total
+  // Sengaja tidak menyimpan member_id/registration_id apa pun di sini - anonim total
   const { error: insertErr } = await supabase.from('session_feedback').insert({
     user_id:    (invite as any).user_id,
     session_id: (invite as any).session_id,

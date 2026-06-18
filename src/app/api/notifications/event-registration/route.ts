@@ -7,7 +7,7 @@ import { REGISTRATION_TIER } from '@/lib/constants'
 /*
  * POST /api/notifications/event-registration
  * Dipanggil dari RegistrationForm (publik, tanpa login) tepat setelah
- * insert sukses — kasih kabar ke peserta (lengkap detail & info penting
+ * insert sukses - kasih kabar ke peserta (lengkap detail & info penting
  * event) + instruktur (dengan link langsung ke halaman validasi, tinggal
  * klik tidak perlu buka browser & navigasi manual).
  * Body: { registrationId: string }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   const sent = await sendWhatsApp(reg.registrant_phone, participantMsg, instructorToken)
 
-  // Kabari instruktur juga — supaya tidak perlu cek manual ke web tiap saat
+  // Kabari instruktur juga - supaya tidak perlu cek manual ke web tiap saat
   if (instructorPhone) {
     const tierLabel = REGISTRATION_TIER[reg.tier as keyof typeof REGISTRATION_TIER]?.label ?? reg.tier
     const validateLink = appUrl ? `${appUrl}/events/${reg.event_id}/registrations` : null

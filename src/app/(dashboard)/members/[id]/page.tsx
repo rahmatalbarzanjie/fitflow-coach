@@ -97,7 +97,7 @@ export default async function MemberDetailPage({
         <Card className="p-4 text-center">
           <p className="text-xs text-gray-500 mb-1">Terakhir Hadir</p>
           <p className="text-xl font-bold text-gray-900">
-            {days !== null ? `${days}h` : '—'}
+            {days !== null ? `${days}h` : '-'}
           </p>
           {days !== null && <p className="text-xs text-gray-400">yang lalu</p>}
         </Card>
@@ -146,7 +146,7 @@ export default async function MemberDetailPage({
                       {a.session?.class?.name ?? 'Kelas'}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {a.session?.session_date ? formatDate(a.session.session_date) : '—'}
+                      {a.session?.session_date ? formatDate(a.session.session_date) : '-'}
                       {a.session?.start_time && (
                         <> · {String(a.session.start_time).substring(0, 5)}</>
                       )}

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   if (plan && FONNTE_PLAN_IDS[plan] && durationMonths) {
     const order = await fonnteOrderPackage(added.token, FONNTE_PLAN_IDS[plan], Number(durationMonths))
     if (!order.ok) {
-      warnings.push(`Gagal pasang paket: ${order.reason ?? 'tidak diketahui'}. Device masih di paket Free — bisa diassign manual di dashboard Fonnte.`)
+      warnings.push(`Gagal pasang paket: ${order.reason ?? 'tidak diketahui'}. Device masih di paket Free - bisa diassign manual di dashboard Fonnte.`)
     }
   }
 

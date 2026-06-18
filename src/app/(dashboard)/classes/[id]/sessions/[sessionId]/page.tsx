@@ -54,7 +54,7 @@ export default async function SessionDetailPage({
 
   const sessionType = session.session_type ?? 'regular'
   const typeCfg     = SESSION_TYPE_CONFIG[sessionType]
-  const location    = session.override_location ?? cls.location ?? '—'
+  const location    = session.override_location ?? cls.location ?? '-'
 
   return (
     <div className="max-w-lg">
@@ -149,7 +149,7 @@ export default async function SessionDetailPage({
         }}
       />
 
-      {/* Kritik & Saran — anonim, untuk konsumsi pribadi instruktur */}
+      {/* Kritik & Saran - anonim, untuk konsumsi pribadi instruktur */}
       {(feedbackList ?? []).length > 0 && (
         <Card className="mt-4">
           <div className="flex items-center gap-2 mb-3">

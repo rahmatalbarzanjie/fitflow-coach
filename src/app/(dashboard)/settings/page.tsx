@@ -28,7 +28,7 @@ export default async function SettingsPage({
 
   type ProfileRow = { id: string; name: string; business_name: string | null; phone: string | null; slug: string | null; photo_url?: string | null; bio?: string | null; bot_phone?: string | null; bot_phone_requested?: string | null; fonnte_token?: string | null }
 
-  // Ambil profil — auto-create jika belum ada (misalnya user lama sebelum trigger dibuat)
+  // Ambil profil - auto-create jika belum ada (misalnya user lama sebelum trigger dibuat)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let { data: profile } = await (supabase.from('profiles') as any)
     .select('id, name, business_name, phone, slug, photo_url, bio, bot_phone, bot_phone_requested, fonnte_token')
@@ -74,7 +74,7 @@ export default async function SettingsPage({
         <div className="mb-6 p-4 bg-violet-50 border border-violet-100 rounded-2xl">
           <p className="text-sm font-semibold text-violet-800">👋 Selamat datang di FitFlow Coach!</p>
           <p className="text-xs text-violet-600 mt-1">
-            Lengkapi profil di bawah — terutama <strong>Nama</strong>, <strong>Nama Studio</strong>,
+            Lengkapi profil di bawah - terutama <strong>Nama</strong>, <strong>Nama Studio</strong>,
             dan <strong>Slug URL</strong> agar halaman publikmu bisa diakses peserta.
           </p>
         </div>
@@ -172,7 +172,7 @@ export default async function SettingsPage({
 
       {tab === 'integrasi' && (
         <>
-          {/* Nomor bot WhatsApp — untuk broadcast & otomasi, beda dari nomor pribadi */}
+          {/* Nomor bot WhatsApp - untuk broadcast & otomasi, beda dari nomor pribadi */}
           <Card className="mb-6">
             <div className="flex items-center gap-2 mb-1">
               <MessageCircle className="w-4 h-4 text-gray-400" />
@@ -188,7 +188,7 @@ export default async function SettingsPage({
             />
           </Card>
 
-          {/* Node-RED / Webhook config — admin only */}
+          {/* Node-RED / Webhook config - admin only */}
           {isAdmin && <Card>
             <div className="flex items-center gap-2 mb-1">
               <Webhook className="w-4 h-4 text-gray-400" />

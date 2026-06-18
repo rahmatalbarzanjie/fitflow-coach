@@ -71,8 +71,8 @@ export default async function AdminCommunityPage({
               {contacts.map(c => (
                 <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{c.name ?? '(tanpa nama)'}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{c.phone ?? '—'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 hidden sm:table-cell">{(c.classes as any)?.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{c.phone ?? '-'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500 hidden sm:table-cell">{(c.classes as any)?.name ?? '-'}</td>
                   <td className="px-4 py-3 text-xs">
                     {c.converted_member_id
                       ? <span className="text-green-600 font-medium">✓ Jadi Member</span>
@@ -80,7 +80,7 @@ export default async function AdminCommunityPage({
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
                     <Link href={`/admin/${c.user_id}`} className="hover:text-violet-600 transition-colors">
-                      {profileMap[c.user_id] ?? '—'}
+                      {profileMap[c.user_id] ?? '-'}
                     </Link>
                   </td>
                 </tr>

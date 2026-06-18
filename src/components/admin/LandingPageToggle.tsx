@@ -28,7 +28,7 @@ export function LandingPageToggle({ initialEnabled }: { initialEnabled: boolean 
         <div>
           <p className="text-sm font-semibold text-gray-900">Landing Page (/home)</p>
           <p className="text-xs text-gray-400">
-            {enabled ? 'Aktif — calon klien bisa lihat halaman jual & harga' : 'Nonaktif — pengunjung lihat halaman "sedang dikembangkan"'}
+            {enabled ? 'Aktif - calon klien bisa lihat halaman jual & harga' : 'Nonaktif - pengunjung lihat halaman "sedang dikembangkan"'}
           </p>
         </div>
       </div>

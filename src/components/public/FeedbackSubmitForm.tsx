@@ -45,7 +45,7 @@ export function FeedbackSubmitForm({ inviteId }: Props) {
     <div className="space-y-4">
       <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
         <ShieldCheck className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-gray-500">Identitas kamu tidak disimpan — feedback ini sepenuhnya anonim.</p>
+        <p className="text-xs text-gray-500">Identitas kamu tidak disimpan - feedback ini sepenuhnya anonim.</p>
       </div>
 
       <div>

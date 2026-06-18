@@ -11,7 +11,7 @@
     "id": "wabot-cmt",
     "type": "comment",
     "z": "wabot-tab",
-    "name": "WA Bot — Terima pesan masuk Fonnte → AI reply",
+    "name": "WA Bot - Terima pesan masuk Fonnte → AI reply",
     "info": "SETUP:\n1. Di Fonnte Dashboard → Device → Webhook\n   Masukkan URL: http://localhost:3000/api/wa/incoming?key=fitflow_wa_bot_2024\n   (ganti localhost dengan URL production jika sudah deploy)\n2. Pastikan FONNTE_TOKEN dan FONNTE_WEBHOOK_KEY sudah diset di .env.local\n\nCara kerja:\n- Fonnte kirim POST ke endpoint Next.js saat ada pesan masuk\n- Next.js cari instruktur berdasarkan nomor device\n- Claude AI jawab berdasarkan data kelas & event instruktur\n- Balasan dikirim otomatis via Fonnte\n\nNode-RED flow ini hanya untuk MONITORING & testing.\nLogic utama ada di Next.js /api/wa/incoming",
     "x": 270,
     "y": 40,

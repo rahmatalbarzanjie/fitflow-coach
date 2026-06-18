@@ -35,7 +35,7 @@ export default async function AdminInstructorDetailPage({
 
   // Fetch email from auth (profiles table doesn't store email)
   const { data: { user: authUser } } = await serviceSupabase.auth.admin.getUserById(profileId)
-  const email = authUser?.email ?? '—'
+  const email = authUser?.email ?? '-'
 
   const p = profile as any
   const now = new Date()
@@ -105,10 +105,10 @@ export default async function AdminInstructorDetailPage({
         <dl className="space-y-2">
           {[
             ['Email',   email],
-            ['No. WA',  p.phone ?? '—'],
-            ['Slug',    p.slug ? `/${p.slug}` : '—'],
+            ['No. WA',  p.phone ?? '-'],
+            ['Slug',    p.slug ? `/${p.slug}` : '-'],
             ['Status',  status === 'active' ? '✅ Berlangganan' : trialExpired ? '🔴 Trial Habis' : `🔵 Trial · ${trialDaysLeft} hari lagi`],
-            ['Trial s/d', p.trial_expires_at ? formatDateShort(p.trial_expires_at) : '—'],
+            ['Trial s/d', p.trial_expires_at ? formatDateShort(p.trial_expires_at) : '-'],
             ['Daftar',   formatDateShort(p.created_at ?? new Date().toISOString())],
           ].map(([label, value]) => (
             <div key={label as string} className="flex justify-between text-sm">
@@ -128,7 +128,7 @@ export default async function AdminInstructorDetailPage({
         <dl className="space-y-2">
           <div className="flex justify-between text-sm">
             <dt className="text-gray-500">Nomor Bot</dt>
-            <dd className="text-gray-900 font-medium text-right">{p.bot_phone ?? '—'}</dd>
+            <dd className="text-gray-900 font-medium text-right">{p.bot_phone ?? '-'}</dd>
           </div>
           <div className="flex justify-between text-sm items-center">
             <dt className="text-gray-500">Token Fonnte</dt>
@@ -142,7 +142,7 @@ export default async function AdminInstructorDetailPage({
         </dl>
         {!botConnected && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mt-3">
-            Instruktur ini belum setup bot WA-nya sendiri di Pengaturan — broadcast ke Member dan post ke grup komunitas belum bisa jalan.
+            Instruktur ini belum setup bot WA-nya sendiri di Pengaturan - broadcast ke Member dan post ke grup komunitas belum bisa jalan.
           </p>
         )}
       </Card>
@@ -177,7 +177,7 @@ export default async function AdminInstructorDetailPage({
                   </p>
                 </div>
                 <span className="text-xs text-gray-400">
-                  {cls.class_price ? `${formatRupiah(cls.class_price)} · ${cls.revenue_share_pct ?? 50}%` : '—'}
+                  {cls.class_price ? `${formatRupiah(cls.class_price)} · ${cls.revenue_share_pct ?? 50}%` : '-'}
                 </span>
               </div>
             ))}
@@ -193,7 +193,7 @@ export default async function AdminInstructorDetailPage({
             {(recentSessions as any[]).map((s: any) => (
               <div key={s.id} className="flex items-center justify-between text-sm py-1">
                 <span className="text-gray-500">{formatDateShort(s.session_date)}</span>
-                <span className="text-gray-700">{(s.classes as any)?.name ?? '—'}</span>
+                <span className="text-gray-700">{(s.classes as any)?.name ?? '-'}</span>
               </div>
             ))}
           </div>
@@ -210,7 +210,7 @@ export default async function AdminInstructorDetailPage({
                 <div>
                   <span className="text-gray-700">{formatDateShort(pay.payment_date)}</span>
                   <p className="text-[10px] text-gray-400 mt-0.5">
-                    {pay.method ?? '—'} · {pay.duration_months} bulan{pay.notes ? ` · ${pay.notes}` : ''}
+                    {pay.method ?? '-'} · {pay.duration_months} bulan{pay.notes ? ` · ${pay.notes}` : ''}
                   </p>
                 </div>
                 <span className="text-xs font-semibold text-green-600">{formatRupiah(pay.amount)}</span>

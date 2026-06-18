@@ -69,7 +69,7 @@ export function MemberPhotoUpload({ memberId, currentPhotoUrl, onUploaded, size 
   )
 }
 
-// Static avatar (no upload) — used in lists
+// Static avatar (no upload) - used in lists
 export function MemberAvatar({ photoUrl, name, size = 'sm' }: { photoUrl?: string | null; name: string; size?: 'sm' | 'md' | 'lg' }) {
   const dim     = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-10 h-10' : 'w-8 h-8'
   const textDim = size === 'lg' ? 'text-base'  : size === 'md' ? 'text-sm'  : 'text-xs'

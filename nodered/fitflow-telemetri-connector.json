@@ -3,7 +3,7 @@
     "id": "tel-cmt-fitflow",
     "type": "comment",
     "name": "── FitFlow WA Bot Connector ── sambungkan ke node setelah http in /webhook/telemetri",
-    "info": "CARA PASANG:\n1. Import file ini ke Node-RED\n2. Node 'link out → FitFlow' akan muncul di tab aktif\n3. Pindahkan ke tab flow telemetri yang sudah ada\n4. Tarik kabel dari node yang menerima payload Fonnte → masuk ke node 'link out → FitFlow' ini\n\nFitFlow app aman menerima semua pesan — device yang tidak dikenali diabaikan otomatis.",
+    "info": "CARA PASANG:\n1. Import file ini ke Node-RED\n2. Node 'link out → FitFlow' akan muncul di tab aktif\n3. Pindahkan ke tab flow telemetri yang sudah ada\n4. Tarik kabel dari node yang menerima payload Fonnte → masuk ke node 'link out → FitFlow' ini\n\nFitFlow app aman menerima semua pesan - device yang tidak dikenali diabaikan otomatis.",
     "x": 300,
     "y": 60,
     "wires": []

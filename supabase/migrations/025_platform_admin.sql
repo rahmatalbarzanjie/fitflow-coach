@@ -1,4 +1,4 @@
--- Tandai profil developer/platform admin — beda dari instruktur biasa.
+-- Tandai profil developer/platform admin - beda dari instruktur biasa.
 -- Bot WA developer (device terpisah, bukan device instruktur manapun)
 -- dapat akses laporan lintas-instruktur (list instruktur, ranking member/
 -- kelas, status langganan) saat kolom ini true.

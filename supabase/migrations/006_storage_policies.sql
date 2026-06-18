@@ -94,7 +94,7 @@ CREATE POLICY "event_covers_auth_delete" ON storage.objects
     AND auth.role() = 'authenticated'
   );
 
--- ── payment-proofs (private — hanya pemilik & instruktur) ─────
+-- ── payment-proofs (private - hanya pemilik & instruktur) ─────
 DROP POLICY IF EXISTS "payment_proofs_auth_read"   ON storage.objects;
 DROP POLICY IF EXISTS "payment_proofs_anon_insert"  ON storage.objects;
 DROP POLICY IF EXISTS "payment_proofs_auth_delete"  ON storage.objects;
@@ -106,7 +106,7 @@ CREATE POLICY "payment_proofs_auth_read" ON storage.objects
     AND auth.role() = 'authenticated'
   );
 
--- Siapapun (termasuk anon) bisa upload bukti — peserta belum tentu login
+-- Siapapun (termasuk anon) bisa upload bukti - peserta belum tentu login
 CREATE POLICY "payment_proofs_anon_insert" ON storage.objects
   FOR INSERT WITH CHECK (bucket_id = 'payment-proofs');
 

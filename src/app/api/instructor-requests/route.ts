@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { sendWhatsApp } from '@/lib/whatsapp'
 import { getSystemConfig } from '@/lib/system-config'
 
-// Public endpoint — no auth required. Creates a pending registration request.
+// Public endpoint - no auth required. Creates a pending registration request.
 export async function POST(request: Request) {
   try {
     const { name, business_name, email, phone, city } = await request.json()
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     const serviceSupabase = createServiceClient()
 
-    // Check for duplicate email — hanya blokir kalau masih pending/confirmed.
+    // Check for duplicate email - hanya blokir kalau masih pending/confirmed.
     // Request yang sudah 'rejected' tidak boleh menghalangi pendaftaran ulang.
     const { data: existingRows } = await serviceSupabase
       .from('instructor_requests')
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Cek juga apakah email ini sudah punya akun Supabase Auth (misal pernah
-    // daftar sendiri lewat /register) — supaya tidak lolos sampai tahap
+    // daftar sendiri lewat /register) - supaya tidak lolos sampai tahap
     // konfirmasi admin baru ketahuan gagal.
     const { data: userList } = await serviceSupabase.auth.admin.listUsers({ perPage: 1000 })
     const emailExists = userList?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase())
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     if (error) throw new Error(error.message)
 
-    // Notifikasi ke developer/admin — best-effort, jangan gagalkan request kalau ini error
+    // Notifikasi ke developer/admin - best-effort, jangan gagalkan request kalau ini error
     try {
       const adminWa = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
       if (adminWa) {

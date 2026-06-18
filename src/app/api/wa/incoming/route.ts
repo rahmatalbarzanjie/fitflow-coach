@@ -6,7 +6,7 @@ import { DAY_NAMES, formatTime, formatRupiah, formatDate } from '@/lib/utils'
 
 const HISTORY_LIMIT = 20
 
-// Gelar instruktur per tipe kelas — manual dulu, nanti dipindah ke form
+// Gelar instruktur per tipe kelas - manual dulu, nanti dipindah ke form
 // profil instruktur supaya bisa diatur sendiri per akun.
 const TYPE_TITLE: Record<string, string> = {
   poundfit: 'Pro',
@@ -100,14 +100,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  // ── Bot khusus developer/platform admin — device terpisah dari bot
+  // ── Bot khusus developer/platform admin - device terpisah dari bot
   // instruktur manapun. Device ini dobel fungsi:
   //  1. Developer sendiri (nomor pribadinya) → laporan lintas-instruktur,
   //     read-only, deterministik, tidak lewat Claude.
   //  2. Siapa pun yang lain (calon klien yang tertarik FitFlow Coach,
   //     biasanya nyasar dari landing page instruktur → /home) → asisten AI
   //     yang jawab soal aplikasi FitFlow Coach itu sendiri (fitur, harga,
-  //     trial, cara daftar) — BUKAN data instruktur mana pun.
+  //     trial, cara daftar) - BUKAN data instruktur mana pun.
   if (instructorProfile.is_platform_admin) {
     const adminPhoneKey = normalizePhone(cleanSender)
     const greet = senderName ? `Kak ${senderName}` : 'Kak'
@@ -160,13 +160,13 @@ export async function POST(request: Request) {
 
       if (/member.*(paling banyak|terbanyak)/i.test(message)) {
         const sorted = [...profiles].sort((a: any, b: any) => (memberCount[b.id] ?? 0) - (memberCount[a.id] ?? 0)).slice(0, 5)
-        const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${memberCount[p.id] ?? 0} member`).join('\n')
+        const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* - ${memberCount[p.id] ?? 0} member`).join('\n')
         return sendAdminReply(`Halo ${greet}! 🏆 Ranking member terbanyak:\n\n${lines || '(belum ada data)'}`)
       }
 
       if (/kelas.*(paling banyak|terbanyak)/i.test(message)) {
         const sorted = [...profiles].sort((a: any, b: any) => (classCount[b.id] ?? 0) - (classCount[a.id] ?? 0)).slice(0, 5)
-        const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* — ${classCount[p.id] ?? 0} kelas aktif`).join('\n')
+        const lines = sorted.map((p: any, i: number) => `${i + 1}. *${p.business_name ?? p.name}* - ${classCount[p.id] ?? 0} kelas aktif`).join('\n')
         return sendAdminReply(`Halo ${greet}! 🏆 Ranking kelas terbanyak:\n\n${lines || '(belum ada data)'}`)
       }
 
@@ -201,26 +201,26 @@ export async function POST(request: Request) {
     const prospectHistory = (prospectHistoryRows ?? []).reverse()
 
     const productSystemPrompt =
-      `Kamu adalah asisten WhatsApp resmi untuk *FitFlow Coach* — aplikasi SaaS untuk instruktur fitness Indonesia (kelola kelas, member, event, absensi digital, broadcast WhatsApp, AI bot WA otomatis, dan laporan pendapatan).
+      `Kamu adalah asisten WhatsApp resmi untuk *FitFlow Coach* - aplikasi SaaS untuk instruktur fitness Indonesia (kelola kelas, member, event, absensi digital, broadcast WhatsApp, AI bot WA otomatis, dan laporan pendapatan).
 
 TENTANG FITFLOW COACH:
 - Trial: 30 hari GRATIS, akses SEMUA fitur tanpa batas, tanpa kartu kredit
-- Cara mulai: isi form di ${platformAppUrl}/daftar — tim kami konfirmasi manual, biasanya cepat
+- Cara mulai: isi form di ${platformAppUrl}/daftar - tim kami konfirmasi manual, biasanya cepat
 - Info & demo lengkap: ${platformAppUrl}/home
 
-PAKET HARGA (semua paket dapat AI Caption Generator & AI Bot WA — bedanya cuma kuota):
-- Starter Rp99.000/bulan — 3 kelas aktif, 150 broadcast WA/bulan
-- Pro Rp199.000/bulan (PALING POPULER) — 10 kelas aktif, 600 broadcast WA/bulan
-- Studio Rp349.000/bulan — kelas & broadcast unlimited
+PAKET HARGA (semua paket dapat AI Caption Generator & AI Bot WA - bedanya cuma kuota):
+- Starter Rp99.000/bulan - 3 kelas aktif, 150 broadcast WA/bulan
+- Pro Rp199.000/bulan (PALING POPULER) - 10 kelas aktif, 600 broadcast WA/bulan
+- Studio Rp349.000/bulan - kelas & broadcast unlimited
 - Diskon: 3 bulan -10%, 6 bulan -15%, 12 bulan bayar 10 gratis 2 bulan
-- Pembayaran manual via transfer, dicatat tim kami — tidak ada kontrak jangka panjang, bisa ganti paket kapan saja
+- Pembayaran manual via transfer, dicatat tim kami - tidak ada kontrak jangka panjang, bisa ganti paket kapan saja
 
 CARA MENJAWAB:
-- WAJIB selalu panggil orang yang chat dengan sebutan "Kak" — contoh: "Halo ${greet}!", "Boleh, Kak!"
-- Selalu suportif, hangat, dan memotivasi — buat calon klien merasa disambut baik
+- WAJIB selalu panggil orang yang chat dengan sebutan "Kak" - contoh: "Halo ${greet}!", "Boleh, Kak!"
+- Selalu suportif, hangat, dan memotivasi - buat calon klien merasa disambut baik
 - Bahasa Indonesia santai, emoji secukupnya
-- Jawaban ringkas, kalau ada beberapa topik pisah jadi paragraf baru (baris kosong) — jangan satu paragraf panjang
-- PENTING: WhatsApp cuma pakai SATU bintang untuk bold (*teks*) — JANGAN PERNAH dua bintang (**teks**)
+- Jawaban ringkas, kalau ada beberapa topik pisah jadi paragraf baru (baris kosong) - jangan satu paragraf panjang
+- PENTING: WhatsApp cuma pakai SATU bintang untuk bold (*teks*) - JANGAN PERNAH dua bintang (**teks**)
 - Kalau orang tertarik daftar/coba, arahkan ke ${platformAppUrl}/daftar (trial 30 hari dulu, baru pilih paket)
 - Kalau pertanyaannya di luar soal FitFlow Coach (misal nanya soal kelas/jadwal instruktur tertentu), jelaskan ini bot khusus info aplikasi FitFlow Coach, sarankan hubungi instruktur terkait langsung
 - JANGAN mengarang fitur/harga yang tidak ada di atas
@@ -277,13 +277,13 @@ CARA MENJAWAB:
   const now        = new Date()
   const todayLabel = `${DAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
 
-  // Nomor pribadi instruktur (beda dari nomor bot) — dipakai untuk fallback
+  // Nomor pribadi instruktur (beda dari nomor bot) - dipakai untuk fallback
   // "hubungi langsung" yang sebenarnya mengarah ke kontak lain, bukan ke
   // nomor bot yang sedang dipakai untuk chat ini.
   const personalPhone = instructorProfile.phone ? normalizePhone(instructorProfile.phone) : null
   const hasDistinctPersonalPhone = !!personalPhone && personalPhone !== cleanDevice
 
-  // Sapaan "Kak" — selalu pakai ini, plus nama kalau Fonnte kasih nama kontaknya
+  // Sapaan "Kak" - selalu pakai ini, plus nama kalau Fonnte kasih nama kontaknya
   const greetName = senderName ? `Kak ${senderName}` : 'Kak'
 
   const titleLines = Object.entries(TYPE_TITLE)
@@ -320,7 +320,7 @@ CARA MENJAWAB:
       ? `Early Bird ${formatRupiah(Number(e.early_bird_price))} / OTS ${formatRupiah(Number(e.ots_price))}`
       : `${formatRupiah(Number(e.ots_price))}`
     const regLink = slug ? `${appUrl}/${slug}/daftar/${e.slug}` : '(link belum tersedia)'
-    return `- *${e.title}* — ${e.event_date} pukul ${formatTime(e.start_time)}` +
+    return `- *${e.title}* - ${e.event_date} pukul ${formatTime(e.start_time)}` +
       `${e.location ? ` di ${e.location}` : ''}\n  Harga: ${price}\n  Daftar: ${regLink}` +
       (e.description ? `\n  Info: ${e.description}` : '')
   }).join('\n\n') || '- (tidak ada event mendatang)'
@@ -337,12 +337,12 @@ CARA MENJAWAB:
     return NextResponse.json({ ok: true, fastPath: true })
   }
 
-  // ── Laporan khusus instruktur (read-only) — hanya aktif kalau pengirim
+  // ── Laporan khusus instruktur (read-only) - hanya aktif kalau pengirim
   // adalah nomor pribadi instruktur sendiri, BUKAN calon member/peserta yang
   // sedang chat ke bot. Mencegah orang luar minta data peserta/member orang.
   const isInstructorSender = !!personalPhone && cleanSender === personalPhone
   if (isInstructorSender) {
-    // 1) Peserta kelas tertentu — "siapa yang daftar kelas Barre", "peserta poundfit"
+    // 1) Peserta kelas tertentu - "siapa yang daftar kelas Barre", "peserta poundfit"
     const pesertaMatch = /(?:siapa(?:\s+yang)?\s+(?:daftar|ikut)|peserta|daftar\s+peserta)\s*(?:kelas\s+)?(.+)/i.exec(message)
     if (pesertaMatch) {
       const query = pesertaMatch[1].trim().toLowerCase()
@@ -361,13 +361,13 @@ CARA MENJAWAB:
           const lines = (regs ?? []).map((r: any) =>
             `- ${r.registrant_name}${r.payment_status === 'pending' ? ' (belum konfirmasi)' : ''}`
           ).join('\n') || '(belum ada yang daftar)'
-          return `*${c.name}* — ${formatDate(targetDate)}\n${lines}\nTotal: ${regs?.length ?? 0} orang`
+          return `*${c.name}* - ${formatDate(targetDate)}\n${lines}\nTotal: ${regs?.length ?? 0} orang`
         }))
         return sendFastReply(`Halo Kak! 📋 Ini daftar peserta yang Kakak minta:\n\n${blocks.join('\n\n')}`)
       }
     }
 
-    // 2) Absensi/kehadiran hari ini — "absensi hari ini", "siapa yang hadir"
+    // 2) Absensi/kehadiran hari ini - "absensi hari ini", "siapa yang hadir"
     if (/absensi|kehadiran|siapa.*hadir|yang hadir/i.test(message)) {
       const { data: todaySessions } = await supabase
         .from('sessions')
@@ -393,7 +393,7 @@ CARA MENJAWAB:
       return sendFastReply(`Halo Kak! 📋 Absensi hari ini (${todayLabel}):\n\n${blocks.join('\n\n')}`)
     }
 
-    // 3) Ringkasan member — "berapa member aktif", "member at risk"
+    // 3) Ringkasan member - "berapa member aktif", "member at risk"
     if (/berapa\s+member|member\s+aktif|member\s+at.?risk|jumlah\s+member/i.test(message)) {
       const [{ count: total }, { count: active }, { count: atRisk }, { count: inactive }] = await Promise.all([
         supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id),
@@ -413,7 +413,7 @@ CARA MENJAWAB:
 
   // ── Fast-path: pertanyaan jadwal dijawab langsung tanpa panggil Claude ──────
   // Ini intent paling sering & jawabannya selalu sama (daftar kelas/event apa
-  // adanya) — daripada bayar token Claude + tunggu API tiap kali, langsung
+  // adanya) - daripada bayar token Claude + tunggu API tiap kali, langsung
   // kirim data jadwal yang sudah disusun di atas. AI tetap dipakai untuk
   // pertanyaan lain (termasuk follow-up setelah fast-path ini, karena balasan
   // ini juga disimpan ke riwayat).
@@ -454,17 +454,17 @@ ${titleLines}
 - Tipe lain → "${instructorProfile.name}" saja (tanpa gelar)
 
 CARA MENJAWAB:
-- WAJIB selalu panggil orang yang chat dengan sebutan "Kak" — contoh: "Halo ${greetName}!", "Boleh, Kak!", "Siap, Kak 😊". Jangan pernah panggil nama tanpa "Kak" di depannya
-- Selalu bersikap suportif, hangat, dan memotivasi — buat orang yang chat merasa dihargai dan disambut baik, bukan dilayani robot
+- WAJIB selalu panggil orang yang chat dengan sebutan "Kak" - contoh: "Halo ${greetName}!", "Boleh, Kak!", "Siap, Kak 😊". Jangan pernah panggil nama tanpa "Kak" di depannya
+- Selalu bersikap suportif, hangat, dan memotivasi - buat orang yang chat merasa dihargai dan disambut baik, bukan dilayani robot
 - Gunakan Bahasa Indonesia yang ramah dan santai, emoji secukupnya
-- Jawaban ringkas (idealnya 3-5 kalimat), TAPI kalau ada lebih dari satu topik/konteks dalam satu balasan, pisah jadi paragraf baru (baris kosong) per topik — jangan ditumpuk jadi satu paragraf panjang, supaya nyaman dibaca di WhatsApp
-- PENTING soal format bold: WhatsApp cuma pakai SATU tanda bintang untuk tebal (*teks*) — JANGAN PERNAH pakai dua bintang (**teks**) seperti markdown biasa, itu akan tampil rusak
-- Kamu SUDAH TAHU hari ini hari apa (lihat "Hari ini" di atas) — jangan pernah tanya balik hari/tanggal ke peserta, langsung cocokkan ke jadwal kelas yang sesuai
+- Jawaban ringkas (idealnya 3-5 kalimat), TAPI kalau ada lebih dari satu topik/konteks dalam satu balasan, pisah jadi paragraf baru (baris kosong) per topik - jangan ditumpuk jadi satu paragraf panjang, supaya nyaman dibaca di WhatsApp
+- PENTING soal format bold: WhatsApp cuma pakai SATU tanda bintang untuk tebal (*teks*) - JANGAN PERNAH pakai dua bintang (**teks**) seperti markdown biasa, itu akan tampil rusak
+- Kamu SUDAH TAHU hari ini hari apa (lihat "Hari ini" di atas) - jangan pernah tanya balik hari/tanggal ke peserta, langsung cocokkan ke jadwal kelas yang sesuai
 - Untuk pertanyaan jadwal atau event → berikan info yang ada di atas
-- Kalau orang menyatakan niat daftar/ikut kelas atau event TERTENTU, cocokkan namanya dengan data di atas dan balas dengan link "Daftar" yang SESUAI dengan item itu — jangan sampai ketuker kasih link kelas/event lain
-- Kalau tidak jelas kelas/event mana yang dimaksud (nama disebut umum, atau ada beberapa kandidat yang cocok), tanya dulu mau yang mana sebelum kasih link apa pun — jangan menebak
+- Kalau orang menyatakan niat daftar/ikut kelas atau event TERTENTU, cocokkan namanya dengan data di atas dan balas dengan link "Daftar" yang SESUAI dengan item itu - jangan sampai ketuker kasih link kelas/event lain
+- Kalau tidak jelas kelas/event mana yang dimaksud (nama disebut umum, atau ada beberapa kandidat yang cocok), tanya dulu mau yang mana sebelum kasih link apa pun - jangan menebak
 - Kalau cuma tanya-tanya info tanpa niat daftar, jawab informatif saja tanpa otomatis menyodorkan link
-- Kalau orang bilang mau "gabung komunitas"/"join grup" — ini BUKAN niat daftar kelas/event, jangan cocokkan ke kelas manapun dan jangan kasih link registrasi. Cukup jawab ramah dan arahkan sesuai instruksi kontak di bawah
+- Kalau orang bilang mau "gabung komunitas"/"join grup" - ini BUKAN niat daftar kelas/event, jangan cocokkan ke kelas manapun dan jangan kasih link registrasi. Cukup jawab ramah dan arahkan sesuai instruksi kontak di bawah
 - Jika pertanyaan tidak bisa dijawab dari data di atas${hasDistinctPersonalPhone ? `, atau orang minta ngobrol langsung dengan manusia` : ''} → ${hasDistinctPersonalPhone ? `sarankan hubungi ${instructorProfile.name} langsung di ${instructorProfile.phone} (nomor pribadi, beda dari nomor chat ini)` : `sarankan hubungi ${instructorProfile.name} langsung`}
 - JANGAN membuat info, harga, atau jadwal yang tidak ada di data di atas
 - Mulai jawaban langsung tanpa sapaan panjang`
@@ -486,7 +486,7 @@ CARA MENJAWAB:
     })
 
     reply = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
-    // Jaga-jaga kalau model tetap pakai markdown dua bintang — WhatsApp cuma
+    // Jaga-jaga kalau model tetap pakai markdown dua bintang - WhatsApp cuma
     // kenal satu bintang untuk bold, dua bintang tampil rusak (bintangnya
     // ikut kelihatan).
     reply = reply.replace(/\*\*/g, '*')

@@ -1,4 +1,4 @@
--- Nomor bot WhatsApp (Fonnte) per instruktur — terpisah dari profiles.phone
+-- Nomor bot WhatsApp (Fonnte) per instruktur - terpisah dari profiles.phone
 -- yang tetap berarti nomor pribadi/kontak instruktur. Nomor bot ini yang
 -- dipakai untuk broadcast, auto-reply AI, dan post ke grup komunitas.
 ALTER TABLE profiles

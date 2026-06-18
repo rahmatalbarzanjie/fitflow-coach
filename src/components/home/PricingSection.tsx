@@ -7,32 +7,32 @@ import { formatRupiah } from '@/lib/utils'
 
 const PLANS = [
   {
-    key:       'starter',
-    name:      'Starter',
-    monthly:   99_000,
-    badge:     null,
+    key: 'starter',
+    name: 'Starter',
+    monthly: 99_000,
+    badge: null,
     quotaItems: ['3 kelas aktif', '150 broadcast WA/bulan'],
   },
   {
-    key:       'pro',
-    name:      'Pro',
-    monthly:   199_000,
-    badge:     'Paling Populer',
+    key: 'pro',
+    name: 'Pro',
+    monthly: 199_000,
+    badge: 'Paling Populer',
     quotaItems: ['10 kelas aktif', '600 broadcast WA/bulan'],
   },
   {
-    key:       'studio',
-    name:      'Studio',
-    monthly:   349_000,
-    badge:     null,
+    key: 'studio',
+    name: 'Studio',
+    monthly: 349_000,
+    badge: null,
     quotaItems: ['Kelas aktif unlimited', 'Broadcast WA unlimited'],
   },
 ] as const
 
 const DURATIONS = [
-  { months: 1,  label: '1 Bulan' },
-  { months: 3,  label: '3 Bulan' },
-  { months: 6,  label: '6 Bulan' },
+  { months: 1, label: '1 Bulan' },
+  { months: 3, label: '3 Bulan' },
+  { months: 6, label: '6 Bulan' },
   { months: 12, label: '1 Tahun' },
 ] as const
 
@@ -58,7 +58,7 @@ export function PricingSection({ adminWA }: { adminWA: string }) {
         {/* Promo banner */}
         <div className="flex justify-center mb-8">
           <span className="inline-flex items-center text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-100 px-4 py-2 rounded-full whitespace-nowrap">
-            🔥 Promo Peluncuran — 20% OFF untuk 30 instruktur pertama
+            🔥 Promo Peluncuran - 20% OFF untuk 10 instruktur pertama
           </span>
         </div>
 
@@ -69,9 +69,8 @@ export function PricingSection({ adminWA }: { adminWA: string }) {
               <button
                 key={d.months}
                 onClick={() => setMonths(d.months)}
-                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  months === d.months ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors ${months === d.months ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 {d.label}
                 {d.months === 12 && (
@@ -94,9 +93,8 @@ export function PricingSection({ adminWA }: { adminWA: string }) {
             return (
               <div
                 key={plan.key}
-                className={`relative rounded-2xl border-2 p-6 pt-8 hover-lift transition-all h-full flex flex-col ${
-                  plan.badge ? 'border-violet-500 shadow-lg shadow-violet-100' : 'border-gray-200'
-                }`}
+                className={`relative rounded-2xl border-2 p-6 pt-8 hover-lift transition-all h-full flex flex-col ${plan.badge ? 'border-violet-500 shadow-lg shadow-violet-100' : 'border-gray-200'
+                  }`}
               >
                 {plan.badge && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold bg-violet-600 text-white px-3 py-0.5 rounded-full whitespace-nowrap">
@@ -144,11 +142,10 @@ export function PricingSection({ adminWA }: { adminWA: string }) {
                 <div className="mt-auto">
                   <Link
                     href="/daftar"
-                    className={`block text-center h-10 leading-10 rounded-xl text-sm font-semibold transition-colors mb-2 ${
-                      plan.badge
+                    className={`block text-center h-10 leading-10 rounded-xl text-sm font-semibold transition-colors mb-2 ${plan.badge
                         ? 'bg-violet-600 hover:bg-violet-700 text-white'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                    }`}
+                      }`}
                   >
                     Pilih Paket Ini
                   </Link>
@@ -170,7 +167,7 @@ export function PricingSection({ adminWA }: { adminWA: string }) {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-8">
-          Harga belum termasuk PPN. Pembayaran manual via transfer, dicatat tim kami. Tidak ada kontrak jangka panjang — bisa ganti paket kapan saja.
+          Pembayaran manual via transfer, dicatat tim kami. Tidak ada kontrak jangka panjang - bisa ganti paket kapan saja.
         </p>
       </div>
     </section>

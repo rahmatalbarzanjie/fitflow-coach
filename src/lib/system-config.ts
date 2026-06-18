@@ -9,7 +9,7 @@ export async function getSystemConfig(key: string): Promise<string | null> {
   try {
     const now = Date.now()
     if (!_cache || now - _cacheAt > TTL) {
-      // Supabase-js issues fetch di bawah tangan — tanpa ini, Next.js bisa
+      // Supabase-js issues fetch di bawah tangan - tanpa ini, Next.js bisa
       // nge-cache response-nya ke disk (.next/cache) lintas request/restart,
       // jadi config baru tidak pernah terbaca sampai cache di-clear manual.
       noStore()
