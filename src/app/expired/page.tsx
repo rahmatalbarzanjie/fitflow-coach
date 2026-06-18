@@ -2,12 +2,13 @@ import Link from 'next/link'
 import { Activity, Clock, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/settings/LogoutButton'
+import { getSystemConfig } from '@/lib/system-config'
 
 export default async function ExpiredPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const adminWA  = process.env.NEXT_PUBLIC_ADMIN_WA ?? ''
+  const adminWA  = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
   const adminMsg = encodeURIComponent(`Halo! Masa trial FitFlow Coach saya sudah habis. Mohon perpanjangan untuk akun ${user?.email ?? ''}`)
   const waLink   = adminWA ? `https://wa.me/${adminWA.replace(/\D/g, '')}?text=${adminMsg}` : null
 

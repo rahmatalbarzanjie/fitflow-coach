@@ -46,9 +46,8 @@ function calcPrice(monthly: number, months: number) {
   return { perMonth, total: perMonth * months, normalTotal: monthly * months }
 }
 
-export function PricingSection() {
+export function PricingSection({ adminWA }: { adminWA: string }) {
   const [months, setMonths] = useState<1 | 3 | 6 | 12>(1)
-  const adminWA = process.env.NEXT_PUBLIC_ADMIN_WA ?? ''
 
   return (
     <section className="py-16" id="pricing">

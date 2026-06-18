@@ -40,6 +40,7 @@ const FAQ = [
 export default async function HomePage() {
   const enabledFlag = await getSystemConfig('home_page_enabled')
   const isEnabled = enabledFlag !== 'false'
+  const adminWA = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
 
   if (!isEnabled) {
     return (
@@ -154,7 +155,7 @@ export default async function HomePage() {
       </section>
 
       {/* Pricing */}
-      <ScrollReveal><PricingSection /></ScrollReveal>
+      <ScrollReveal><PricingSection adminWA={adminWA} /></ScrollReveal>
 
       {/* FAQ */}
       <section className="bg-gray-50 py-16">

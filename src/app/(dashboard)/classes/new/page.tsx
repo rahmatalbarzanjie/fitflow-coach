@@ -3,6 +3,7 @@ import { ArrowLeft, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { checkClassQuota } from '@/lib/quota'
 import { NewClassForm } from '@/components/classes/NewClassForm'
+import { getSystemConfig } from '@/lib/system-config'
 
 export default async function NewClassPage() {
   const supabase = await createClient()
@@ -10,7 +11,7 @@ export default async function NewClassPage() {
   const quota = await checkClassQuota(supabase, user!.id)
 
   if (!quota.ok) {
-    const adminWA  = process.env.NEXT_PUBLIC_ADMIN_WA ?? ''
+    const adminWA  = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
     const waMsg    = encodeURIComponent(`Halo! Kuota kelas aktif saya sudah penuh (${quota.used}/${quota.limit}). Saya mau upgrade paket.`)
     const waLink   = adminWA ? `https://wa.me/${adminWA.replace(/\D/g, '')}?text=${waMsg}` : null
 
