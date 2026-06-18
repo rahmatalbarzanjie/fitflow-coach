@@ -250,11 +250,12 @@ export default async function InstructorLandingPage({
           </h1>
 
           {profile.bio && (
-            <div className="animate-on-load bg-white/70 backdrop-blur-md rounded-2xl px-6 py-4 shadow-sm mb-10 max-w-xl" style={{ animationDelay: '360ms' }}>
-              <p className="text-on-surface/80 text-sm leading-relaxed">
-                {profile.bio}
-              </p>
-            </div>
+            <p
+              className="animate-on-load text-on-surface-variant text-sm italic text-center mb-10 max-w-xl"
+              style={{ animationDelay: '360ms' }}
+            >
+              {profile.bio}
+            </p>
           )}
 
           {/* WA Button */}
