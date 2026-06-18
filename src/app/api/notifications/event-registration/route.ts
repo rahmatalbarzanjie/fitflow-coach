@@ -1,0 +1,60 @@
+import { NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { sendWhatsApp } from '@/lib/whatsapp'
+import { formatRupiah } from '@/lib/utils'
+import { REGISTRATION_TIER } from '@/lib/constants'
+
+/*
+ * POST /api/notifications/event-registration
+ * Dipanggil dari RegistrationForm (publik, tanpa login) tepat setelah
+ * insert sukses — kasih kabar ke peserta + instruktur soal pendaftaran baru.
+ * Body: { registrationId: string }
+ */
+export async function POST(request: Request) {
+  const { registrationId } = await request.json().catch(() => ({}))
+  if (!registrationId) {
+    return NextResponse.json({ error: 'Param tidak lengkap' }, { status: 400 })
+  }
+
+  const supabase = createServiceClient()
+
+  const { data: reg } = await supabase
+    .from('registrations')
+    .select('registrant_name, registrant_phone, tier, amount_paid, user_id, events(title)')
+    .eq('id', registrationId)
+    .not('event_id', 'is', null)
+    .single()
+
+  if (!reg) return NextResponse.json({ error: 'Registrasi tidak ditemukan' }, { status: 404 })
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('phone, fonnte_token')
+    .eq('id', reg.user_id)
+    .single()
+  const instructorToken = (profile as { phone: string | null; fonnte_token: string | null } | null)?.fonnte_token ?? null
+  const instructorPhone = (profile as { phone: string | null; fonnte_token: string | null } | null)?.phone ?? null
+
+  const name       = reg.registrant_name
+  const eventTitle = (reg.events as any)?.title ?? 'event'
+
+  const participantMsg =
+    `Halo *${name}*! 🎉\n\n` +
+    `Pendaftaranmu untuk *${eventTitle}* sudah kami terima ✅\n\n` +
+    `Kami akan konfirmasi pembayaranmu setelah cek bukti transfer ya. Mohon ditunggu 🙏`
+
+  const sent = await sendWhatsApp(reg.registrant_phone, participantMsg, instructorToken)
+
+  // Kabari instruktur juga — supaya tidak perlu cek manual ke web tiap saat
+  if (instructorPhone) {
+    const tierLabel = REGISTRATION_TIER[reg.tier as keyof typeof REGISTRATION_TIER]?.label ?? reg.tier
+    const instructorMsg =
+      `🔔 *Pendaftaran Baru*\n\n` +
+      `${name} (${reg.registrant_phone}) baru daftar *${eventTitle}*\n` +
+      `${tierLabel} · ${formatRupiah(Number(reg.amount_paid))}\n` +
+      `Cek bukti transfer & konfirmasi di halaman Kelola Peserta ya 🙏`
+    await sendWhatsApp(instructorPhone, instructorMsg, instructorToken)
+  }
+
+  return NextResponse.json({ ok: true, sent })
+}

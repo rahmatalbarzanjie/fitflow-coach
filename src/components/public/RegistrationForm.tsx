@@ -69,10 +69,16 @@ export function RegistrationForm({
       // Upload gagal → lanjutkan tanpa proof (bisa kirim via WA)
     }
 
+    // ID di-generate di client supaya tidak perlu .select() setelah insert —
+    // peserta publik (anon) cuma punya izin INSERT, bukan SELECT, jadi
+    // .select().single() setelah insert akan gagal kena RLS.
+    const registrationId = crypto.randomUUID()
+
     // Simpan registrasi
     const { error: regErr } = await supabase
       .from('registrations')
       .insert({
+        id:               registrationId,
         event_id:         eventId,
         user_id:          userId,
         registrant_name:  name.trim(),
@@ -88,6 +94,14 @@ export function RegistrationForm({
       setSubmitting(false)
       return
     }
+
+    fetch('/api/notifications/event-registration', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ registrationId }),
+    }).catch(() => {
+      // notifikasi WA gagal tidak perlu blokir UI
+    })
 
     setSuccess(true)
     setSubmitting(false)
