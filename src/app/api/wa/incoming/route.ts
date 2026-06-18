@@ -6,6 +6,14 @@ import { DAY_NAMES, formatTime, formatRupiah } from '@/lib/utils'
 
 const HISTORY_LIMIT = 20
 
+// Gelar instruktur per tipe kelas — manual dulu, nanti dipindah ke form
+// profil instruktur supaya bisa diatur sendiri per akun.
+const TYPE_TITLE: Record<string, string> = {
+  poundfit: 'Pro',
+  barre:    'Teacher',
+  zumba:    'Zin',
+}
+
 /*
  * POST /api/wa/incoming?key=FONNTE_WEBHOOK_KEY
  *
@@ -117,6 +125,13 @@ export async function POST(request: Request) {
   const personalPhone = instructorProfile.phone ? normalizePhone(instructorProfile.phone) : null
   const hasDistinctPersonalPhone = !!personalPhone && personalPhone !== cleanDevice
 
+  // Sapaan "Kak" — selalu pakai ini, plus nama kalau Fonnte kasih nama kontaknya
+  const greetName = senderName ? `Kak ${senderName}` : 'Kak'
+
+  const titleLines = Object.entries(TYPE_TITLE)
+    .map(([type, title]) => `- ${type[0].toUpperCase()}${type.slice(1)} → "${title} ${instructorProfile.name}"`)
+    .join('\n')
+
   // ── Riwayat percakapan thread ini (instruktur + nomor pengirim) ────────────
   const senderPhoneKey = normalizePhone(cleanSender)
   const { data: historyRows } = await supabase
@@ -168,9 +183,9 @@ export async function POST(request: Request) {
       : (asksToday ? '- (tidak ada kelas hari ini)' : '- (belum ada kelas terdaftar)')
 
     const fastReply =
-      `Halo! 👋 ${asksToday ? `Jadwal hari ini (${todayLabel}):` : `Ini jadwal kelas di *${studioName}*:`}\n\n${scopedLines}` +
+      `Halo ${greetName}! 👋 ${asksToday ? `Jadwal hari ini (${todayLabel}):` : `Ini jadwal kelas di *${studioName}*:`}\n\n${scopedLines}` +
       (!asksToday && events && events.length > 0 ? `\n\nEvent mendatang:\n\n${eventLines}` : '') +
-      `\n\nMau daftar kelas/event yang mana? Tinggal sebutin aja ya 😊`
+      `\n\nMau daftar kelas/event yang mana, Kak? Tinggal sebutin aja ya 😊`
 
     await supabase.from('wa_conversations').insert([
       { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
@@ -198,10 +213,16 @@ ${classLines}
 EVENT MENDATANG:
 ${eventLines}
 
+GELAR INSTRUKTUR PER TIPE KELAS (sebut instruktur dengan gelar ini kalau lagi ngomongin kelas tipe itu, bukan cuma nama polos):
+${titleLines}
+- Tipe lain → "${instructorProfile.name}" saja (tanpa gelar)
+
 CARA MENJAWAB:
-- Gunakan Bahasa Indonesia yang ramah, hangat, dan santai
-- Jawaban SINGKAT — maks 3-4 kalimat (ini WhatsApp, bukan email)
-- Gunakan emoji secukupnya agar terasa personal
+- WAJIB selalu panggil orang yang chat dengan sebutan "Kak" — contoh: "Halo ${greetName}!", "Boleh, Kak!", "Siap, Kak 😊". Jangan pernah panggil nama tanpa "Kak" di depannya
+- Selalu bersikap suportif, hangat, dan memotivasi — buat orang yang chat merasa dihargai dan disambut baik, bukan dilayani robot
+- Gunakan Bahasa Indonesia yang ramah dan santai, emoji secukupnya
+- Jawaban ringkas (idealnya 3-5 kalimat), TAPI kalau ada lebih dari satu topik/konteks dalam satu balasan, pisah jadi paragraf baru (baris kosong) per topik — jangan ditumpuk jadi satu paragraf panjang, supaya nyaman dibaca di WhatsApp
+- PENTING soal format bold: WhatsApp cuma pakai SATU tanda bintang untuk tebal (*teks*) — JANGAN PERNAH pakai dua bintang (**teks**) seperti markdown biasa, itu akan tampil rusak
 - Kamu SUDAH TAHU hari ini hari apa (lihat "Hari ini" di atas) — jangan pernah tanya balik hari/tanggal ke peserta, langsung cocokkan ke jadwal kelas yang sesuai
 - Untuk pertanyaan jadwal atau event → berikan info yang ada di atas
 - Kalau orang menyatakan niat daftar/ikut kelas atau event TERTENTU, cocokkan namanya dengan data di atas dan balas dengan link "Daftar" yang SESUAI dengan item itu — jangan sampai ketuker kasih link kelas/event lain
@@ -229,9 +250,13 @@ CARA MENJAWAB:
     })
 
     reply = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
+    // Jaga-jaga kalau model tetap pakai markdown dua bintang — WhatsApp cuma
+    // kenal satu bintang untuk bold, dua bintang tampil rusak (bintangnya
+    // ikut kelihatan).
+    reply = reply.replace(/\*\*/g, '*')
   } catch (err) {
     console.error('[WA Bot] Claude error:', err)
-    reply = `Halo! Maaf, asisten kami sedang sibuk. Silakan hubungi ${instructorProfile.name} langsung ya 😊`
+    reply = `Halo ${greetName}! Maaf ya, asisten kami sedang sibuk 🙏 Silakan hubungi ${instructorProfile.name} langsung ya 😊`
   }
 
   // ── Simpan riwayat (pesan masuk + balasan) ──────────────────────────────────
