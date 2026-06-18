@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendWhatsApp } from '@/lib/whatsapp'
+import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp'
 import { DAY_NAMES, formatTime, formatRupiah } from '@/lib/utils'
+
+const HISTORY_LIMIT = 20
 
 /*
  * POST /api/wa/incoming?key=FONNTE_WEBHOOK_KEY
@@ -106,6 +108,20 @@ export async function POST(request: Request) {
   const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const slug       = instructorProfile.slug ?? ''
 
+  const now        = new Date()
+  const todayLabel = `${DAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+
+  // ── Riwayat percakapan thread ini (instruktur + nomor pengirim) ────────────
+  const senderPhoneKey = normalizePhone(cleanSender)
+  const { data: historyRows } = await supabase
+    .from('wa_conversations')
+    .select('role, message')
+    .eq('user_id', instructorProfile.id)
+    .eq('phone', senderPhoneKey)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LIMIT)
+  const history = (historyRows ?? []).reverse()
+
   const classLines = (classes ?? []).map((c: any) => {
     const price   = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
     const regLink = slug ? `${appUrl}/${slug}/daftar/kelas/${c.id}` : '(link belum tersedia)'
@@ -134,6 +150,7 @@ export async function POST(request: Request) {
 INFORMASI STUDIO:
 - Nama: ${studioName}
 - Instruktur: ${instructorProfile.name}
+- Hari ini: ${todayLabel}
 - Halaman publik: ${appUrl}/${slug}
 
 JADWAL KELAS RUTIN:
@@ -146,6 +163,7 @@ CARA MENJAWAB:
 - Gunakan Bahasa Indonesia yang ramah, hangat, dan santai
 - Jawaban SINGKAT — maks 3-4 kalimat (ini WhatsApp, bukan email)
 - Gunakan emoji secukupnya agar terasa personal
+- Kamu SUDAH TAHU hari ini hari apa (lihat "Hari ini" di atas) — jangan pernah tanya balik hari/tanggal ke peserta, langsung cocokkan ke jadwal kelas yang sesuai
 - Untuk pertanyaan jadwal atau event → berikan info yang ada di atas
 - Kalau orang menyatakan niat daftar/ikut kelas atau event TERTENTU, cocokkan namanya dengan data di atas dan balas dengan link "Daftar" yang SESUAI dengan item itu — jangan sampai ketuker kasih link kelas/event lain
 - Kalau tidak jelas kelas/event mana yang dimaksud (nama disebut umum, atau ada beberapa kandidat yang cocok), tanya dulu mau yang mana sebelum kasih link apa pun — jangan menebak
@@ -154,7 +172,7 @@ CARA MENJAWAB:
 - JANGAN membuat info, harga, atau jadwal yang tidak ada di data di atas
 - Mulai jawaban langsung tanpa sapaan panjang`
 
-  // ── Panggil Claude AI ─────────────────────────────────────────────────────
+  // ── Panggil Claude AI (dengan riwayat percakapan thread ini) ────────────────
   let reply = ''
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -164,7 +182,10 @@ CARA MENJAWAB:
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 300,
       system:     systemPrompt,
-      messages:   [{ role: 'user', content: userMsg }],
+      messages:   [
+        ...history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.message })),
+        { role: 'user', content: userMsg },
+      ],
     })
 
     reply = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
@@ -172,6 +193,12 @@ CARA MENJAWAB:
     console.error('[WA Bot] Claude error:', err)
     reply = `Halo! Maaf, asisten kami sedang sibuk. Silakan hubungi ${instructorProfile.name} langsung ya 😊`
   }
+
+  // ── Simpan riwayat (pesan masuk + balasan) ──────────────────────────────────
+  await supabase.from('wa_conversations').insert([
+    { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
+    ...(reply ? [{ user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: reply }] : []),
+  ])
 
   // ── Kirim balasan via Fonnte ──────────────────────────────────────────────
   if (reply) {
