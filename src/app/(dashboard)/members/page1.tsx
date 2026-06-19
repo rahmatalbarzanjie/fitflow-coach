@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Users } from 'lucide-react'
+import { UserPlus, Users } from 'lucide-react'
 import { MembersSearch } from '@/components/members/MembersSearch'
 import { MemberStatusBadge } from '@/components/members/MemberStatusBadge'
 import { MemberAvatar } from '@/components/members/MemberPhotoUpload'
-import { AddMemberModal } from '@/components/members/AddMemberModal'
 import { timeAgo } from '@/lib/utils'
 
 export default async function MembersPage({
@@ -43,7 +42,13 @@ export default async function MembersPage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-gray-900">Member</h1>
-        <AddMemberModal />
+        <Link
+          href="/members/new"
+          className="inline-flex items-center gap-2 h-9 px-4 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <UserPlus className="h-4 w-4" />
+          Tambah
+        </Link>
       </div>
 
       <MembersSearch
