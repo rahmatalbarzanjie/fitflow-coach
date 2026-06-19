@@ -65,63 +65,6 @@ export async function POST(request: Request) {
 
   const supabase = createServiceClient()
 
-  // ── Handle pesan dari GRUP KOMUNITAS (Level 1) ────────────────────────────
-  // Fonnte mengirim sender = "groupid@g.us" dan member = nomor pengirim asli
-  // kalau pesan dari grup WA. Kita manfaatkan ini untuk auto-capture kontak
-  // komunitas tanpa perlu instruktur input manual.
-  const isGroupMessage = String(sender ?? '').includes('@g.us')
-
-  if (isGroupMessage) {
-    const groupId     = String(sender ?? '')                          // "xxx@g.us"
-    const memberPhone = String(body.member ?? '').replace(/\D/g, '') // nomor pengirim di grup
-    const memberName  = String(senderName ?? '').trim() || null
-
-    if (memberPhone) {
-      // Cari instruktur yang punya grup komunitas ini (class_type_benefits.wa_group_id)
-      const { data: benefit } = await supabase
-        .from('class_type_benefits')
-        .select('user_id, type')
-        .eq('wa_group_id', groupId)
-        .maybeSingle()
-
-      if (benefit) {
-        // Normalisasi nomor: 628xxx → 08xxx
-        const phoneNorm = memberPhone.startsWith('62')
-          ? '0' + memberPhone.slice(2)
-          : memberPhone
-
-        // Cek apakah sudah ada di community_contacts (by phone + user_id)
-        const { data: existing } = await supabase
-          .from('community_contacts')
-          .select('id, name')
-          .eq('user_id', benefit.user_id)
-          .eq('phone', phoneNorm)
-          .maybeSingle()
-
-        if (!existing) {
-          // Belum ada → insert otomatis
-          await supabase.from('community_contacts').insert({
-            user_id:    benefit.user_id,
-            name:       memberName,
-            phone:      phoneNorm,
-            class_type: benefit.type,   // poundfit / barre / dll
-            source:     'wa_group',     // tandai asal dari grup WA
-          })
-        } else if (memberName && !existing.name) {
-          // Sudah ada tapi belum punya nama → update nama
-          await supabase
-            .from('community_contacts')
-            .update({ name: memberName })
-            .eq('id', existing.id)
-        }
-      }
-    }
-
-    // Pesan dari grup tidak perlu dibalas bot — langsung selesai
-    return NextResponse.json({ ok: true, source: 'group_capture' })
-  }
-
-
   // ── Cari instruktur ───────────────────────────────────────────────────────
   // Prioritas: instructor_id dari Node-RED config (langsung, tidak perlu lookup)
   // Fallback: cari berdasarkan nomor device Fonnte di tabel profiles
