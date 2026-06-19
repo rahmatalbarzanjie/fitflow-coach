@@ -28,6 +28,7 @@ interface Props {
   }
   inModal?: boolean
   onClose?: () => void
+  redirectTo?: string
 }
 
 const DAY_OPTIONS = [
@@ -42,7 +43,7 @@ const DAY_OPTIONS = [
 
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white disabled:bg-gray-50 disabled:text-gray-400'
 
-export function ClassEditForm({ cls, inModal = false, onClose }: Props) {
+export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/classes' }: Props) {
   const [serverError, setServerError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -97,7 +98,7 @@ export function ClassEditForm({ cls, inModal = false, onClose }: Props) {
       onClose?.()
       router.refresh()
     } else {
-      router.push('/classes')
+      router.push(redirectTo)
       router.refresh()
     }
   }
