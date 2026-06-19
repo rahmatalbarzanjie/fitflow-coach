@@ -9,8 +9,10 @@ export default async function ClassesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const today    = new Date().toISOString().split('T')[0]
-  const todayDow = new Date().getDay()
+  // Gunakan WIB (UTC+7) agar hari sesuai timezone instruktur
+  const nowWIB   = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const today    = nowWIB.toISOString().split('T')[0]
+  const todayDow = nowWIB.getUTCDay()
   const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
   const [classesRes, todaySessionsRes] = await Promise.all([

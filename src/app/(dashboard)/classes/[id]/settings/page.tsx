@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { ClassEditForm } from '@/components/classes/ClassEditForm'
+import { ClassSettingsForm } from '@/components/classes/ClassSettingsForm'
 import { WaGroupPicker } from '@/components/classes/WaGroupPicker'
 import { ClassPhotoUpload } from '@/components/classes/ClassPhotoUpload'
 import { DeleteButton } from '@/components/ui/DeleteButton'
@@ -43,10 +43,10 @@ export default async function ClassSettingsPage({
         </div>
       </SectionList>
 
-      {/* Form edit */}
+      {/* Form edit — pakai client wrapper */}
       <SectionList label="Informasi Kelas">
         <div className="px-4 py-4">
-          <ClassEditForm cls={cls} inModal onClose={() => {}} redirectTo={`/classes/${id}`} />
+          <ClassSettingsForm cls={cls} classId={id} />
         </div>
       </SectionList>
 

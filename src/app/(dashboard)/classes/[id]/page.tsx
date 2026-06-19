@@ -15,6 +15,17 @@ const TYPE_EMOJI: Record<string, string> = {
   yoga: '🧘', pilates: '🏋️', aerobic: '🔥', other: '🎯',
 }
 
+// Konversi ke WIB (UTC+7)
+function getTodayWIB(): string {
+  const now = new Date()
+  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000)
+  return wib.toISOString().split('T')[0]
+}
+
+function getThisMonthWIB(): string {
+  return getTodayWIB().substring(0, 7)
+}
+
 export default async function ClassDetailPage({
   params,
 }: {
@@ -24,10 +35,12 @@ export default async function ClassDetailPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const today = new Date().toISOString().split('T')[0]
-  const thisMonth = today.substring(0, 7) // YYYY-MM
+  const today      = getTodayWIB()
+  const thisMonth  = getThisMonthWIB()
+  const monthStart = `${thisMonth}-01`
+  const monthEnd   = `${thisMonth}-31`
 
-  const [clsRes, statsRes, todaySessionRes, upcomingRes] = await Promise.all([
+  const [clsRes, todaySessionRes, upcomingRes, monthlyRes, pesertaRes] = await Promise.all([
     supabase
       .from('classes')
       .select('*')
@@ -35,15 +48,7 @@ export default async function ClassDetailPage({
       .eq('user_id', user!.id)
       .single(),
 
-    // Total kehadiran bulan ini
-    (supabase.from('attendance') as any)
-      .select('id, sessions!inner(session_date, class_id)')
-      .eq('user_id', user!.id)
-      .eq('sessions.class_id', id)
-      .gte('sessions.session_date', `${thisMonth}-01`)
-      .lte('sessions.session_date', `${thisMonth}-31`),
-
-    // Sesi hari ini
+    // Sesi hari ini (WIB)
     (supabase.from('sessions') as any)
       .select('id, attendance(id)')
       .eq('class_id', id)
@@ -57,29 +62,37 @@ export default async function ClassDetailPage({
       .gte('session_date', today)
       .order('session_date'),
 
-    // Jumlah peserta terdaftar
+    // Total kehadiran bulan ini
+    (supabase.from('sessions') as any)
+      .select('id, attendance(id)')
+      .eq('class_id', id)
+      .gte('session_date', monthStart)
+      .lte('session_date', monthEnd),
+
+    // Jumlah peserta terdaftar (confirmed)
+    (supabase.from('registrations') as any)
+      .select('id')
+      .eq('class_id', id)
+      .eq('payment_status', 'confirmed'),
   ])
 
   const { data: cls } = clsRes
   if (!cls) notFound()
 
-  // Jumlah peserta (registrations confirmed)
-  const { data: registrations } = await (supabase as any)
-    .from('class_registration_summary')
-    .select('id')
-    .eq('class_id', id)
-    .eq('payment_status', 'confirmed')
-
-  const typeLabel    = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
-  const emoji        = TYPE_EMOJI[cls.type] ?? '🎯'
-  const label        = typeLabel[cls.type] ?? cls.type
-  const todaySession = todaySessionRes.data
-  const todayHadir   = todaySession
+  const typeLabel     = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
+  const emoji         = TYPE_EMOJI[cls.type] ?? '🎯'
+  const label         = typeLabel[cls.type] ?? cls.type
+  const todaySession  = todaySessionRes.data
+  const todayHadir    = todaySession
     ? (Array.isArray(todaySession.attendance) ? todaySession.attendance.length : 0)
     : 0
-  const upcomingCount  = (upcomingRes.data ?? []).length
-  const monthlyHadir   = (statsRes.data ?? []).length
-  const pesertaCount   = (registrations ?? []).length
+  const upcomingCount = (upcomingRes.data ?? []).length
+
+  // Hitung total hadir bulan ini dari semua sesi bulan ini
+  const monthlyHadir = (monthlyRes.data ?? []).reduce((sum: number, s: any) =>
+    sum + (Array.isArray(s.attendance) ? s.attendance.length : 0), 0)
+
+  const pesertaCount  = (pesertaRes.data ?? []).length
 
   return (
     <div className="w-full max-w-lg mx-auto">
@@ -90,7 +103,7 @@ export default async function ClassDetailPage({
       />
 
       {/* Info singkat kelas */}
-      <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4 flex flex-col gap-1.5">
+      <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4 space-y-1.5">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Clock className="w-4 h-4 text-gray-400 shrink-0" />
           <span>{formatTime(cls.start_time)} – {formatTime(cls.end_time)}</span>
@@ -119,7 +132,7 @@ export default async function ClassDetailPage({
               ? todayHadir > 0
                 ? `${todayHadir} hadir`
                 : 'Belum ada absensi'
-              : 'Kelas tidak ada hari ini'
+              : 'Tidak ada sesi hari ini'
           }
           href={todaySession ? `/classes/${id}/attendance?date=${today}` : undefined}
           disabled={!todaySession}
@@ -140,7 +153,7 @@ export default async function ClassDetailPage({
       <SectionList label="Statistik">
         <DetailRow
           icon={<BarChart2 className="w-4 h-4" />}
-          label="Kehadiran Bulan Ini"
+          label="Riwayat Kehadiran"
           sublabel={monthlyHadir > 0 ? `${monthlyHadir} hadir bulan ini` : 'Belum ada kehadiran bulan ini'}
           href={`/classes/${id}/attendance`}
         />
