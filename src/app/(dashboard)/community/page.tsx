@@ -58,7 +58,6 @@ export default async function CommunityPage({
   const groupIdMap = Object.fromEntries(
     ((typeBenefitsRes.data ?? []) as any[]).map(b => [b.type, b.wa_group_id ?? ''])
   )
-  )
   const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
   return (
