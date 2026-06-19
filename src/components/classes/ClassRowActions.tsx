@@ -10,9 +10,10 @@ import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah, formatTime } from '@/lib/utils'
 import { generateExtraClassMessage } from '@/lib/class-notifications'
 import {
-  MoreHorizontal, Pencil, Trash2, Heart, Sparkles, X,
-  Loader2, Check, CalendarDays, Clock, MapPin, Users, AlertCircle,
+  MoreHorizontal, Pencil, Trash2, X,
+  Loader2, CalendarDays, Clock, MapPin, Users, AlertCircle, Sparkles,
 } from 'lucide-react'
+import { WaGroupPicker } from '@/components/classes/WaGroupPicker'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,11 +31,10 @@ interface AllClasses { id: string; name: string; type: string; start_time: strin
 
 interface Props {
   cls: Cls
-  benefits: BenefitEntry[]
   allClasses: AllClasses[]
 }
 
-type Modal = 'edit' | 'delete' | 'benefits' | 'extra' | null
+type Modal = 'edit' | 'delete' | null
 
 const inp = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
 
@@ -445,7 +445,7 @@ function DeleteModal({ cls, onClose }: { cls: Cls; onClose: () => void }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function ClassRowActions({ cls, benefits, allClasses }: Props) {
+export function ClassRowActions({ cls, allClasses }: Props) {
   const [open,  setOpen ] = useState(false)
   const [modal, setModal] = useState<Modal>(null)
 
@@ -471,14 +471,6 @@ export function ClassRowActions({ cls, benefits, allClasses }: Props) {
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                 <Pencil className="w-3.5 h-3.5 text-gray-400" /> Edit Kelas
               </button>
-              <button onClick={() => openModal('benefits')}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <Heart className="w-3.5 h-3.5 text-gray-400" /> Manfaat Kelas
-              </button>
-              <button onClick={() => openModal('extra')}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <Sparkles className="w-3.5 h-3.5 text-gray-400" /> Kelas Ekstra
-              </button>
               <div className="border-t border-gray-100 my-1" />
               <button onClick={() => openModal('delete')}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
@@ -493,16 +485,6 @@ export function ClassRowActions({ cls, benefits, allClasses }: Props) {
       {modal === 'edit' && (
         <Modal title={`Edit — ${cls.name}`} onClose={closeModal} wide>
           <EditModal cls={cls} onClose={closeModal} />
-        </Modal>
-      )}
-      {modal === 'benefits' && (
-        <Modal title="Manfaat Kelas" onClose={closeModal}>
-          <BenefitsModal benefits={benefits} onClose={closeModal} />
-        </Modal>
-      )}
-      {modal === 'extra' && (
-        <Modal title="Tambah Kelas Ekstra" onClose={closeModal} wide>
-          <ExtraModal allClasses={allClasses} onClose={closeModal} />
         </Modal>
       )}
       {modal === 'delete' && (

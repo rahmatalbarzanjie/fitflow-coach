@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Clock, MapPin, CheckSquare, ChevronRight, AlertTriangle, Calendar, Users } from 'lucide-react'
+import { Clock, MapPin, CheckSquare, AlertTriangle, Calendar, Users } from 'lucide-react'
 import { getDayName, formatTime, formatRupiah } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,12 @@ const SESSION_BADGE: Record<string, { label: string; color: 'orange' | 'green' |
   location_changed: { label: 'Lokasi Baru',     color: 'blue'   },
 }
 
-export default async function ClassesPage() {
+export default async function ClassesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>
+}) {
+  const { type: typeFilter = '' } = await searchParams
   const supabase  = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -26,18 +31,24 @@ export default async function ClassesPage() {
   const todayDow = new Date().getDay()
   const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
-  const [classesRes, todaySessionsRes, attendanceRes, benefitsRes] = await Promise.all([
-    supabase.from('classes').select('*').eq('user_id', user!.id).order('day_of_week').order('start_time'),
+  // Load semua kelas (tanpa filter) untuk keperluan typeCount dan allClasses di modal
+  const allClassesRes = await supabase.from('classes').select('*').eq('user_id', user!.id).order('day_of_week').order('start_time')
+  const allClasses: any[] = allClassesRes.data ?? []
+
+  const [classesRes, todaySessionsRes, attendanceRes] = await Promise.all([
+    (() => {
+      let q = supabase.from('classes').select('*').eq('user_id', user!.id).order('day_of_week').order('start_time')
+      if (typeFilter) q = (q as any).eq('type', typeFilter)
+      return q
+    })(),
     (supabase.from('sessions') as any)
       .select('id, class_id, session_type, notified_at, override_location')
       .eq('user_id', user!.id).eq('session_date', today),
     supabase.from('attendance').select('session_id, sessions!inner(class_id)').eq('user_id', user!.id),
-    supabase.from('class_type_benefits').select('type, benefits').eq('user_id', user!.id),
   ])
 
   const classes: any[]       = classesRes.data ?? []
   const todaySessions: any[] = todaySessionsRes.data ?? []
-  const benefits: any[]      = benefitsRes.data ?? []
 
   const todayMap = new Map<string, any>()
   todaySessions.forEach((s: any) => todayMap.set(s.class_id, s))
@@ -48,12 +59,10 @@ export default async function ClassesPage() {
     if (cid) attendMap[cid] = (attendMap[cid] ?? 0) + 1
   })
 
-  const usedTypes  = Array.from(new Set(classes.map((c: any) => c.type)))
-  const typeCount  = Object.fromEntries(CLASS_TYPES.map(t => [t.value, classes.filter((c: any) => c.type === t.value).length]))
-  const todayCount = classes.filter((c: any) => c.day_of_week === todayDow).length
-
-  // Benefits per type — untuk dikirim ke ClassRowActions
-  const benefitsMap = Object.fromEntries(benefits.map((b: any) => [b.type, b.benefits ?? '']))
+  // typeCount pakai allClasses (tidak terfilter) agar summary cards selalu lengkap
+  const typeCount   = Object.fromEntries(CLASS_TYPES.map(t => [t.value, allClasses.filter((c: any) => c.type === t.value).length]))
+  const todayCount  = allClasses.filter((c: any) => c.day_of_week === todayDow).length
+  const usedTypes   = CLASS_TYPES.filter(t => typeCount[t.value] > 0)
 
   return (
     <div className="w-full">
@@ -61,7 +70,7 @@ export default async function ClassesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Kelas</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{classes.length} kelas terdaftar</p>
+          <p className="text-sm text-gray-400 mt-0.5">{allClasses.length} kelas terdaftar</p>
         </div>
         <AddClassModal />
       </div>
@@ -76,7 +85,7 @@ export default async function ClassesPage() {
           <p className="text-2xl font-bold text-violet-600">{todayCount}</p>
           <p className="text-xs text-gray-400 mt-0.5">Kelas Hari Ini</p>
         </div>
-        {CLASS_TYPES.filter(t => typeCount[t.value] > 0).slice(0, 2).map(t => (
+        {CLASS_TYPES.filter(t => typeCount[t.value] > 0).map(t => (
           <div key={t.value} className="bg-white rounded-2xl border border-gray-100 p-4">
             <p className="text-2xl font-bold text-gray-700">{typeCount[t.value]}</p>
             <p className="text-xs text-gray-400 mt-0.5">{t.label}</p>
@@ -95,15 +104,28 @@ export default async function ClassesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+          {/* Filter pills */}
+          <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <p className="text-xs text-gray-400">
               {todayCount > 0 && (
                 <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full text-[10px] font-medium mr-2">
                   <Calendar className="w-3 h-3" /> {todayCount} kelas hari ini
                 </span>
               )}
-              {classes.length} kelas total
+              Menampilkan <span className="font-semibold text-gray-600">{classes.length}</span> dari <span className="font-semibold text-gray-600">{allClasses.length}</span> kelas
             </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <a href="/classes"
+                className={`h-8 px-4 rounded-full text-xs font-medium transition-colors flex items-center ${!typeFilter ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                Semua
+              </a>
+              {usedTypes.map(t => (
+                <a key={t.value} href={`/classes?type=${t.value}`}
+                  className={`h-8 px-4 rounded-full text-xs font-medium transition-colors flex items-center ${typeFilter === t.value ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {t.label}
+                </a>
+              ))}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -126,14 +148,6 @@ export default async function ClassesPage() {
                   const sessType  = todaySess?.session_type
                   const sessBadge = sessType && SESSION_BADGE[sessType] ? SESSION_BADGE[sessType] : null
                   const unnotified = todaySess && sessType !== 'regular' && !todaySess.notified_at
-
-                  // Benefits untuk kelas ini (per type)
-                  const classBenefits = usedTypes.map(type => ({
-                    type,
-                    label: typeLabel[type] ?? type,
-                    initialBenefits: benefitsMap[type] ?? '',
-                    userId: user!.id,
-                  }))
 
                   return (
                     <tr key={cls.id} className={`transition-colors ${isToday ? 'bg-violet-50/40' : 'hover:bg-gray-50'}`}>
@@ -158,16 +172,11 @@ export default async function ClassesPage() {
 
                       {/* Jadwal */}
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${isToday ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                            {getDayName(cls.day_of_week).substring(0, 3)}
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-700">{getDayName(cls.day_of_week)}</p>
-                            <p className="text-xs text-gray-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />{formatTime(cls.start_time)}–{formatTime(cls.end_time)}
-                            </p>
-                          </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-700">{getDayName(cls.day_of_week)}</p>
+                          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                            <Clock className="w-3 h-3" />{formatTime(cls.start_time)}–{formatTime(cls.end_time)}
+                          </p>
                         </div>
                       </td>
 
@@ -211,14 +220,9 @@ export default async function ClassesPage() {
                               <CheckSquare className="w-3 h-3" /> Absen
                             </Link>
                           )}
-                          <Link href={`/classes/${cls.id}`}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">
-                            <ChevronRight className="w-4 h-4" />
-                          </Link>
                           <ClassRowActions
                             cls={cls}
-                            benefits={classBenefits}
-                            allClasses={classes}
+                            allClasses={allClasses}
                           />
                         </div>
                       </td>
