@@ -58,40 +58,16 @@ export default async function AttendancePage({
     )
   }
 
-  // Load members, community contacts (per class_type), dan existing attendance secara paralel
-  const [
-    { data: members },
-    { data: communityContacts },
-    { data: existingAttendance },
-    { data: bookings },
-  ] = await Promise.all([
-    // Semua member aktif instruktur
+  // Load all instructor's members + existing attendance in parallel
+  const [{ data: members }, { data: existingAttendance }] = await Promise.all([
     (supabase.from('members') as any)
       .select('id, name, phone, status, photo_url')
       .eq('user_id', user!.id)
-      .eq('status', 'active')
       .order('name') as any,
-
-    // Komunitas per jenis kelas (misal: semua kontak poundfit)
-    (supabase.from('community_contacts') as any)
-      .select('id, name, phone, class_type, source')
-      .eq('user_id', user!.id)
-      .eq('class_type', cls.type)
-      .is('converted_member_id', null) // yang belum jadi member
-      .order('name') as any,
-
-    // Absensi yang sudah ada di sesi ini (semua sumber)
     supabase
       .from('attendance')
-      .select('id, member_id, community_id, source, payment_mode, payment_method, amount_paid, registrant_name, registrant_phone')
+      .select('id, member_id, payment_mode, payment_method, amount_paid')
       .eq('session_id', session.id),
-
-    // Booking dari registrations untuk sesi/tanggal ini
-    (supabase.from('registrations') as any)
-      .select('id, registrant_name, registrant_phone, member_id, community_id')
-      .eq('class_id', id)
-      .eq('session_date', date)
-      .eq('payment_status', 'confirmed') as any,
   ])
 
   return (
@@ -110,8 +86,6 @@ export default async function AttendancePage({
         cls={cls}
         session={session}
         members={members ?? []}
-        communityContacts={communityContacts ?? []}
-        bookings={bookings ?? []}
         existingAttendance={existingAttendance ?? []}
       />
     </div>

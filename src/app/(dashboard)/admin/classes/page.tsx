@@ -23,23 +23,23 @@ export default async function AdminClassesPage({
     supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
-          .from('classes')
-          .select('id, name, type, day_of_week, start_time, end_time, class_price, revenue_share_pct, is_active, user_id')
-          .eq('user_id', instructor)
-          .order('day_of_week').order('start_time')
+        .from('classes')
+        .select('id, name, type, day_of_week, start_time, end_time, class_price, revenue_share_pct, is_active, user_id')
+        .eq('user_id', instructor)
+        .order('day_of_week').order('start_time')
       : supa
-          .from('classes')
-          .select('id, name, type, day_of_week, start_time, end_time, class_price, revenue_share_pct, is_active, user_id')
-          .eq('is_active', true)
-          .neq('user_id', user.id)
-          .order('day_of_week').order('start_time')
-          .limit(200),
+        .from('classes')
+        .select('id, name, type, day_of_week, start_time, end_time, class_price, revenue_share_pct, is_active, user_id')
+        .eq('is_active', true)
+        .neq('user_id', user.id)
+        .order('day_of_week').order('start_time')
+        .limit(200),
   ])
 
   const profiles = (profilesRes.data ?? []) as { id: string; name: string; business_name: string | null }[]
-  const classes  = (classesRes.data ?? []) as any[]
-  const profileMap   = Object.fromEntries(profiles.map(p => [p.id, p.business_name ?? p.name]))
-  const typeLabel    = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
+  const classes = (classesRes.data ?? []) as any[]
+  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p.business_name ?? p.name]))
+  const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
   return (
     <div className="max-w-4xl">
