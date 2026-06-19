@@ -10,8 +10,8 @@ const HISTORY_LIMIT = 20
 // profil instruktur supaya bisa diatur sendiri per akun.
 const TYPE_TITLE: Record<string, string> = {
   poundfit: 'Pro',
-  barre:    'Teacher',
-  zumba:    'Zin',
+  barre: 'Teacher',
+  zumba: 'Zin',
 }
 
 // Tanggal kemunculan kelas berikutnya dari day_of_week (kelas berulang
@@ -72,9 +72,9 @@ export async function POST(request: Request) {
   const isGroupMessage = String(sender ?? '').includes('@g.us')
 
   if (isGroupMessage) {
-    const groupId     = String(sender ?? '')                          // "xxx@g.us"
+    const groupId = String(sender ?? '')                          // "xxx@g.us"
     const memberPhone = String(body.member ?? '').replace(/\D/g, '') // nomor pengirim di grup
-    const memberName  = String(senderName ?? '').trim() || null
+    const memberName = String(senderName ?? '').trim() || null
 
     if (memberPhone) {
       // Cari instruktur yang punya grup komunitas ini (class_type_benefits.wa_group_id)
@@ -96,16 +96,17 @@ export async function POST(request: Request) {
           .select('id, name')
           .eq('user_id', benefit.user_id)
           .eq('phone', phoneNorm)
+          .eq('class_type', benefit.type)
           .maybeSingle()
 
         if (!existing) {
           // Belum ada → insert otomatis
           await supabase.from('community_contacts').insert({
-            user_id:    benefit.user_id,
-            name:       memberName,
-            phone:      phoneNorm,
+            user_id: benefit.user_id,
+            name: memberName,
+            phone: phoneNorm,
             class_type: benefit.type,   // poundfit / barre / dll
-            source:     'wa_group',     // tandai asal dari grup WA
+            source: 'wa_group',     // tandai asal dari grup WA
           })
         } else if (memberName && !existing.name) {
           // Sudah ada tapi belum punya nama → update nama
@@ -195,9 +196,9 @@ export async function POST(request: Request) {
       ])
 
       const memberCount: Record<string, number> = {}
-      ;(allMembers ?? []).forEach((m: any) => { memberCount[m.user_id] = (memberCount[m.user_id] ?? 0) + 1 })
+        ; (allMembers ?? []).forEach((m: any) => { memberCount[m.user_id] = (memberCount[m.user_id] ?? 0) + 1 })
       const classCount: Record<string, number> = {}
-      ;(allClasses ?? []).forEach((c: any) => { classCount[c.user_id] = (classCount[c.user_id] ?? 0) + 1 })
+        ; (allClasses ?? []).forEach((c: any) => { classCount[c.user_id] = (classCount[c.user_id] ?? 0) + 1 })
 
       function summarize(p: any) {
         const expiresAt = p.trial_expires_at ? new Date(p.trial_expires_at) : null
@@ -288,10 +289,10 @@ CARA MENJAWAB:
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
       const userMsg = senderName ? `[${senderName}]: ${message}` : message
       const res = await anthropic.messages.create({
-        model:      'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 500,
-        system:     productSystemPrompt,
-        messages:   [
+        system: productSystemPrompt,
+        messages: [
           ...prospectHistory.map(h => ({ role: h.role as 'user' | 'assistant', content: h.message })),
           { role: 'user', content: userMsg },
         ],
@@ -328,10 +329,10 @@ CARA MENJAWAB:
   ])
 
   const studioName = instructorProfile.business_name ?? instructorProfile.name
-  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const slug       = instructorProfile.slug ?? ''
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const slug = instructorProfile.slug ?? ''
 
-  const now        = new Date()
+  const now = new Date()
   const todayLabel = `${DAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
 
   // Nomor pribadi instruktur (beda dari nomor bot) - dipakai untuk fallback
@@ -359,7 +360,7 @@ CARA MENJAWAB:
   const history = (historyRows ?? []).reverse()
 
   function formatClassLine(c: any) {
-    const price   = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
+    const price = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
     const regLink = slug ? `${appUrl}/${slug}/daftar/kelas/${c.id}` : '(link belum tersedia)'
     return `- *${c.name}* (${c.type}): ${DAY_NAMES[c.day_of_week]}, ${formatTime(c.start_time)}–${formatTime(c.end_time)}` +
       `${c.location ? ` di ${c.location}` : ''}` +
@@ -476,10 +477,10 @@ CARA MENJAWAB:
   // ini juga disimpan ke riwayat).
   const isScheduleQuery = /\bjadwal\b|kelas apa (aja|saja)|ada kelas apa/i.test(message)
   if (isScheduleQuery) {
-    const asksToday     = /hari ini/i.test(message)
-    const todayClasses  = (classes ?? []).filter((c: any) => c.day_of_week === now.getDay())
+    const asksToday = /hari ini/i.test(message)
+    const todayClasses = (classes ?? []).filter((c: any) => c.day_of_week === now.getDay())
     const scopedClasses = asksToday ? todayClasses : (classes ?? [])
-    const scopedLines   = scopedClasses.length > 0
+    const scopedLines = scopedClasses.length > 0
       ? scopedClasses.map(formatClassLine).join('\n\n')
       : (asksToday ? '- (tidak ada kelas hari ini)' : '- (belum ada kelas terdaftar)')
 
@@ -530,13 +531,13 @@ CARA MENJAWAB:
   let reply = ''
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const userMsg   = senderName ? `[${senderName}]: ${message}` : message
+    const userMsg = senderName ? `[${senderName}]: ${message}` : message
 
     const res = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
-      system:     systemPrompt,
-      messages:   [
+      system: systemPrompt,
+      messages: [
         ...history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.message })),
         { role: 'user', content: userMsg },
       ],
