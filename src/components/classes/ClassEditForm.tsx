@@ -26,6 +26,8 @@ interface Props {
     cover_image_url?: string | null
     show_registrations?: boolean | null
   }
+  inModal?: boolean
+  onClose?: () => void
 }
 
 const DAY_OPTIONS = [
@@ -40,7 +42,7 @@ const DAY_OPTIONS = [
 
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white disabled:bg-gray-50 disabled:text-gray-400'
 
-export function ClassEditForm({ cls }: Props) {
+export function ClassEditForm({ cls, inModal = false, onClose }: Props) {
   const [serverError, setServerError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -91,8 +93,13 @@ export function ClassEditForm({ cls }: Props) {
 
     if (error) { setServerError(error.message); return }
 
-    router.push('/classes')
-    router.refresh()
+    if (inModal) {
+      onClose?.()
+      router.refresh()
+    } else {
+      router.push('/classes')
+      router.refresh()
+    }
   }
 
   return (
@@ -245,7 +252,7 @@ export function ClassEditForm({ cls }: Props) {
       <div className="flex items-center justify-end gap-3 pt-1">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => inModal ? onClose?.() : router.back()}
           className="h-9 px-4 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm transition-colors"
         >
           Batal
