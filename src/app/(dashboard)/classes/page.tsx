@@ -155,12 +155,13 @@ export default async function ClassesPage({
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           {isToday && <span className="text-[10px] bg-violet-600 text-white px-1.5 py-0.5 rounded-full font-medium">Hari Ini</span>}
-                          <Link href={`/classes/${cls.id}`} className="font-semibold text-gray-900 hover:text-violet-700 text-sm">
+                          <Link href={`/classes/${cls.id}`} className="font-semibold text-gray-900 hover:text-violet-700 text-sm underline-offset-2 hover:underline" title="Lihat detail, reschedule, konek WA">
                             {cls.name}
                           </Link>
                           <Badge color={TYPE_COLOR[cls.type] ?? 'gray'}>{typeLabel[cls.type] ?? cls.type}</Badge>
                           {sessBadge && <Badge color={sessBadge.color}>{sessBadge.label}</Badge>}
                         </div>
+                        <p className="text-[10px] text-gray-300 mt-0.5">Klik nama untuk detail & reschedule</p>
                         {unnotified && (
                           <div className="flex items-center gap-1 mt-1">
                             <AlertTriangle className="w-3 h-3 text-orange-500" />
