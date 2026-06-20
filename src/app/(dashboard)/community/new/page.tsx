@@ -89,7 +89,7 @@ export default function CommunityNewPage() {
             ))}
           </select>
           <p className="text-xs text-gray-400">
-            Pilih jenis kelas agar kontak ini muncul di absensi sesi kelas tersebut.
+            Jenis kelas dipakai untuk mengelompokkan kontak ini di halaman Komunitas. Kontak manual tidak otomatis muncul di absensi — peserta baru terdeteksi setelah benar-benar hadir di kelas (member/booking/walk-in).
           </p>
         </div>
 

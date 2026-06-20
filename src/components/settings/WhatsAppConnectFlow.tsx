@@ -50,13 +50,13 @@ export function WhatsAppConnectFlow() {
   function startPolling() {
     pollRef.current = setInterval(async () => {
       try {
-        const res  = await fetch('/api/wa/status')
+        const res  = await fetch('/api/wa/connect-status')
         const data = await res.json()
-        if (data.status === 'connected') {
+        if (data.connected) {
           clearInterval(pollRef.current!)
           setStatus('connected')
           setTimeout(() => router.push('/settings/whatsapp'), 1500)
-        } else if (data.status === 'connecting' && data.qr) {
+        } else if (data.qr) {
           setQr(data.qr)
           setStatus('connecting')
         }
