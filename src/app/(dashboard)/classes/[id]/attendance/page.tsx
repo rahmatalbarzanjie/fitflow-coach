@@ -1,32 +1,32 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { AttendanceSheet } from '@/components/attendance/AttendanceSheet'
+import { formatDateShort, formatTime } from '@/lib/utils'
 
 export default async function AttendancePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>
+  params:       Promise<{ id: string }>
   searchParams: Promise<{ date?: string }>
 }) {
   const { id }   = await params
-  const { date = new Date().toISOString().split('T')[0] } = await searchParams
+  const { date = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split('T')[0] } = await searchParams
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch class - 404 if not owner
+  // Fetch kelas
   const { data: cls } = await (supabase.from('classes') as any)
     .select('id, name, type, start_time, end_time, user_id, payment_mode, class_price')
     .eq('id', id)
     .eq('user_id', user!.id)
-    .single() as { data: any }
+    .single()
 
   if (!cls) notFound()
 
-  // Find existing session for this date, or create one
+  // Cari atau buat sesi
   let { data: session } = await supabase
     .from('sessions')
     .select('*')
@@ -52,67 +52,54 @@ export default async function AttendancePage({
 
   if (!session) {
     return (
-      <div className="text-sm text-red-600 p-4">
-        Gagal memuat sesi. Coba lagi.
+      <div className="p-4 text-sm text-red-600">
+        Gagal memuat sesi. Coba refresh halaman.
       </div>
     )
   }
 
-  // Load members, community contacts (per class_type), dan existing attendance secara paralel
-  const [
-    { data: members },
-    { data: communityContacts },
-    { data: existingAttendance },
-    { data: bookings },
-  ] = await Promise.all([
-    // Semua member aktif instruktur
+  // Fetch paralel: member aktif + booking + attendance yang sudah ada
+  // ── Komunitas tidak dipakai sebagai sumber peserta ──
+  const [membersRes, bookingsRes, attendanceRes] = await Promise.all([
+    // Member aktif instruktur
     (supabase.from('members') as any)
-      .select('id, name, phone, status, photo_url')
+      .select('id, name, phone')
       .eq('user_id', user!.id)
       .eq('status', 'active')
-      .order('name') as any,
+      .order('name'),
 
-    // Komunitas per jenis kelas (misal: semua kontak poundfit)
-    (supabase.from('community_contacts') as any)
-      .select('id, name, phone, class_type, source')
-      .eq('user_id', user!.id)
-      .eq('class_type', cls.type)
-      .is('converted_member_id', null) // yang belum jadi member
-      .order('name') as any,
-
-    // Absensi yang sudah ada di sesi ini (semua sumber)
-    supabase
-      .from('attendance')
-      .select('id, member_id, community_id, source, payment_mode, payment_method, amount_paid, registrant_name, registrant_phone')
-      .eq('session_id', session.id),
-
-    // Booking dari registrations untuk sesi/tanggal ini
+    // Booking kelas yang dikonfirmasi untuk tanggal ini
     (supabase.from('registrations') as any)
-      .select('id, registrant_name, registrant_phone, member_id, community_id')
+      .select('id, registrant_name, registrant_phone, member_id')
       .eq('class_id', id)
       .eq('session_date', date)
-      .eq('payment_status', 'confirmed') as any,
+      .eq('payment_status', 'confirmed'),
+
+    // Absensi yang sudah ada di sesi ini
+    supabase
+      .from('attendance')
+      .select('id, member_id, source, registrant_name, registrant_phone')
+      .eq('session_id', session.id),
   ])
 
+  const subtitle = `${formatDateShort(date)} · ${formatTime(cls.start_time)}–${formatTime(cls.end_time)}`
+
   return (
-    <div>
-      <div className="mb-4">
-        <Link
-          href={`/classes/${id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Kembali ke {cls.name}
-        </Link>
+    <div className="max-w-lg mx-auto">
+      <div className="px-4 pt-4">
+        <PageHeader
+          backHref={`/classes/${id}`}
+          title={cls.name}
+          subtitle={subtitle}
+        />
       </div>
 
       <AttendanceSheet
         cls={cls}
         session={session}
-        members={members ?? []}
-        communityContacts={communityContacts ?? []}
-        bookings={bookings ?? []}
-        existingAttendance={existingAttendance ?? []}
+        members={membersRes.data ?? []}
+        bookings={bookingsRes.data ?? []}
+        existingAttendance={attendanceRes.data ?? []}
       />
     </div>
   )
