@@ -5,6 +5,7 @@ import { BottomNav } from './BottomNav'
 import { useState, useEffect } from 'react'
 import { Menu, Settings } from 'lucide-react'
 import Link from 'next/link'
+import { RoutePerfTracker } from '@/components/dev/RoutePerfTracker'
 
 interface Props {
   children: React.ReactNode
@@ -20,6 +21,7 @@ export function DashboardLayout({ children, title }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <RoutePerfTracker />
       {/* Sidebar - desktop only */}
       <div className="hidden md:block">
         <Sidebar open={open} onClose={() => setOpen(false)} />

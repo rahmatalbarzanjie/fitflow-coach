@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import {
   CheckSquare, Clock, MapPin, Users, Zap,
@@ -7,6 +9,68 @@ import {
 } from 'lucide-react'
 import { formatTime, formatRupiah } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
+import { timed } from '@/lib/perf'
+
+/**
+ * Data dashboard yang TIDAK perlu real-time - profil, daftar kelas/event,
+ * member at-risk, undangan komunitas pending, ringkasan bulan ini. Semua ini
+ * berubah dalam hitungan menit/jam, bukan detik, jadi aman di-cache 45s per
+ * user. "Hari Ini" (todaySessions/attendance count) TIDAK ikut di sini -
+ * itu harus selalu fresh karena instruktur cek dashboard tepat setelah absen.
+ *
+ * Pakai service-role client (bukan client per-request) karena unstable_cache
+ * bisa menyajikan hasil yang dihitung dari request/sesi lain - keamanan
+ * dijaga manual lewat filter .eq('user_id', userId) di setiap query, bukan RLS.
+ */
+const getCachedBerandaData = unstable_cache(
+  async (userId: string, today: string, monthStart: string) => {
+    const supabase = createServiceClient()
+
+    const [profileRes, classesRes, atRiskRes, eventsRes, invitationsPendingRes, summaryRes] = await Promise.all([
+      timed('query:/beranda:profile', supabase.from('profiles')
+        .select('name').eq('id', userId).single()),
+
+      timed('query:/beranda:classes', supabase.from('classes')
+        .select('id, name, type, day_of_week, start_time, end_time, location')
+        .eq('user_id', userId)
+        .order('start_time')),
+
+      timed('query:/beranda:atRisk', supabase.from('members')
+        .select('id, name, last_attended_at')
+        .eq('user_id', userId)
+        .eq('status', 'at_risk')),
+
+      timed('query:/beranda:events', supabase.from('events')
+        .select('id, title, event_date, start_time, location')
+        .eq('user_id', userId)
+        .eq('status', 'published')
+        .gte('event_date', today)
+        .order('event_date')
+        .limit(2)),
+
+      timed<any>('query:/beranda:invitationsPending', (supabase.from('community_invitation_candidates') as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'pending')),
+
+      timed<any>('query:/beranda:summary', (supabase.rpc as any)('get_dashboard_summary', {
+        p_user_id:     userId,
+        p_month_start: monthStart,
+      })),
+    ])
+
+    return {
+      instructorName:      profileRes.data?.name ?? null,
+      classes:             (classesRes.data ?? []) as any[],
+      atRiskMembers:       (atRiskRes.data ?? []) as any[],
+      events:              (eventsRes.data ?? []) as any[],
+      invitationsPending:  invitationsPendingRes.count ?? 0,
+      summary:             (summaryRes.data ?? {}) as any,
+    }
+  },
+  ['beranda-cached-data'],
+  { revalidate: 45 }
+)
 
 const TYPE_EMOJI: Record<string, string> = {
   poundfit: '⚡', barre: '🩰', zumba: '💃',
@@ -29,8 +93,13 @@ function getNowWIB() {
 }
 
 export default async function BerandaPage() {
+  console.time('page:/beranda')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() baca dari cookie (lokal, tanpa network call) - aman dipakai di sini
+  // karena middleware sudah memvalidasi sesi via getUser() (network call) untuk request ini.
+  // RLS tetap melindungi data terlepas dari nilai user.id yang dipakai di query.
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
   const { today, todayDow, hour, monthStart, dateLabel } = getNowWIB()
 
   const greeting = hour < 11 ? 'Selamat pagi'
@@ -38,99 +107,39 @@ export default async function BerandaPage() {
     : hour < 18 ? 'Selamat sore'
     : 'Selamat malam'
 
-  const [
-    profileRes,
-    classesRes,
-    todaySessionsRes,
-    atRiskRes,
-    eventsRes,
-    eventsPendingRes,
-    attendanceMonthRes,
-    memberNewRes,
-    revenueMonthRes,
-  ] = await Promise.all([
-    supabase.from('profiles')
-      .select('name').eq('id', user!.id).single(),
+  console.time('query:/beranda:all')
+  const [cached, todaySessionsRes] = await Promise.all([
+    // Bundel yang di-cache 45s per user - lihat getCachedBerandaData di atas
+    timed('query:/beranda:cached-bundle', getCachedBerandaData(user!.id, today, monthStart)),
 
-    // Semua kelas untuk filter hari ini
-    supabase.from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location')
-      .eq('user_id', user!.id)
-      .order('start_time'),
-
-    // Sesi hari ini + jumlah hadir
-    (supabase.from('sessions') as any)
+    // Sesi hari ini + jumlah hadir - SELALU fresh, jangan di-cache
+    // (instruktur cek dashboard tepat setelah absen, harus langsung update)
+    timed<any>('query:/beranda:todaySessions', (supabase.from('sessions') as any)
       .select('id, class_id, override_location, attendance(id)')
       .eq('user_id', user!.id)
-      .eq('session_date', today),
-
-    // Member at_risk
-    supabase.from('members')
-      .select('id, name, last_attended_at')
-      .eq('user_id', user!.id)
-      .eq('status', 'at_risk'),
-
-    // Event terdekat (max 2)
-    supabase.from('events')
-      .select('id, title, event_date, start_time, location')
-      .eq('user_id', user!.id)
-      .eq('status', 'published')
-      .gte('event_date', today)
-      .order('event_date')
-      .limit(2),
-
-    // Event dengan peserta pending
-    supabase.from('registrations')
-      .select('id, events!inner(id, title)')
-      .eq('payment_status', 'pending')
-      .eq('events.user_id', user!.id),
-
-    // Total kehadiran bulan ini
-    (supabase.from('attendance') as any)
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user!.id)
-      .gte('created_at', monthStart),
-
-    // Member baru bulan ini
-    supabase.from('members')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user!.id)
-      .gte('created_at', monthStart),
-
-    // Revenue bulan ini (dari attendance.amount_paid)
-    supabase.from('attendance')
-      .select('amount_paid')
-      .eq('user_id', user!.id)
-      .gte('created_at', monthStart),
+      .eq('session_date', today)),
   ])
+  console.timeEnd('query:/beranda:all')
 
-  const instructorName = profileRes.data?.name?.split(' ')[0] ?? 'Instruktur'
-  const classes        = (classesRes.data ?? []) as any[]
+  const instructorName = cached.instructorName?.split(' ')[0] ?? 'Instruktur'
+  const classes        = cached.classes
   const todaySessions  = (todaySessionsRes.data ?? []) as any[]
-  const atRiskMembers  = (atRiskRes.data ?? []) as any[]
-  const events         = (eventsRes.data ?? []) as any[]
-  const pendingRegs    = (eventsPendingRes.data ?? []) as any[]
-  const attendMonth    = attendanceMonthRes.count ?? 0
-  const memberNew      = memberNewRes.count ?? 0
-  const revenueMonth   = (revenueMonthRes.data ?? []).reduce(
-    (s: number, r: any) => s + (Number(r.amount_paid) || 0), 0
-  )
+  const atRiskMembers  = cached.atRiskMembers
+  const events         = cached.events
+  const invitationsPending = cached.invitationsPending
+  const summary         = cached.summary
+  const attendMonth     = summary.attendance_month ?? 0
+  const memberNew       = summary.member_new ?? 0
+  const revenueMonth    = Number(summary.revenue_month ?? 0)
+  const pendingEvents   = (summary.pending_events ?? []) as { id: string; title: string; count: number }[]
 
   // Kelas hari ini
   const todayClasses  = classes.filter(c => c.day_of_week === todayDow)
   const sessMap       = new Map(todaySessions.map((s: any) => [s.class_id, s]))
 
-  // Pending per event
-  const pendingByEvent = pendingRegs.reduce<Record<string, { title: string; count: number }>>((acc, r) => {
-    const ev = (r.events as any)
-    if (!ev) return acc
-    if (!acc[ev.id]) acc[ev.id] = { title: ev.title, count: 0 }
-    acc[ev.id].count++
-    return acc
-  }, {})
-  const pendingEvents = Object.values(pendingByEvent)
+  const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0 || invitationsPending > 0
 
-  const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0
+  console.timeEnd('page:/beranda')
 
   return (
     <div className="w-full max-w-lg mx-auto">
@@ -255,7 +264,7 @@ export default async function BerandaPage() {
           ) : (
             <>
               {pendingEvents.map(pe => (
-                <Link key={pe.title} href="/events"
+                <Link key={pe.id} href="/events"
                   className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors">
                   <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
                     <Clock className="w-4 h-4 text-orange-500" />
@@ -283,6 +292,21 @@ export default async function BerandaPage() {
                       {atRiskMembers.slice(0, 2).map(m => m.name).join(', ')}
                       {atRiskMembers.length > 2 && ` +${atRiskMembers.length - 2} lainnya`}
                     </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                </Link>
+              )}
+              {invitationsPending > 0 && (
+                <Link href="/community/invitations"
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors">
+                  <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4 text-violet-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {invitationsPending} peserta belum bergabung komunitas
+                    </p>
+                    <p className="text-xs text-gray-400">Undang ke grup WhatsApp</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                 </Link>

@@ -3,25 +3,33 @@ import Link from 'next/link'
 import { Plus, Settings } from 'lucide-react'
 import { CLASS_TYPES } from '@/lib/constants'
 import { CommunityList } from '@/components/community/CommunityList'
+import { timed } from '@/lib/perf'
 
 export default async function CommunityPage() {
+  console.time('page:/community')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() baca dari cookie (tanpa network call) - middleware sudah validasi sesi
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
 
+  console.time('query:/community:all')
   const [classesRes, contactsRes] = await Promise.all([
-    supabase.from('classes').select('type').eq('user_id', user!.id),
-    supabase
+    timed('query:/community:classes', supabase.from('classes').select('type').eq('user_id', user!.id)),
+    timed('query:/community:contacts', supabase
       .from('community_contacts')
       .select('id, name, phone, class_type, source, created_at, converted_member_id')
       .eq('user_id', user!.id)
-      .order('name', { ascending: true }),
+      .order('name', { ascending: true })),
   ])
+  console.timeEnd('query:/community:all')
 
   const contacts = (contactsRes.data ?? []) as any[]
   const usedTypes = Array.from(new Set((classesRes.data ?? []).map((c: any) => c.type)))
   const availableTypes = CLASS_TYPES.filter(t => usedTypes.includes(t.value))
 
   const totalMember = contacts.filter(c => c.converted_member_id).length
+
+  console.timeEnd('page:/community')
 
   return (
     <div className="w-full max-w-2xl mx-auto">

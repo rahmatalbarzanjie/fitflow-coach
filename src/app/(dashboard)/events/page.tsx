@@ -2,19 +2,25 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { EventsList } from '@/components/events/EventsList'
+import { timed } from '@/lib/perf'
 
 export default async function EventsPage() {
+  console.time('page:/events')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() baca dari cookie (tanpa network call) - middleware sudah validasi sesi
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
 
+  console.time('query:/events:all')
   const [eventsRes, profileRes] = await Promise.all([
-    supabase
+    timed('query:/events:events', supabase
       .from('events')
       .select('id, title, slug, event_date, start_time, location, status, registrations(id, payment_status)')
       .eq('user_id', user!.id)
-      .order('event_date', { ascending: false }),
-    supabase.from('profiles').select('slug').eq('id', user!.id).single(),
+      .order('event_date', { ascending: false })),
+    timed('query:/events:profile', supabase.from('profiles').select('slug').eq('id', user!.id).single()),
   ])
+  console.timeEnd('query:/events:all')
 
   const events = (eventsRes.data ?? []) as any[]
   const slug   = profileRes.data?.slug
@@ -27,6 +33,8 @@ export default async function EventsPage() {
     const regs = Array.isArray(ev.registrations) ? ev.registrations : []
     return sum + regs.filter((r: any) => r.payment_status === 'pending').length
   }, 0)
+
+  console.timeEnd('page:/events')
 
   return (
     <div className="w-full max-w-2xl mx-auto">

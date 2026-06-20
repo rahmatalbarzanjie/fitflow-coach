@@ -4,10 +4,14 @@ import { Plus, BookOpen } from 'lucide-react'
 import { CLASS_TYPES } from '@/lib/constants'
 import { ClassCard } from '@/components/classes/ClassCard'
 import { ClassesFilter } from '@/components/classes/ClassesFilter'
+import { timed } from '@/lib/perf'
 
 export default async function ClassesPage() {
+  console.time('page:/classes')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() baca dari cookie (tanpa network call) - middleware sudah validasi sesi
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
 
   // Gunakan WIB (UTC+7) agar hari sesuai timezone instruktur
   const nowWIB   = new Date(Date.now() + 7 * 60 * 60 * 1000)
@@ -15,19 +19,21 @@ export default async function ClassesPage() {
   const todayDow = nowWIB.getUTCDay()
   const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
+  console.time('query:/classes:all')
   const [classesRes, todaySessionsRes] = await Promise.all([
-    supabase
+    timed('query:/classes:classes', supabase
       .from('classes')
       .select('id, name, type, day_of_week, start_time, end_time, location, capacity, class_price')
       .eq('user_id', user!.id)
       .order('day_of_week')
-      .order('start_time'),
+      .order('start_time')),
 
-    (supabase.from('sessions') as any)
+    timed<any>('query:/classes:todaySessions', (supabase.from('sessions') as any)
       .select('id, class_id, attendance(id)')
       .eq('user_id', user!.id)
-      .eq('session_date', today),
+      .eq('session_date', today)),
   ])
+  console.timeEnd('query:/classes:all')
 
   const classes: any[]      = classesRes.data ?? []
   const todaySessions: any[] = todaySessionsRes.data ?? []
@@ -50,6 +56,8 @@ export default async function ClassesPage() {
 
   // Jenis kelas unik yang dimiliki instruktur (untuk filter)
   const usedTypes = CLASS_TYPES.filter(t => classes.some(c => c.type === t.value))
+
+  console.timeEnd('page:/classes')
 
   return (
     <div className="w-full max-w-2xl mx-auto">
