@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { ArrowLeft, Upload, X, ToggleLeft, ToggleRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { eventSchema, type EventFormData, toSlug } from '@/lib/validations/event'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 const inp = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
 const lbl = 'block text-sm font-medium text-gray-700'
@@ -103,13 +104,8 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="max-w-xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/events" className="text-gray-400 hover:text-gray-600 transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-xl font-semibold text-gray-900">Buat Event</h1>
-      </div>
+    <div className="w-full max-w-lg mx-auto">
+      <PageHeader backHref="/events" title="Buat Event" />
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

@@ -178,6 +178,7 @@ export default async function PublicRegistrationPage({
           earlyBirdAvailable={earlyBirdAvailable}
           earlyBirdPrice={Number(event.early_bird_price)}
           otsPrice={Number(event.ots_price)}
+          pricingMode={(event.pricing_mode === 'single' || Number(event.early_bird_price) === 0) ? 'single' : 'tiered'}
           eventTitle={event.title}
           eventDescription={event.description ?? null}
         />
