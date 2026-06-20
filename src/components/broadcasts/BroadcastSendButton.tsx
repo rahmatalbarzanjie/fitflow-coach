@@ -11,7 +11,7 @@ type State = 'idle' | 'confirming' | 'sending' | 'done' | 'error'
 
 export function BroadcastSendButton({ broadcastId }: Props) {
   const [state,  setState ] = useState<State>('idle')
-  const [result, setResult] = useState<{ sent: number; failed: number } | null>(null)
+  const [result, setResult] = useState<{ sent: number; failed: number; skipped: number } | null>(null)
   const [error,  setError ] = useState('')
 
   async function send() {
@@ -24,7 +24,7 @@ export function BroadcastSendButton({ broadcastId }: Props) {
         setError(data.error ?? 'Gagal mengirim')
         setState('error')
       } else {
-        setResult({ sent: data.sent ?? 0, failed: data.failed ?? 0 })
+        setResult({ sent: data.sent ?? 0, failed: data.failed ?? 0, skipped: data.skipped ?? 0 })
         setState('done')
       }
     } catch {
@@ -34,9 +34,14 @@ export function BroadcastSendButton({ broadcastId }: Props) {
   }
 
   if (state === 'done') return (
-    <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
-      <Check className="w-3.5 h-3.5" />
-      {result?.sent ?? 0} terkirim{(result?.failed ?? 0) > 0 ? `, ${result?.failed} gagal` : ''}
+    <span className="flex flex-col items-end text-xs text-green-600 font-medium">
+      <span className="flex items-center gap-1">
+        <Check className="w-3.5 h-3.5" />
+        {result?.sent ?? 0} terkirim{(result?.failed ?? 0) > 0 ? `, ${result?.failed} gagal` : ''}
+      </span>
+      {(result?.skipped ?? 0) > 0 && (
+        <span className="text-gray-400 font-normal">{result?.skipped} sudah terkirim sebelumnya, dilewati</span>
+      )}
     </span>
   )
 

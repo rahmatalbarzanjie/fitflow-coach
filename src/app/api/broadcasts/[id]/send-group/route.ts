@@ -12,7 +12,9 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const quota = await checkBroadcastQuota(supabase, user.id)
+  // Kirim ke grup WA dihitung sebagai 1 unit kuota (bukan per-anggota grup -
+  // kita tidak punya visibilitas jumlah anggota grup dari Fonnte).
+  const quota = await checkBroadcastQuota(supabase, user.id, 1)
   if (!quota.ok) {
     return NextResponse.json(
       { error: `Kuota broadcast bulan ini sudah habis (${quota.used}/${quota.limit}). Upgrade paket untuk kirim lebih banyak.` },

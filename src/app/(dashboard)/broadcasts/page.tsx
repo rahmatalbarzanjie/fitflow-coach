@@ -1,10 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Plus, Send, FileText, Clock } from 'lucide-react'
+import { Plus, Send, FileText, Clock, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { DeleteButton } from '@/components/ui/DeleteButton'
-import { BroadcastSendButton } from '@/components/broadcasts/BroadcastSendButton'
-import { BroadcastGroupSendButton } from '@/components/broadcasts/BroadcastGroupSendButton'
 import { formatDateShort } from '@/lib/utils'
 
 const AUDIENCE_LABEL: Record<string, string> = {
@@ -38,7 +35,7 @@ export default async function BroadcastsPage({
 
   let query = supabase
     .from('broadcasts')
-    .select('id, title, content, target_audience, status, recipient_count, sent_at, created_at, target_class_id, group_sent_at, classes(wa_group_name)')
+    .select('id, title, target_audience, status, recipient_count, sent_at, created_at')
     .eq('user_id', user!.id)
     .order('created_at', { ascending: false })
 
@@ -47,19 +44,12 @@ export default async function BroadcastsPage({
   const { data: broadcasts } = await query
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full max-w-2xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Broadcast</h1>
+          <h1 className="text-xl font-bold text-gray-900">Broadcast</h1>
           <p className="text-sm text-gray-400 mt-0.5">{broadcasts?.length ?? 0} pesan</p>
         </div>
-        <Link
-          href="/broadcasts/new"
-          className="flex items-center gap-1.5 h-9 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Buat Pesan
-        </Link>
       </div>
 
       {/* Status tabs */}
@@ -85,57 +75,51 @@ export default async function BroadcastsPage({
             <Send className="w-6 h-6 text-violet-400" />
           </div>
           <p className="text-sm font-medium text-gray-700 mb-1">Belum ada broadcast</p>
-          <p className="text-xs text-gray-400 mb-4">Kirim pesan ke member kamu sekarang</p>
-          <Link href="/broadcasts/new" className="text-sm text-violet-600 font-medium hover:underline">
-            + Buat pesan broadcast
-          </Link>
+          <p className="text-xs text-gray-400">Tap tombol + untuk kirim pesan ke member kamu</p>
         </div>
       ) : (
         <div className="space-y-2">
           {broadcasts.map(bc => {
             const cfg = STATUS_CONFIG[bc.status as keyof typeof STATUS_CONFIG]
-            const groupName = (bc as any).classes?.wa_group_name as string | null | undefined
             return (
-              <div key={bc.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <p className="text-sm font-semibold text-gray-900">{bc.title}</p>
-                      <Badge color={cfg?.color ?? 'gray'}>{cfg?.label ?? bc.status}</Badge>
-                      <Badge color="violet">{AUDIENCE_LABEL[bc.target_audience] ?? bc.target_audience}</Badge>
-                      {(bc as any).target_class_id && (
-                        <Badge color={(bc as any).group_sent_at ? 'green' : 'blue'}>
-                          {(bc as any).group_sent_at ? 'Terkirim ke grup' : `Grup: ${groupName ?? '-'}`}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 line-clamp-2">{bc.content}</p>
-                    <p className="text-xs text-gray-300 mt-2">
+              <Link
+                key={bc.id}
+                href={`/broadcasts/${bc.id}`}
+                className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 hover:border-violet-100 transition-colors px-4 py-3.5"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{bc.title}</p>
+                    <Badge color={cfg?.color ?? 'gray'}>{cfg?.label ?? bc.status}</Badge>
+                  </div>
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5 flex-wrap">
+                    <span>{AUDIENCE_LABEL[bc.target_audience] ?? bc.target_audience}</span>
+                    <span>·</span>
+                    <span>
                       {bc.status === 'sent' && bc.sent_at
-                        ? `Terkirim ${formatDateShort(bc.sent_at!)} · ${bc.recipient_count ?? 0} penerima`
+                        ? `Terkirim ${formatDateShort(bc.sent_at)} · ${bc.recipient_count ?? 0} penerima`
                         : `Dibuat ${formatDateShort(bc.created_at ?? new Date().toISOString())}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    {bc.status === 'draft' && (
-                      <BroadcastSendButton broadcastId={bc.id} />
-                    )}
-                    {(bc as any).target_class_id && !(bc as any).group_sent_at && (
-                      <BroadcastGroupSendButton broadcastId={bc.id} groupName={groupName ?? 'komunitas'} />
-                    )}
-                    <DeleteButton
-                      table="broadcasts"
-                      id={bc.id}
-                      redirectTo="/broadcasts"
-                      confirmText="Hapus broadcast ini?"
-                    />
-                  </div>
+                    </span>
+                  </p>
                 </div>
-              </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+              </Link>
             )
           })}
         </div>
       )}
+
+      {/* Floating action - konsisten dengan posisi "buat baru" di modul lain,
+          tapi mengambang karena broadcast adalah aksi utama yang dipakai
+          paling sering oleh instruktur. */}
+      <Link
+        href="/broadcasts/new"
+        className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-30 flex items-center gap-2 h-12 px-5 bg-violet-600 hover:bg-violet-700 text-white rounded-full shadow-lg shadow-violet-600/30 text-sm font-semibold transition-colors"
+        aria-label="Buat broadcast baru"
+      >
+        <Plus className="w-5 h-5" />
+        Broadcast
+      </Link>
     </div>
   )
 }

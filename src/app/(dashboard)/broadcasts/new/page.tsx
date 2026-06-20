@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, Sparkles, Send, FileText, Loader2 } from 'lucide-react'
+import { Sparkles, FileText, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 const AUDIENCE_OPTIONS = [
   { value: 'all',      label: 'Semua Member'        },
@@ -64,7 +64,7 @@ export default function NewBroadcastPage() {
     }
   }
 
-  async function saveBroadcast(sendNow: boolean) {
+  async function saveBroadcast() {
     if (!title.trim())   { setError('Judul tidak boleh kosong.'); return }
     if (!content.trim()) { setError('Isi pesan tidak boleh kosong.'); return }
 
@@ -74,8 +74,9 @@ export default function NewBroadcastPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Selalu simpan sebagai draft dulu - status 'sent' hanya diset setelah
-    // benar-benar berhasil dikirim lewat API send (bukan diasumsikan terkirim).
+    // Selalu simpan sebagai draft - kirim adalah aksi terpisah dari Broadcast
+    // Hub (/broadcasts/[id]), bukan dari sini, supaya alur kirim/retry yang
+    // idempotent konsisten satu tempat.
     const { data: bc, error: bcErr } = await supabase
       .from('broadcasts')
       .insert({
@@ -96,31 +97,13 @@ export default function NewBroadcastPage() {
       return
     }
 
-    if (sendNow) {
-      const res = await fetch(`/api/broadcasts/${bc.id}/send`, { method: 'POST' })
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error ?? 'Broadcast disimpan, tapi gagal kirim WA ke member.')
-        setSaving(false)
-        return
-      }
-      if (alsoSendGroup && targetClassId) {
-        await fetch(`/api/broadcasts/${bc.id}/send-group`, { method: 'POST' })
-      }
-    }
-
-    router.push('/broadcasts')
+    router.push(`/broadcasts/${bc.id}`)
     router.refresh()
   }
 
   return (
-    <div className="max-w-xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/broadcasts" className="text-gray-400 hover:text-gray-600 transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-xl font-semibold text-gray-900">Buat Broadcast</h1>
-      </div>
+    <div className="w-full max-w-lg mx-auto">
+      <PageHeader backHref="/broadcasts" title="Buat Broadcast" />
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
         {error && (
@@ -204,26 +187,19 @@ export default function NewBroadcastPage() {
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-1">
+        {/* Simpan dulu sebagai draft - kirim dilakukan dari Broadcast Hub
+            supaya alur kirim/retry konsisten satu tempat (idempotent). */}
+        <div className="pt-1">
           <button
-            onClick={() => saveBroadcast(false)}
-            disabled={saving}
-            className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-60 transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            Simpan Draft
-          </button>
-          <button
-            onClick={() => saveBroadcast(true)}
+            onClick={saveBroadcast}
             disabled={saving || !content.trim()}
-            className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 h-10 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition-colors"
           >
             {saving
               ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />
+              : <FileText className="w-4 h-4" />
             }
-            Kirim Sekarang
+            Simpan & Lanjutkan
           </button>
         </div>
       </div>
