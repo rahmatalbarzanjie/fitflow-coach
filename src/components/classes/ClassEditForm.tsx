@@ -172,14 +172,6 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
         </div>
       </div>
 
-      <label className="flex items-center gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50 cursor-pointer">
-        <input {...register('show_registrations')} type="checkbox" className="w-4 h-4 rounded accent-violet-600" />
-        <span className="text-sm text-gray-700">
-          Tampilkan peserta &amp; kuota di landing page
-          <span className="block text-xs text-gray-400">Pengunjung bisa lihat siapa saja yang sudah daftar dan sisa kuota kelas ini</span>
-        </span>
-      </label>
-
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">
           Deskripsi
@@ -249,6 +241,15 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
           </div>
         )}
       </div>
+
+      {/* Tampilkan di landing page — paling bawah */}
+      <label className="flex items-center gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50 cursor-pointer">
+        <input {...register('show_registrations')} type="checkbox" className="w-4 h-4 rounded accent-violet-600" />
+        <span className="text-sm text-gray-700">
+          Tampilkan peserta &amp; kuota di landing page
+          <span className="block text-xs text-gray-400">Pengunjung bisa lihat siapa saja yang sudah daftar dan sisa kuota kelas ini</span>
+        </span>
+      </label>
 
       <div className="flex items-center justify-end gap-3 pt-1">
         <button

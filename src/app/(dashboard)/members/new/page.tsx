@@ -5,8 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Camera, User } from 'lucide-react'
+import { Camera, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -64,17 +65,13 @@ export default function NewMemberPage() {
     }
 
     router.push('/members')
-    router.refresh()
+    // refresh dipanggil setelah push agar data server ter-update
+    setTimeout(() => router.refresh(), 100)
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/members" className="text-gray-400 hover:text-gray-600 transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-xl font-semibold text-gray-900">Tambah Member</h1>
-      </div>
+    <div className="w-full max-w-lg mx-auto">
+      <PageHeader backHref="/members" title="Tambah Member" />
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

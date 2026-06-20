@@ -1,16 +1,31 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, Calendar, MessageSquareQuote } from 'lucide-react'
-import { MemberStatusBadge } from '@/components/members/MemberStatusBadge'
-import { MemberEditForm } from '@/components/members/MemberEditForm'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { SectionList } from '@/components/ui/SectionList'
+import { DetailRow } from '@/components/ui/DetailRow'
 import { MemberAvatar } from '@/components/members/MemberPhotoUpload'
-import { DeleteButton } from '@/components/ui/DeleteButton'
-import { Card } from '@/components/ui/card'
-import { formatDate, formatRupiah } from '@/lib/utils'
-import { PAYMENT_MODE } from '@/lib/constants'
+import { MemberStatusBadge } from '@/components/members/MemberStatusBadge'
+import { formatRupiah } from '@/lib/utils'
+import {
+  MessageSquareQuote, BookOpen,
+  Settings, BarChart2, Calendar, Trophy, Banknote,
+} from 'lucide-react'
 
-export default async function MemberDetailPage({
+function getTodayWIB() {
+  const wib = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  return wib.toISOString().split('T')[0]
+}
+
+function timeAgoFromDate(dateStr: string): string {
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
+  if (days === 0) return 'Hari ini'
+  if (days === 1) return 'Kemarin'
+  if (days < 30)  return `${days} hari yang lalu`
+  const months = Math.floor(days / 30)
+  return `${months} bulan yang lalu`
+}
+
+export default async function MemberHubPage({
   params,
 }: {
   params: Promise<{ id: string }>
@@ -19,151 +34,150 @@ export default async function MemberDetailPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: summary }, memberRes, { data: attendance }, { data: profile }] = await Promise.all([
-    supabase
-      .from('member_summary')
-      .select('*')
+  // ── Fix #2: Satu query member, tidak duplikat ─────────────────────────────
+  const [memberRes, profileRes, attendanceRes] = await Promise.all([
+    (supabase.from('members') as any)
+      .select('id, name, phone, notes, photo_url, status, last_attended_at')
       .eq('id', id)
       .eq('user_id', user!.id)
       .single(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase.from('members') as any)
-      .select('id, name, phone, notes, address, instagram, photo_url')
-      .eq('id', id)
-      .eq('user_id', user!.id)
-      .single() as Promise<{ data: { id: string; name: string; phone: string; notes: string | null; address?: string | null; instagram?: string | null; photo_url?: string | null } | null; error: unknown }>,
+
+    (supabase.from('profiles') as any)
+      .select('slug')
+      .eq('id', user!.id)
+      .single(),
+
     supabase
       .from('attendance')
-      .select(`
-        id, payment_mode, payment_method, amount_paid, created_at,
-        session:sessions(session_date, start_time, end_time,
-          class:classes(name, type)
-        )
-      `)
-      .eq('member_id', id)
-      .order('created_at', { ascending: false })
-      .limit(30),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase.from('profiles') as any).select('slug').eq('id', user!.id).single() as Promise<{ data: { slug: string | null } | null }>,
+      .select('id, created_at, amount_paid')
+      .eq('member_id', id),
   ])
 
   const member = memberRes.data
+  if (!member) notFound()
 
-  if (!summary || !member) notFound()
-
-  const days = summary.last_attended_at
-    ? Math.floor((Date.now() - new Date(summary.last_attended_at).getTime()) / 86_400_000)
+  // Hitung statistik
+  const allAttendance     = (attendanceRes.data ?? []) as any[]
+  const totalAttended     = allAttendance.length
+  const thisMonthStr      = getTodayWIB().substring(0, 7)
+  const attendedThisMonth = allAttendance.filter(a =>
+    a.created_at?.startsWith(thisMonthStr)
+  ).length
+  const totalRevenue = allAttendance.reduce(
+    (sum, a) => sum + (Number(a.amount_paid) || 0), 0
+  )
+  const lastAttended = member.last_attended_at
+    ? timeAgoFromDate(member.last_attended_at)
     : null
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
-  const slug   = (profile as any)?.slug ?? null
+  // Link testimoni
+  const appUrl         = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+  const slug           = profileRes.data?.slug ?? null
   const testimonialUrl = slug ? `${appUrl}/${slug}/testimoni/${member.id}` : null
-  const memberWa = member.phone?.replace(/\D/g, '').replace(/^0/, '62')
+  const memberWa       = member.phone?.replace(/\D/g, '').replace(/^0/, '62')
   const testimonialWaLink = testimonialUrl && memberWa
-    ? `https://wa.me/${memberWa}?text=${encodeURIComponent(`Halo ${member.name}! Boleh minta waktu sebentar untuk kasih testimoni soal kelas yang sudah diikuti? 🙏\n\n${testimonialUrl}`)}`
+    ? `https://wa.me/${memberWa}?text=${encodeURIComponent(
+        `Halo ${member.name}! Boleh minta waktu sebentar untuk kasih testimoni soal kelas yang sudah diikuti? 🙏\n\n${testimonialUrl}`
+      )}`
     : null
+
+  // ── Evaluasi empty state ──────────────────────────────────────────────────
+  // Member baru = belum pernah hadir sama sekali
+  const isNewMember = totalAttended === 0
 
   return (
-    <div className="max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/members" className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <MemberAvatar photoUrl={member.photo_url} name={summary.name ?? ''} size="lg" />
+    <div className="w-full max-w-lg mx-auto">
+      <PageHeader backHref="/members" title={member.name} />
+
+      {/* Profil singkat */}
+      <div className="flex items-center gap-4 bg-white rounded-2xl border border-gray-100 px-4 py-4 mb-4">
+        <MemberAvatar photoUrl={member.photo_url} name={member.name} size="lg" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-semibold text-gray-900">{summary.name}</h1>
-            <MemberStatusBadge status={summary.status} />
+            <p className="text-base font-bold text-gray-900">{member.name}</p>
+            <MemberStatusBadge status={member.status} />
           </div>
-          <p className="text-sm text-gray-400 mt-0.5">{summary.phone}</p>
-        </div>
-        {testimonialWaLink && (
-          <a
-            href={testimonialWaLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 h-9 px-3 border border-violet-200 text-violet-600 hover:bg-violet-50 rounded-xl text-sm font-medium transition-colors shrink-0"
-          >
-            <MessageSquareQuote className="w-4 h-4" />
-            Minta Testimoni
-          </a>
-        )}
-        <DeleteButton table="members" id={id} redirectTo="/members" />
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card className="p-4 text-center">
-          <p className="text-xs text-gray-500 mb-1">Terakhir Hadir</p>
-          <p className="text-xl font-bold text-gray-900">
-            {days !== null ? `${days}h` : '-'}
-          </p>
-          {days !== null && <p className="text-xs text-gray-400">yang lalu</p>}
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-xs text-gray-500 mb-1">Bulan Ini</p>
-          <p className="text-xl font-bold text-gray-900">{summary.attended_this_month ?? 0}</p>
-          <p className="text-xs text-gray-400">kehadiran</p>
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-xs text-gray-500 mb-1">Total Hadir</p>
-          <p className="text-xl font-bold text-gray-900">{summary.total_attended ?? 0}</p>
-          <p className="text-xs text-gray-400">sesi</p>
-        </Card>
-      </div>
-
-      {/* Edit Form */}
-      <Card className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Informasi Member</h2>
-        <MemberEditForm member={member} />
-      </Card>
-
-      {/* Attendance History */}
-      <Card>
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">
-          Riwayat Kehadiran
-          {attendance && attendance.length > 0 && (
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              ({attendance.length} terakhir)
-            </span>
+          <p className="text-sm text-gray-400 mt-0.5">{member.phone}</p>
+          {member.notes && (
+            <p className="text-xs text-gray-400 mt-1 italic">"{member.notes}"</p>
           )}
-        </h2>
+        </div>
+      </div>
 
-        {!attendance?.length ? (
-          <div className="text-center py-8">
-            <Calendar className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Belum ada riwayat kehadiran</p>
-          </div>
+      {/* ── Empty state untuk member baru ── */}
+      {isNewMember ? (
+        <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-5 mb-4 text-center">
+          <p className="text-2xl mb-2">🎯</p>
+          <p className="text-sm font-semibold text-violet-800">Member baru</p>
+          <p className="text-xs text-violet-500 mt-1 leading-relaxed">
+            Belum ada riwayat kehadiran.{'\n'}
+            Catat kehadiran pertama melalui menu Absensi di halaman Kelas.
+          </p>
+        </div>
+      ) : (
+        /* Section: Statistik — hanya tampil kalau sudah pernah hadir */
+        <SectionList label="Statistik">
+          <DetailRow
+            icon={<BarChart2 className="w-4 h-4" />}
+            label="Kehadiran Bulan Ini"
+            value={`${attendedThisMonth} sesi`}
+            chevron={false}
+          />
+          <DetailRow
+            icon={<Calendar className="w-4 h-4" />}
+            label="Terakhir Hadir"
+            value={lastAttended ?? 'Belum pernah'}
+            chevron={false}
+          />
+          <DetailRow
+            icon={<Trophy className="w-4 h-4" />}
+            label="Total Hadir"
+            value={`${totalAttended} sesi`}
+            chevron={false}
+          />
+          <DetailRow
+            icon={<Banknote className="w-4 h-4" />}
+            label="Total Pembayaran"
+            value={formatRupiah(totalRevenue)}
+            chevron={false}
+          />
+        </SectionList>
+      )}
+
+      {/* Section: Operasional */}
+      <SectionList label="Operasional">
+        <DetailRow
+          icon={<BookOpen className="w-4 h-4" />}
+          label="Riwayat Kehadiran"
+          sublabel={totalAttended > 0 ? `${totalAttended} sesi tercatat` : 'Belum ada kehadiran'}
+          href={`/members/${id}/attendance`}
+        />
+        {testimonialWaLink ? (
+          <DetailRow
+            icon={<MessageSquareQuote className="w-4 h-4" />}
+            label="Minta Testimoni"
+            sublabel="Kirim link testimoni via WhatsApp"
+            href={testimonialWaLink}
+          />
         ) : (
-          <div className="divide-y divide-gray-50">
-            {(attendance as any[]).map(a => {
-              const payLabel = PAYMENT_MODE[a.payment_mode as keyof typeof PAYMENT_MODE]?.label ?? a.payment_mode
-              return (
-                <div key={a.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {a.session?.class?.name ?? 'Kelas'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {a.session?.session_date ? formatDate(a.session.session_date) : '-'}
-                      {a.session?.start_time && (
-                        <> · {String(a.session.start_time).substring(0, 5)}</>
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatRupiah(Number(a.amount_paid))}
-                    </p>
-                    <p className="text-xs text-gray-400">{payLabel}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <DetailRow
+            icon={<MessageSquareQuote className="w-4 h-4" />}
+            label="Minta Testimoni"
+            sublabel="Atur slug profil di Pengaturan terlebih dahulu"
+            disabled
+          />
         )}
-      </Card>
+      </SectionList>
+
+      {/* Section: Pengaturan */}
+      <SectionList label="Pengaturan">
+        <DetailRow
+          icon={<Settings className="w-4 h-4" />}
+          label="Pengaturan Member"
+          sublabel="Nama, HP, foto, catatan, dan hapus"
+          href={`/members/${id}/settings`}
+        />
+      </SectionList>
     </div>
   )
 }

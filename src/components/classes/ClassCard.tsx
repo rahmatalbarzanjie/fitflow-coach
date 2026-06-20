@@ -116,7 +116,7 @@ export function ClassCard({ cls, isToday, attendCount, sessionDate, typeLabel }:
             {cls.capacity && (
               <div className="flex items-center gap-1 text-xs text-gray-400 justify-end mb-1">
                 <Users className="w-3 h-3" />
-                <span>{cls.capacity} kursi</span>
+                <span>{cls.capacity} peserta</span>
               </div>
             )}
             {cls.class_price && cls.class_price > 0 && (

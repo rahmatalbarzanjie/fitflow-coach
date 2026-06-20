@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { z } from 'zod'
 import { Check } from 'lucide-react'
-import { MemberPhotoUpload } from './MemberPhotoUpload'
 
 const schema = z.object({
   name:  z.string().min(2, 'Nama minimal 2 karakter'),
@@ -71,26 +70,18 @@ export function MemberEditForm({ member }: Props) {
         </div>
       )}
 
-      {/* Photo */}
-      <div className="flex items-center gap-4 pb-2">
-        <MemberPhotoUpload memberId={member.id} currentPhotoUrl={member.photo_url} />
-        <div>
-          <p className="text-sm font-medium text-gray-700">Foto Profil</p>
-          <p className="text-xs text-gray-400 mt-0.5">Klik foto untuk upload atau ambil dari kamera</p>
-        </div>
+      {/* Nama — vertikal untuk mobile */}
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+        <input {...register('name')} className={inp} />
+        {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700">Nama</label>
-          <input {...register('name')} className={inp} />
-          {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700">Nomor HP</label>
-          <input {...register('phone')} type="tel" className={inp} />
-          {errors.phone && <p className="text-xs text-red-600">{errors.phone.message}</p>}
-        </div>
+      {/* HP — vertikal untuk mobile */}
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-700">Nomor HP</label>
+        <input {...register('phone')} type="tel" className={inp} />
+        {errors.phone && <p className="text-xs text-red-600">{errors.phone.message}</p>}
       </div>
 
       <div className="space-y-1.5">

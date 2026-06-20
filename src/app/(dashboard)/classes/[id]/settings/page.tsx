@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { ClassSettingsForm } from '@/components/classes/ClassSettingsForm'
 import { WaGroupPicker } from '@/components/classes/WaGroupPicker'
-import { ClassPhotoUpload } from '@/components/classes/ClassPhotoUpload'
 import { DeleteButton } from '@/components/ui/DeleteButton'
 import { SectionList } from '@/components/ui/SectionList'
 
@@ -33,17 +32,7 @@ export default async function ClassSettingsPage({
         subtitle={cls.name}
       />
 
-      {/* Foto kelas */}
-      <SectionList label="Foto Kelas" footer="Foto tampil di landing page publik kamu.">
-        <div className="px-4 py-4">
-          <ClassPhotoUpload
-            classId={cls.id}
-            currentUrl={(cls as any).cover_image_url ?? null}
-          />
-        </div>
-      </SectionList>
-
-      {/* Form edit — pakai client wrapper */}
+      {/* Form edit — foto sudah termasuk di dalam ClassSettingsForm */}
       <SectionList label="Informasi Kelas">
         <div className="px-4 py-4">
           <ClassSettingsForm cls={cls} classId={id} />
