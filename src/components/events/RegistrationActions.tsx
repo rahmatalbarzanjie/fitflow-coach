@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle, XCircle, UserPlus, Loader2, Send } from 'lucide-react'
+import { CheckCircle, XCircle, UserPlus, Loader2, Send, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -14,6 +14,10 @@ interface Props {
   registrantPhone: string
   canInviteToJoin: boolean
   isInvited: boolean
+  // Hapus permanen hanya dipakai di halaman booking kelas (data uji/dummy
+  // butuh cara dibersihkan manual oleh instruktur) - TIDAK ditampilkan di
+  // halaman pendaftaran event, yang cukup pakai konfirmasi/tolak.
+  allowDelete?: boolean
 }
 
 async function notifyRegistrant(
@@ -40,6 +44,7 @@ export function RegistrationActions({
   registrantPhone,
   canInviteToJoin,
   isInvited,
+  allowDelete = false,
 }: Props) {
   const router  = useRouter()
   const supabase = createClient()
@@ -48,6 +53,8 @@ export function RegistrationActions({
   const [rejecting,   setRejecting]   = useState(false)
   const [rejectNote,  setRejectNote]  = useState('')
   const [inviting,    setInviting]    = useState(false)
+  const [deleting,    setDeleting]    = useState(false)
+  const [confirmingDel, setConfirmingDel] = useState(false)
   const [notifSent,   setNotifSent]   = useState<'confirm' | 'reject' | 'invite' | null>(null)
   const [error,       setError]       = useState<string | null>(null)
 
@@ -119,6 +126,21 @@ export function RegistrationActions({
     setInviting(false)
   }
 
+  async function deleteRegistration() {
+    setDeleting(true)
+    setError(null)
+    const { error: err } = await supabase
+      .from('registrations')
+      .delete()
+      .eq('id', registrationId)
+    if (err) {
+      setError(err.message)
+      setDeleting(false)
+    } else {
+      router.refresh()
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1.5 items-end">
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -174,7 +196,39 @@ export function RegistrationActions({
         {isInvited && (
           <span className="text-xs text-gray-400 italic">Sudah diundang</span>
         )}
+
+        {/* Hapus permanen - khusus booking kelas, untuk bersihkan data uji */}
+        {allowDelete && !confirmingDel && (
+          <button
+            onClick={() => setConfirmingDel(true)}
+            className="flex items-center gap-1 h-7 px-2.5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg text-xs font-medium transition-colors"
+          >
+            <Trash2 className="w-3 h-3" />
+            Hapus
+          </button>
+        )}
       </div>
+
+      {/* Inline delete confirm */}
+      {allowDelete && confirmingDel && (
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          <span className="text-xs text-gray-500">Hapus booking ini permanen?</span>
+          <button
+            onClick={deleteRegistration}
+            disabled={deleting}
+            className="h-7 px-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+          >
+            {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
+            Ya, Hapus
+          </button>
+          <button
+            onClick={() => setConfirmingDel(false)}
+            className="h-7 px-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition-colors"
+          >
+            Batal
+          </button>
+        </div>
+      )}
 
       {/* Inline reject form */}
       {rejecting && (

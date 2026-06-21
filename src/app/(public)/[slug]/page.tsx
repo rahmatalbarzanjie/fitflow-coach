@@ -6,6 +6,7 @@ import { PublicNavbar } from '../_components/PublicNavbar'
 import { ScrollReveal } from '@/components/public/ScrollReveal'
 import { EventCountdown } from '@/components/public/EventCountdown'
 import { ParticipantsList } from '@/components/public/ParticipantsList'
+import { CommunityPickerSheet } from '@/components/public/CommunityPickerSheet'
 import { CLASS_TYPES } from '@/lib/constants'
 
 // Halaman ini pakai service-role client (key statis, tidak ada cookie per
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 
 // ── Class type config ─────────────────────────────────────────────────────────
 const CLASS_CONFIG: Record<string, {
-  label: string; subtitle: string; icon: string
+  label: string; subtitle: string; icon: string; iconEmoji?: string
   gradFrom: string; gradTo: string
   accentText: string; accentBg: string; dayText: string
 }> = {
@@ -26,8 +27,11 @@ const CLASS_CONFIG: Record<string, {
     accentText: 'text-red-500', accentBg: 'bg-red-50', dayText: 'text-red-500',
   },
   barre: {
+    // Emoji ballet shoe, bukan icon font - sports_gymnastics (Material
+    // Symbols) keliatan kayak bela diri/yoga, bukan barre/ballet sama
+    // sekali. Pakai emoji yang sama dengan dashboard (ClassCard.tsx).
     label: 'BARRE', subtitle: 'Ballet-Inspired • Sculpt & Tone 💗',
-    icon: 'sports_gymnastics', gradFrom: '#FDA4AF', gradTo: '#FB7185',
+    icon: 'sports_gymnastics', iconEmoji: '🩰', gradFrom: '#FDA4AF', gradTo: '#FB7185',
     accentText: 'text-rose-600', accentBg: 'bg-rose-50', dayText: 'text-rose-500',
   },
   zumba: {
@@ -112,12 +116,12 @@ export default async function InstructorLandingPage({
   const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes] = await Promise.all([
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, description, cover_image_url, class_price, show_registrations')
+      .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, description, cover_image_url, class_price, show_registrations')
       .eq('user_id', profile.id)
       .order('day_of_week').order('start_time'),
     supabase
       .from('events')
-      .select('id, title, slug, event_date, start_time, end_time, location, ots_price, early_bird_price, early_bird_deadline, max_capacity, cover_image_url')
+      .select('id, title, slug, event_date, start_time, end_time, location, google_maps_url, ots_price, early_bird_price, early_bird_deadline, max_capacity, cover_image_url')
       .eq('user_id', profile.id)
       .eq('status', 'published')
       .gte('event_date', today)
@@ -211,13 +215,78 @@ export default async function InstructorLandingPage({
   const studio   = profile.business_name ?? profile.name
   const waNumber = (profile.bot_phone ?? profile.phone)?.replace(/\D/g, '').replace(/^0/, '62')
   const waMsg    = encodeURIComponent(`Halo ${studio}! Aku mau tanya-tanya soal kelas 😊`)
-  const classesWithPhoto = classes.filter((c: any) => c.cover_image_url)
+  const hasContent = classGroups.length > 0 || events.length > 0
+
+  // ── Dokumentasi Kelas ────────────────────────────────────────────────
+  // Maks 3 kelas x 6 foto. Query dibatasi (LIMIT/range) per kelas - TIDAK
+  // load seluruh gallery - supaya landing page tetap cepat walau instruktur
+  // punya ratusan foto dokumentasi.
+  const { data: classGalleryCandidates } = await supabase
+    .from('class_gallery')
+    .select('class_id')
+    .eq('user_id', profile.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const docClassIds = [...new Set((classGalleryCandidates ?? []).map((r: any) => r.class_id))].slice(0, 3)
+
+  const classDocs = (await Promise.all(docClassIds.map(async (cid: string) => {
+    const cls = classes.find((c: any) => c.id === cid)
+    if (!cls) return null
+    const { data: photos, count } = await supabase
+      .from('class_gallery')
+      .select('id, image_url', { count: 'exact' })
+      .eq('class_id', cid)
+      .order('sort_order')
+      .range(0, 5)
+    if (!photos || photos.length === 0) return null
+    return { cls, photos, totalCount: count ?? photos.length }
+  }))).filter((d): d is { cls: any; photos: any[]; totalCount: number } => !!d)
+
+  // ── Dokumentasi Event ────────────────────────────────────────────────
+  // Hanya event yang sudah selesai (event_date < hari ini). Maks 3 event
+  // terakhir x 6 foto, mixed grid (tanpa grouping per event).
+  const { data: eventGalleryCandidates } = await supabase
+    .from('event_gallery')
+    .select('event_id')
+    .eq('user_id', profile.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const candidateEventIds = [...new Set((eventGalleryCandidates ?? []).map((r: any) => r.event_id))]
+
+  let eventDocs: { photos: any[] }[] = []
+  if (candidateEventIds.length > 0) {
+    const { data: pastEvents } = await supabase
+      .from('events')
+      .select('id')
+      .in('id', candidateEventIds)
+      .lt('event_date', today)
+      .order('event_date', { ascending: false })
+      .limit(3)
+
+    eventDocs = (await Promise.all((pastEvents ?? []).map(async (ev: any) => {
+      const { data: photos } = await supabase
+        .from('event_gallery')
+        .select('id, image_url')
+        .eq('event_id', ev.id)
+        .order('sort_order')
+        .range(0, 5)
+      return { photos: photos ?? [] }
+    }))).filter(d => d.photos.length > 0)
+  }
+  const eventDocPhotos = eventDocs.flatMap(d => d.photos)
+
+  // Hero harus selalu punya CTA. Kalau nomor WA belum ada, fallback ke
+  // scroll-to-section yang paling relevan (atau ke benefits kalau belum
+  // ada konten apa pun).
+  const heroScrollTarget = classGroups.length > 0 ? 'schedules' : events.length > 0 ? 'events' : 'benefits'
 
   const HERO_GRADIENT  = 'linear-gradient(135deg, #FFD1FF 0%, #D1E9FF 100%)'
 
   return (
     <div className="min-h-screen bg-white text-on-surface font-sans">
-      <PublicNavbar />
+      <PublicNavbar hasTestimonials={testimonials.length > 0} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
@@ -262,8 +331,9 @@ export default async function InstructorLandingPage({
             </p>
           )}
 
-          {/* WA Button */}
-          {waNumber && (
+          {/* CTA - selalu ada minimal satu, WA kalau nomor tersedia,
+              kalau tidak fallback scroll ke section paling relevan */}
+          {waNumber ? (
             <a
               style={{ animationDelay: '480ms' }}
               href={`https://wa.me/${waNumber}?text=${waMsg}`}
@@ -275,6 +345,18 @@ export default async function InstructorLandingPage({
               Chat WhatsApp
               <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </a>
+          ) : (
+            <a
+              style={{ animationDelay: '480ms' }}
+              href={`#${heroScrollTarget}`}
+              className="animate-on-load bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group"
+            >
+              <span className="material-symbols-outlined">
+                {heroScrollTarget === 'schedules' ? 'calendar_month' : heroScrollTarget === 'events' ? 'event_upcoming' : 'groups'}
+              </span>
+              {heroScrollTarget === 'schedules' ? 'Lihat Jadwal Kelas' : heroScrollTarget === 'events' ? 'Lihat Event' : 'Gabung Komunitas'}
+              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </a>
           )}
         </div>
 
@@ -283,6 +365,34 @@ export default async function InstructorLandingPage({
           <span className="material-symbols-outlined text-on-surface/30">keyboard_double_arrow_down</span>
         </div>
       </section>
+
+      {/* ── EMPTY STATE — instruktur baru, belum ada kelas/event ──────────── */}
+      {!hasContent && (
+        <section className="py-24 bg-white" id="schedules">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-6">
+              <span className="material-symbols-outlined text-3xl text-violet-500">calendar_month</span>
+            </div>
+            <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface mb-3">
+              Jadwal Sedang Disiapkan
+            </h2>
+            <p className="text-on-surface-variant max-w-md mx-auto mb-8">
+              {studio} sedang menyiapkan kelas dan event terbaru. Hubungi langsung untuk info jadwal terdekat.
+            </p>
+            {waNumber && (
+              <a
+                href={`https://wa.me/${waNumber}?text=${waMsg}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-indigo-700 text-white px-8 py-3.5 rounded-full font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined">chat</span>
+                Tanya via WhatsApp
+              </a>
+            )}
+          </div></ScrollReveal>
+        </section>
+      )}
 
       {/* ── CLASS SCHEDULE ───────────────────────────────────────────────── */}
       {classGroups.length > 0 && (
@@ -305,7 +415,9 @@ export default async function InstructorLandingPage({
                       className="flex items-center gap-4 p-6 rounded-t-3xl text-white"
                       style={{ background: `linear-gradient(to right, ${cfg.gradFrom}, ${cfg.gradTo})` }}
                     >
-                      <span className="material-symbols-outlined text-4xl">{cfg.icon}</span>
+                      {cfg.iconEmoji
+                        ? <span className="text-4xl leading-none">{cfg.iconEmoji}</span>
+                        : <span className="material-symbols-outlined text-4xl">{cfg.icon}</span>}
                       <div>
                         <h3 className="font-montserrat text-2xl font-bold uppercase">{cfg.label}</h3>
                         <p className="text-white/80 text-sm">{benefitsMap[type] ?? cfg.subtitle}</p>
@@ -324,6 +436,26 @@ export default async function InstructorLandingPage({
                           key={cls.id}
                           className="rounded-2xl bg-white border border-outline-variant hover-lift custom-shadow overflow-hidden"
                         >
+                          <div className="relative h-36 overflow-hidden">
+                            {cls.cover_image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={cls.cover_image_url}
+                                alt={cls.name}
+                                loading="lazy"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div
+                                className="w-full h-full flex items-center justify-center"
+                                style={{ background: `linear-gradient(135deg, ${cfg.gradFrom}, ${cfg.gradTo})` }}
+                              >
+                                {cfg.iconEmoji
+                                  ? <span className="text-4xl opacity-80">{cfg.iconEmoji}</span>
+                                  : <span className="material-symbols-outlined text-4xl text-white/80">{cfg.icon}</span>}
+                              </div>
+                            )}
+                          </div>
                           <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex flex-col gap-1.5">
@@ -350,6 +482,11 @@ export default async function InstructorLandingPage({
                             )}
                           </div>
                           <h4 className="font-montserrat text-lg font-bold text-on-surface mb-1">{cls.name}</h4>
+                          {cls.description && (
+                            <p className="text-xs text-on-surface-variant/80 leading-relaxed mb-2 line-clamp-2">
+                              {cls.description}
+                            </p>
+                          )}
                           <p className={`text-sm flex items-center gap-1.5 mb-1 ${cfg.dayText}`}>
                             <span className="material-symbols-outlined text-base">schedule</span>
                             {reschedSess
@@ -368,22 +505,28 @@ export default async function InstructorLandingPage({
                               ) : displayLoc}
                             </p>
                           )}
+                          {cls.google_maps_url && !locSess && (
+                            <a
+                              href={cls.google_maps_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`text-xs font-semibold inline-flex items-center gap-1 mt-0.5 ${cfg.accentText} hover:underline`}
+                            >
+                              <span className="material-symbols-outlined text-sm">near_me</span>
+                              Lihat Lokasi
+                            </a>
+                          )}
                           {reschedSess && reschedSess.original_date && (
                             <p className="text-on-surface-variant/50 text-xs mt-1">
                               Biasanya {DAY_NAMES[cls.day_of_week]} {formatTime(cls.start_time)}
                             </p>
                           )}
 
-                          {cls.description && (
-                            <details className="mt-3 group">
-                              <summary className="text-xs font-medium text-on-surface-variant cursor-pointer list-none flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm group-open:rotate-90 transition-transform">chevron_right</span>
-                                Lihat deskripsi
-                              </summary>
-                              <p className="text-xs text-on-surface-variant/80 leading-relaxed mt-2 pl-5">
-                                {cls.description}
-                              </p>
-                            </details>
+                          {Number(cls.class_price) > 0 && (
+                            <p className={`text-sm font-bold mt-2 ${cfg.accentText}`}>
+                              {formatRupiah(Number(cls.class_price))}
+                              <span className="text-on-surface-variant/60 font-normal text-xs"> / sesi</span>
+                            </p>
                           )}
 
                           {cls.show_registrations && (
@@ -425,24 +568,39 @@ export default async function InstructorLandingPage({
         </section>
       )}
 
-      {/* ── GALERI KELAS ─────────────────────────────────────────────────── */}
-      {classesWithPhoto.length > 0 && (
+      {/* ── DOKUMENTASI KELAS ────────────────────────────────────────────── */}
+      {classDocs.length > 0 && (
         <section className="py-16 bg-gray-50">
           <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
-            <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface text-center mb-10">Galeri Kelas</h2>
-            <div className="flex flex-wrap justify-center gap-8">
-              {classesWithPhoto.map((cls: any) => (
-                <div key={cls.id} className="flex flex-col items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={cls.cover_image_url}
-                    alt={cls.name}
-                    loading="lazy"
-                    className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
-                  />
-                  <p className="text-sm font-semibold text-on-surface text-center max-w-[140px]">{cls.name}</p>
-                </div>
-              ))}
+            <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface text-center mb-10">Dokumentasi Kelas</h2>
+            <div className="flex flex-col gap-10">
+              {classDocs.map(({ cls, photos, totalCount }) => {
+                const cfg   = getTypeConfig(cls.type)
+                const extra = totalCount - photos.length
+                return (
+                  <div key={cls.id}>
+                    <h3 className={`font-montserrat text-lg font-bold mb-4 ${cfg.accentText}`}>{cls.name}</h3>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                      {photos.map((p: any, i: number) => (
+                        <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={p.image_url}
+                            alt={cls.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                          />
+                          {i === photos.length - 1 && extra > 0 && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-sm font-bold">
+                              +{extra} foto lainnya
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div></ScrollReveal>
         </section>
@@ -557,6 +715,16 @@ export default async function InstructorLandingPage({
                           <div className="flex items-center gap-3 text-on-surface-variant">
                             <span className="material-symbols-outlined text-indigo-700 text-xl">location_on</span>
                             <span className="text-sm">{ev.location}</span>
+                            {ev.google_maps_url && (
+                              <a
+                                href={ev.google_maps_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-semibold text-indigo-700 hover:underline ml-auto shrink-0"
+                              >
+                                Lihat Lokasi
+                              </a>
+                            )}
                           </div>
                         )}
                       </div>
@@ -606,6 +774,29 @@ export default async function InstructorLandingPage({
         </section>
       )}
 
+      {/* ── DOKUMENTASI EVENT ────────────────────────────────────────────── */}
+      {eventDocPhotos.length > 0 && (
+        <section className="py-16 bg-gray-50">
+          <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
+            <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface text-center mb-3">Dokumentasi Event</h2>
+            <p className="text-on-surface-variant text-center mb-10">Momen terbaik dari event-event yang sudah berlangsung</p>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {eventDocPhotos.map((p: any) => (
+                <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.image_url}
+                    alt="Dokumentasi event"
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </div></ScrollReveal>
+        </section>
+      )}
+
       {/* ── BENEFITS ─────────────────────────────────────────────────────── */}
       <section className="py-24 bg-white" id="benefits">
         <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
@@ -630,7 +821,7 @@ export default async function InstructorLandingPage({
               </div>
             ))}
           </div>
-          {communityGroups.length > 0 ? (
+          {communityGroups.length === 1 ? (
             <div className="mt-12 flex flex-wrap justify-center gap-3">
               {communityGroups.map(g => {
                 const typeLabel = CLASS_TYPES.find(t => t.value === g.type)?.label ?? g.type
@@ -647,6 +838,16 @@ export default async function InstructorLandingPage({
                   </a>
                 )
               })}
+            </div>
+          ) : communityGroups.length > 1 ? (
+            <div className="mt-12 flex justify-center">
+              <CommunityPickerSheet
+                groups={communityGroups.map(g => ({
+                  type:  g.type,
+                  link:  g.link,
+                  label: CLASS_TYPES.find(t => t.value === g.type)?.label ?? g.type,
+                }))}
+              />
             </div>
           ) : waNumber && (
             <div className="mt-12 text-center">
@@ -709,32 +910,36 @@ export default async function InstructorLandingPage({
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
       <footer className="py-20 px-4 md:px-10" style={{ background: HERO_GRADIENT }}>
         <div className="max-w-container-max mx-auto flex flex-col items-center text-center">
-          {/* CTA */}
-          <div className="mb-12 space-y-4 max-w-md">
-            <h3 className="font-montserrat text-xl font-bold text-on-surface">Ingin Punya Sistem Seperti Ini?</h3>
-            <p className="text-on-surface/60 text-sm">
-              Kelola kelas, event, member, dan WhatsApp otomatis dalam satu platform.
-            </p>
-            <Link
-              href="/home"
-              className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform"
+          {/* Studio */}
+          <div className="mb-10 space-y-3 max-w-md">
+            <p className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface">{studio}</p>
+            {profile.bio && (
+              <p className="text-on-surface/60 text-sm italic">{profile.bio}</p>
+            )}
+          </div>
+
+          {waNumber && (
+            <a
+              href={`https://wa.me/${waNumber}?text=${waMsg}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-indigo-700 text-white px-8 py-3.5 rounded-full font-bold shadow-lg hover:scale-105 active:scale-95 transition-all mb-10"
             >
-              🚀 Lihat FitFlow Coach
-            </Link>
-          </div>
+              <span className="material-symbols-outlined">chat</span>
+              Hubungi via WhatsApp
+            </a>
+          )}
 
-          {/* Brand */}
-          <div className="space-y-3">
-            <p className="text-on-surface/50 text-xs uppercase tracking-widest font-bold">Developed &amp; Powered by</p>
-            <p className="font-montserrat font-bold text-5xl text-white drop-shadow-sm leading-none">SIMETRI</p>
-            <p className="text-on-surface/50 text-xs font-medium">IT &amp; Telemetry Solution</p>
-            <p className="text-on-surface/30 text-xs pt-3">Platform by FitFlow Coach</p>
-          </div>
-
-          {/* Copyright */}
-          <div className="pt-10 mt-10 border-t border-on-surface/5 w-full">
-            <p className="text-on-surface/30 text-sm">
+          {/* Copyright + atribusi kecil, tidak menonjol */}
+          <div className="pt-10 border-t border-on-surface/10 w-full space-y-2">
+            <p className="text-on-surface/40 text-sm">
               © {new Date().getFullYear()} {studio}. All rights reserved.
+            </p>
+            <p className="text-on-surface/25 text-xs">
+              Website oleh{' '}
+              <Link href="/home" className="underline hover:text-on-surface/50 transition-colors">
+                FitFlow Coach
+              </Link>
             </p>
           </div>
         </div>

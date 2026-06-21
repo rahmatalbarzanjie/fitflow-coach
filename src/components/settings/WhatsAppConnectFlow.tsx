@@ -19,6 +19,13 @@ export function WhatsAppConnectFlow() {
   const [qr,       setQr      ] = useState<string | null>(null)
   const [error,    setError   ] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollAttemptsRef = useRef(0)
+
+  // Tanpa batas ini, kalau koneksi tidak pernah selesai (device gagal
+  // diprovisikan, Fonnte error terus, dsb) user terjebak di spinner
+  // selamanya tanpa cara tahu itu sudah gagal.
+  const POLL_INTERVAL_MS = 8000 // jangan terlalu sering - /qr Fonnte gampang kena rate limit di interval pendek (3s), bikin QR yang sudah tampil malah rusak/kadaluarsa karena tidak bisa di-refresh
+  const MAX_POLL_ATTEMPTS = 23 // ~23 x 8s = 3 menit
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
@@ -40,6 +47,7 @@ export function WhatsAppConnectFlow() {
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Gagal meminta koneksi'); setStatus('error'); return }
       setStatus('pending')
+      pollAttemptsRef.current = 0
       startPolling()
     } catch {
       setError('Gagal terhubung ke server')
@@ -49,6 +57,13 @@ export function WhatsAppConnectFlow() {
 
   function startPolling() {
     pollRef.current = setInterval(async () => {
+      pollAttemptsRef.current += 1
+      if (pollAttemptsRef.current > MAX_POLL_ATTEMPTS) {
+        clearInterval(pollRef.current!)
+        setError('Koneksi belum berhasil dalam 3 menit. Coba lagi atau hubungi admin.')
+        setStatus('error')
+        return
+      }
       try {
         const res  = await fetch('/api/wa/connect-status')
         const data = await res.json()
@@ -60,8 +75,8 @@ export function WhatsAppConnectFlow() {
           setQr(data.qr)
           setStatus('connecting')
         }
-      } catch { /* polling silently fails */ }
-    }, 3000)
+      } catch { /* network blip - jangan langsung gagalkan, tetap coba lagi sampai batas attempt */ }
+    }, POLL_INTERVAL_MS)
   }
 
   const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
@@ -69,7 +84,7 @@ export function WhatsAppConnectFlow() {
   return (
     <div className="space-y-4">
       {/* Step: input nomor */}
-      {(status === 'idle' || status === 'error') && (
+      {(status === 'idle' || status === 'error' || status === 'requesting') && (
         <div className="bg-white rounded-2xl border border-gray-100 px-4 py-5 space-y-4">
           <div>
             <p className="text-sm font-semibold text-gray-900 mb-1">Nomor WhatsApp Bot</p>

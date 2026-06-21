@@ -75,6 +75,7 @@ export default function NewEventPage() {
         start_time:          data.start_time,
         end_time:            data.end_time || null,
         location:            data.location || null,
+        google_maps_url:     data.google_maps_url || null,
         status:              data.status,
         pricing_mode:        data.pricing_mode,
         // tiered
@@ -155,6 +156,15 @@ export default function NewEventPage() {
           <div className="space-y-1.5">
             <label className={lbl}>Lokasi</label>
             <input {...register('location')} placeholder="Contoh: Studio A, GOR Mandiri" className={inp} />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={lbl}>
+              Link Google Maps
+              <span className="text-gray-400 font-normal ml-1 text-xs">(opsional)</span>
+            </label>
+            <input {...register('google_maps_url')} placeholder="https://maps.app.goo.gl/..." className={inp} />
+            {errors.google_maps_url && <p className="text-xs text-red-600">{errors.google_maps_url.message}</p>}
           </div>
 
           <div className="space-y-1.5">

@@ -35,7 +35,7 @@ export default async function ClassRegistrationPage({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cls } = await (supabase.from('classes') as any)
-    .select('id, name, type, day_of_week, start_time, end_time, location, capacity, class_price, is_active')
+    .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price, is_active')
     .eq('id', classId)
     .eq('user_id', profile.id)
     .eq('is_active', true)
@@ -91,6 +91,16 @@ export default async function ClassRegistrationPage({
               <p className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-gray-400" />
                 {cls.location}
+                {cls.google_maps_url && (
+                  <a
+                    href={cls.google_maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-violet-600 hover:underline"
+                  >
+                    Lihat Lokasi
+                  </a>
+                )}
               </p>
             )}
             {cls.capacity && (

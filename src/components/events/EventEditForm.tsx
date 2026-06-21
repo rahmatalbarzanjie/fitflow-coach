@@ -17,6 +17,7 @@ interface Props {
     start_time: string
     end_time: string | null
     location: string | null
+    google_maps_url?: string | null
     status: string
     pricing_mode?: string | null
     tier1_label?: string | null
@@ -74,6 +75,7 @@ export function EventEditForm({ ev }: Props) {
       start_time:          ev.start_time.substring(0, 5),
       end_time:            ev.end_time?.substring(0, 5) ?? '',
       location:            ev.location ?? '',
+      google_maps_url:     ev.google_maps_url ?? '',
       status:              ev.status as EventFormData['status'],
       pricing_mode:        (ev.pricing_mode as any) ?? 'tiered',
       tier1_label:         ev.tier1_label ?? 'Early Bird',
@@ -103,6 +105,7 @@ export function EventEditForm({ ev }: Props) {
         start_time:          data.start_time,
         end_time:            data.end_time || null,
         location:            data.location || null,
+        google_maps_url:     data.google_maps_url || null,
         status:              data.status,
         pricing_mode:        data.pricing_mode,
         tier1_label:         data.tier1_label || 'Early Bird',
@@ -161,6 +164,15 @@ export function EventEditForm({ ev }: Props) {
       <div className="space-y-1.5">
         <label className={lbl}>Lokasi</label>
         <input {...register('location')} placeholder="Opsional" className={inp} />
+      </div>
+
+      <div className="space-y-1.5">
+        <label className={lbl}>
+          Link Google Maps
+          <span className="text-gray-400 font-normal ml-1 text-xs">(opsional)</span>
+        </label>
+        <input {...register('google_maps_url')} placeholder="https://maps.app.goo.gl/..." className={inp} />
+        {errors.google_maps_url && <p className="text-xs text-red-600">{errors.google_maps_url.message}</p>}
       </div>
 
       {/* Harga Tier 1 */}

@@ -67,7 +67,10 @@ export default async function AdminInstructorDetailPage({
     .order('payment_date', { ascending: false })
     .limit(10)
 
-  const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10)
+  // Token doang BUKAN bukti connected - device bisa dihapus/disconnect di
+  // Fonnte tanpa token kita ikut terhapus. bot_phone cuma keisi kalau
+  // koneksi pernah benar-benar berhasil (lihat connect-status route).
+  const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10 && p.bot_phone)
 
   // Estimate monthly revenue
   const estimatedMonthly = (classes as any[] ?? []).reduce((sum: number, cls: any) => {

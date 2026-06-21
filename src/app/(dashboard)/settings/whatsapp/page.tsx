@@ -6,6 +6,8 @@ import { DetailRow } from '@/components/ui/DetailRow'
 import { WhatsAppDisconnectButton } from '@/components/settings/WhatsAppDisconnectButton'
 import { Smartphone, CheckCircle, AlertCircle, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { fonnteIsDeviceConnected } from '@/lib/whatsapp'
+import { getSystemConfig } from '@/lib/system-config'
 
 export default async function SettingsWhatsAppPage() {
   const supabase = await createClient()
@@ -18,7 +20,20 @@ export default async function SettingsWhatsAppPage() {
 
   if (!profile) notFound()
 
-  const isConnected  = !!(profile.bot_phone?.trim())
+  let isConnected = !!(profile.bot_phone?.trim())
+
+  // Jangan percaya bot_phone selamanya - device bisa logout di HP tanpa
+  // app kita tahu. Verifikasi live, sinkronkan DB kalau Fonnte eksplisit
+  // bilang sudah disconnect.
+  if (isConnected && profile.fonnte_token) {
+    const masterToken = (await getSystemConfig('fonnte_token')) || process.env.FONNTE_TOKEN
+    const live = masterToken ? await fonnteIsDeviceConnected(masterToken, profile.fonnte_token) : null
+    if (live === false) {
+      await (supabase.from('profiles') as any).update({ bot_phone: null }).eq('id', user!.id)
+      isConnected = false
+    }
+  }
+
   const isPending    = !isConnected && !!(profile.bot_phone_requested?.trim())
   const hasToken     = !!(profile.fonnte_token?.trim())
 

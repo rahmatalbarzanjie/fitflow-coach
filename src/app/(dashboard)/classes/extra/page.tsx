@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { ExtraClassForm } from './ExtraClassForm'
 
 export const metadata = { title: 'Kelas Ekstra - FitFlow Coach' }
@@ -20,16 +19,12 @@ export default async function ExtraClassPage() {
     .order('name')
 
   return (
-    <div className="max-w-lg">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/classes" className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Tambah Kelas Ekstra</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Sesi tambahan di luar jadwal rutin</p>
-        </div>
-      </div>
+    <div className="w-full max-w-lg mx-auto">
+      <PageHeader
+        backHref="/classes"
+        title="Tambah Kelas Ekstra"
+        subtitle="Sesi tambahan di luar jadwal rutin"
+      />
 
       <Card>
         <ExtraClassForm classes={classes ?? []} />

@@ -110,6 +110,16 @@ export default async function PublicRegistrationPage({
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <MapPin className="w-4 h-4 text-violet-500 shrink-0" />
                 {event.location}
+                {event.google_maps_url && (
+                  <a
+                    href={event.google_maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-violet-600 hover:underline"
+                  >
+                    Lihat Lokasi
+                  </a>
+                )}
               </div>
             )}
             {event.max_capacity && (

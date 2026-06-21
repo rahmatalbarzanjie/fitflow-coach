@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from 'react'
 
-export function PublicNavbar() {
+interface Props {
+  hasTestimonials?: boolean
+}
+
+export function PublicNavbar({ hasTestimonials = false }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -22,6 +26,7 @@ export function PublicNavbar() {
     { id: 'schedules', label: 'Jadwal' },
     { id: 'events',    label: 'Events' },
     { id: 'benefits',  label: 'Member' },
+    ...(hasTestimonials ? [{ id: 'testimonials', label: 'Testimoni' }] : []),
   ]
 
   return (

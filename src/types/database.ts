@@ -39,51 +39,62 @@ export type Database = {
           type?: Database["public"]["Enums"]["ai_request_type"]
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       attendance: {
         Row: {
           amount_paid: number
+          community_id: string | null
           created_at: string | null
           id: string
-          member_id: string
+          member_id: string | null
           notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
+          registrant_name: string | null
+          registrant_phone: string | null
           session_id: string
+          source: string
           user_id: string
         }
         Insert: {
           amount_paid?: number
+          community_id?: string | null
           created_at?: string | null
           id?: string
-          member_id: string
+          member_id?: string | null
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
+          registrant_name?: string | null
+          registrant_phone?: string | null
           session_id: string
+          source?: string
           user_id: string
         }
         Update: {
           amount_paid?: number
+          community_id?: string | null
           created_at?: string | null
           id?: string
-          member_id?: string
+          member_id?: string | null
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
+          registrant_name?: string | null
+          registrant_phone?: string | null
           session_id?: string
+          source?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "community_contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_member_id_fkey"
             columns: ["member_id"]
@@ -118,6 +129,7 @@ export type Database = {
         Row: {
           broadcast_id: string
           created_at: string | null
+          error: string | null
           id: string
           member_id: string | null
           name: string
@@ -128,6 +140,7 @@ export type Database = {
         Insert: {
           broadcast_id: string
           created_at?: string | null
+          error?: string | null
           id?: string
           member_id?: string | null
           name: string
@@ -138,6 +151,7 @@ export type Database = {
         Update: {
           broadcast_id?: string
           created_at?: string | null
+          error?: string | null
           id?: string
           member_id?: string | null
           name?: string
@@ -249,6 +263,41 @@ export type Database = {
           },
         ]
       }
+      class_gallery: {
+        Row: {
+          class_id: string
+          created_at: string | null
+          id: string
+          image_url: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string | null
+          id?: string
+          image_url: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_gallery_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_schedules: {
         Row: {
           class_id: string
@@ -331,6 +380,7 @@ export type Database = {
           id: string
           type: string
           user_id: string
+          wa_group_id: string | null
           wa_invite_link: string | null
         }
         Insert: {
@@ -339,6 +389,7 @@ export type Database = {
           id?: string
           type: string
           user_id: string
+          wa_group_id?: string | null
           wa_invite_link?: string | null
         }
         Update: {
@@ -347,6 +398,7 @@ export type Database = {
           id?: string
           type?: string
           user_id?: string
+          wa_group_id?: string | null
           wa_invite_link?: string | null
         }
         Relationships: []
@@ -360,6 +412,7 @@ export type Database = {
           day_of_week: number
           description: string | null
           end_time: string
+          google_maps_url: string | null
           id: string
           is_active: boolean
           location: string | null
@@ -382,6 +435,7 @@ export type Database = {
           day_of_week: number
           description?: string | null
           end_time: string
+          google_maps_url?: string | null
           id?: string
           is_active?: boolean
           location?: string | null
@@ -404,6 +458,7 @@ export type Database = {
           day_of_week?: number
           description?: string | null
           end_time?: string
+          google_maps_url?: string | null
           id?: string
           is_active?: boolean
           location?: string | null
@@ -423,6 +478,7 @@ export type Database = {
       community_contacts: {
         Row: {
           class_id: string | null
+          class_type: Database["public"]["Enums"]["class_type"] | null
           converted_member_id: string | null
           created_at: string | null
           id: string
@@ -434,6 +490,7 @@ export type Database = {
         }
         Insert: {
           class_id?: string | null
+          class_type?: Database["public"]["Enums"]["class_type"] | null
           converted_member_id?: string | null
           created_at?: string | null
           id?: string
@@ -445,6 +502,7 @@ export type Database = {
         }
         Update: {
           class_id?: string | null
+          class_type?: Database["public"]["Enums"]["class_type"] | null
           converted_member_id?: string | null
           created_at?: string | null
           id?: string
@@ -474,6 +532,83 @@ export type Database = {
             columns: ["converted_member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_invitation_candidates: {
+        Row: {
+          attendance_date: string
+          class_type: string
+          created_at: string | null
+          id: string
+          invited_at: string | null
+          name: string
+          phone: string
+          source_id: string | null
+          source_type: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attendance_date: string
+          class_type: string
+          created_at?: string | null
+          id?: string
+          invited_at?: string | null
+          name: string
+          phone: string
+          source_id?: string | null
+          source_type: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attendance_date?: string
+          class_type?: string
+          created_at?: string | null
+          id?: string
+          invited_at?: string | null
+          name?: string
+          phone?: string
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      event_gallery: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          image_url: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          image_url: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          image_url?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_gallery_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -539,6 +674,7 @@ export type Database = {
           early_bird_quota: number | null
           end_time: string | null
           event_date: string
+          google_maps_url: string | null
           id: string
           location: string | null
           max_capacity: number | null
@@ -565,6 +701,7 @@ export type Database = {
           early_bird_quota?: number | null
           end_time?: string | null
           event_date: string
+          google_maps_url?: string | null
           id?: string
           location?: string | null
           max_capacity?: number | null
@@ -591,6 +728,7 @@ export type Database = {
           early_bird_quota?: number | null
           end_time?: string | null
           event_date?: string
+          google_maps_url?: string | null
           id?: string
           location?: string | null
           max_capacity?: number | null
@@ -1349,33 +1487,124 @@ export type Database = {
       }
       wa_conversations: {
         Row: {
+          class_type: Database["public"]["Enums"]["class_type"] | null
           created_at: string | null
           id: string
           message: string
           phone: string
           role: string
+          sender_kind: string | null
+          sender_ref_id: string | null
           user_id: string
         }
         Insert: {
+          class_type?: Database["public"]["Enums"]["class_type"] | null
           created_at?: string | null
           id?: string
           message: string
           phone: string
           role: string
+          sender_kind?: string | null
+          sender_ref_id?: string | null
           user_id: string
         }
         Update: {
+          class_type?: Database["public"]["Enums"]["class_type"] | null
           created_at?: string | null
           id?: string
           message?: string
           phone?: string
           role?: string
+          sender_kind?: string | null
+          sender_ref_id?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      wa_webhook_log: {
+        Row: {
+          fonnte_message_id: string
+          received_at: string | null
+        }
+        Insert: {
+          fonnte_message_id: string
+          received_at?: string | null
+        }
+        Update: {
+          fonnte_message_id?: string
+          received_at?: string | null
         }
         Relationships: []
       }
     }
     Views: {
+      attendance_summary: {
+        Row: {
+          amount_paid: number | null
+          class_id: string | null
+          class_name: string | null
+          class_type: Database["public"]["Enums"]["class_type"] | null
+          community_class_type: Database["public"]["Enums"]["class_type"] | null
+          community_id: string | null
+          created_at: string | null
+          id: string | null
+          member_id: string | null
+          member_status: Database["public"]["Enums"]["member_status"] | null
+          notes: string | null
+          participant_name: string | null
+          participant_phone: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payment_mode: Database["public"]["Enums"]["payment_mode"] | null
+          session_date: string | null
+          session_id: string | null
+          source: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "community_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "today_sessions"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_registration_summary: {
         Row: {
           amount_paid: number | null
@@ -1488,6 +1717,10 @@ export type Database = {
       generate_sessions_for_class: {
         Args: { p_class_id: string; p_days_ahead?: number }
         Returns: number
+      }
+      get_dashboard_summary: {
+        Args: { p_month_start: string; p_user_id: string }
+        Returns: Json
       }
       invite_registrant_to_join: {
         Args: { p_member_id?: string; p_registration_id: string }

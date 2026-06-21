@@ -18,6 +18,7 @@ export const eventSchema = z.object({
   start_time:          z.string().regex(/^\d{2}:\d{2}$/, 'Format HH:MM'),
   end_time:            z.string().optional(),
   location:            z.string().optional(),
+  google_maps_url:     z.string().url('URL tidak valid').optional().or(z.literal('')),
   // Pricing mode
   pricing_mode:        z.enum(['tiered', 'single']).default('tiered'),
   // Mode A - tiered

@@ -1,0 +1,148 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { MapPin, AlertCircle } from 'lucide-react'
+import { generateLocationChangeMessage } from '@/lib/class-notifications'
+import { DAY_NAMES } from '@/lib/utils'
+
+interface Props {
+  sessionId:   string
+  className:   string
+  dayOfWeek:   number
+  startTime:   string
+  endTime:     string
+  oldLocation: string
+  backHref:    string
+}
+
+export function ChangeLocationForm({
+  sessionId, className, dayOfWeek, startTime, endTime, oldLocation, backHref,
+}: Props) {
+  const router = useRouter()
+
+  const [newLocation, setNewLocation] = useState('')
+  const [notes,       setNotes      ] = useState('')
+  const [notifyWA,    setNotifyWA   ] = useState(true)
+  const [loading,     setLoading    ] = useState(false)
+  const [error,       setError      ] = useState('')
+
+  const dayName = DAY_NAMES[dayOfWeek] ?? 'Hari ini'
+
+  const preview = newLocation.trim()
+    ? generateLocationChangeMessage({
+        className, dayName, startTime, endTime,
+        oldLocation: oldLocation || 'lokasi biasa',
+        newLocation: newLocation.trim(),
+      })
+    : ''
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newLocation.trim()) { setError('Lokasi baru wajib diisi'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/location`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ newLocation: newLocation.trim(), notes, notify: notifyWA }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal update lokasi')
+      if (notifyWA && data.broadcastId) {
+        router.push('/broadcasts')
+      } else {
+        router.push(backHref)
+        router.refresh()
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+      <p className="text-xs text-gray-400">Hanya berlaku untuk sesi ini saja.</p>
+
+      {oldLocation && (
+        <div className="bg-gray-50 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-400">Lokasi saat ini</p>
+          <p className="text-sm font-medium text-gray-700 mt-0.5">{oldLocation}</p>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+          <MapPin className="w-3.5 h-3.5 inline mr-1" />
+          Lokasi Baru
+        </label>
+        <input
+          type="text"
+          value={newLocation}
+          onChange={e => setNewLocation(e.target.value)}
+          required
+          placeholder="Contoh: Casadova Gym Center, Lt. 2"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Catatan tambahan (opsional)</label>
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          rows={2}
+          placeholder="Info tambahan yang perlu member tahu..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+        />
+      </div>
+
+      <div className="flex items-center justify-between py-3 border-t border-gray-50">
+        <div>
+          <p className="text-sm font-medium text-gray-800">Informasikan ke member via WA</p>
+          <p className="text-xs text-gray-400">Simpan draft broadcast untuk dikirim</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setNotifyWA(v => !v)}
+          className={`relative w-10 h-6 rounded-full transition-colors ${notifyWA ? 'bg-violet-600' : 'bg-gray-200'}`}
+        >
+          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifyWA ? 'left-5' : 'left-1'}`} />
+        </button>
+      </div>
+
+      {notifyWA && preview && (
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Preview Pesan WA</p>
+          <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed font-mono">{preview}</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 rounded-xl p-3">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <p className="text-xs">{error}</p>
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-2">
+        <button
+          type="button"
+          onClick={() => router.push(backHref)}
+          className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white rounded-xl text-sm font-semibold transition-colors"
+        >
+          {loading ? 'Menyimpan...' : notifyWA ? 'Simpan & Kirim Notif' : 'Simpan Saja'}
+        </button>
+      </div>
+    </form>
+  )
+}

@@ -50,6 +50,10 @@ export async function POST(
   }
 
   const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+  if (!instructorToken) {
+    return NextResponse.json({ error: 'WhatsApp belum terhubung. Hubungkan WA di Pengaturan terlebih dahulu.' }, { status: 400 })
+  }
+
   const title   = (bc as any).title   as string
   const content = (bc as any).content as string
   const message = `*${title}*\n\n${content}`

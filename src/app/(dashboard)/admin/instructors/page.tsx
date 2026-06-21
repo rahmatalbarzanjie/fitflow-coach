@@ -44,7 +44,10 @@ export default async function AdminInstructorsPage() {
               ? Math.max(0, Math.ceil((new Date(p.trial_expires_at).getTime() - now.getTime()) / 86_400_000))
               : null
             const status = p.subscription_status ?? 'trial'
-            const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10)
+            // Token doang BUKAN bukti connected - device bisa dihapus/disconnect
+            // di Fonnte tanpa token kita ikut terhapus. bot_phone cuma keisi
+            // kalau koneksi pernah benar-benar berhasil.
+            const botConnected = !!(p.fonnte_token && String(p.fonnte_token).trim().length > 10 && p.bot_phone)
 
             return (
               <div key={p.id} className="flex items-start justify-between p-4 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">

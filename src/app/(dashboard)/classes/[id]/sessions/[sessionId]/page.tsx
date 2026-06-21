@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, Users, Bell, BellOff, MessageSquareWarning } from 'lucide-react'
+import { Users, Bell, BellOff, MessageSquareWarning } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { formatDate, formatDateShort, formatTime } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { formatDateShort, formatTime } from '@/lib/utils'
 import { SessionActions } from './SessionActions'
 import { FeedbackRequestButton } from '@/components/classes/FeedbackRequestButton'
 
@@ -57,19 +57,12 @@ export default async function SessionDetailPage({
   const location    = session.override_location ?? cls.location ?? '-'
 
   return (
-    <div className="max-w-lg">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href={`/classes/${id}`} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-gray-900 truncate">{cls.name}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {formatDate(session.session_date)} · {formatTime(session.start_time)} – {formatTime(session.end_time)} · {location}
-          </p>
-        </div>
-      </div>
+    <div className="w-full max-w-lg mx-auto">
+      <PageHeader
+        backHref={`/classes/${id}`}
+        title={cls.name}
+        subtitle={`${formatDateShort(session.session_date)} · ${formatTime(session.start_time)}–${formatTime(session.end_time)} · ${location}`}
+      />
 
       {/* Session info card */}
       <Card className="mb-4 space-y-4">

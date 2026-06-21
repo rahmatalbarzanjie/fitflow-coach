@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp'
 import { DAY_NAMES, formatTime, formatRupiah, formatDate } from '@/lib/utils'
+import { CLASS_TYPES } from '@/lib/constants'
 
 const HISTORY_LIMIT = 20
 
@@ -21,6 +22,41 @@ function nextOccurrence(dayOfWeek: number, from: Date) {
   const d = new Date(from)
   d.setDate(d.getDate() + diff)
   return d.toISOString().split('T')[0]
+}
+
+type ClassType = 'poundfit' | 'barre' | 'zumba' | 'yoga' | 'pilates' | 'aerobic' | 'other'
+
+// Niat lintas-komunitas selalu menang - kalau pesan menyebut tipe kelas lain
+// secara eksplisit, itu yang dipakai, terlepas dari komunitas asal pengirim.
+function detectExplicitClassType(message: string): ClassType | null {
+  const lower = message.toLowerCase()
+  for (const t of CLASS_TYPES) {
+    if (t.value === 'other') continue
+    if (lower.includes(t.value) || lower.includes(t.label.toLowerCase())) return t.value
+  }
+  return null
+}
+
+// Klasifikasi KHUSUS (bukan prompt balasan utama, tidak diubah) untuk
+// deteksi pesan yang harus diteruskan ke instruktur manusia, bukan dijawab
+// bot - komplain, cedera/sakit, refund, atau mau berhenti jadi member.
+// Gagal klasifikasi (mis. API error) → anggap TIDAK perlu handover, supaya
+// flow normal tetap jalan, bot tidak pernah "diam" karena error di sini.
+async function classifyHandover(message: string): Promise<boolean> {
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const res = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
+      system: `Klasifikasikan apakah pesan WhatsApp peserta ini berisi salah satu dari: komplain, cedera/sakit, masalah/refund pembayaran, atau ingin berhenti jadi member. Balas HANYA dengan satu kata "YA" atau "TIDAK", tanpa tanda baca atau kata lain.`,
+      messages: [{ role: 'user', content: message }],
+    })
+    const text = res.content[0].type === 'text' ? res.content[0].text.trim().toUpperCase() : ''
+    return text.startsWith('YA')
+  } catch (err) {
+    console.error('[WA Bot] Gagal klasifikasi handover:', err)
+    return false
+  }
 }
 
 /*
@@ -51,10 +87,32 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ ok: false })
 
-  const { device, sender, message, name: senderName, instructor_id } = body
+  const { device, sender, message, name: senderName, instructor_id, id: fonnteMessageId } = body
 
   // Abaikan jika tidak ada pesan teks
   if (!message || typeof message !== 'string') return NextResponse.json({ ok: true })
+
+  const supabase = createServiceClient()
+
+  // ── Idempotency ───────────────────────────────────────────────────────────
+  // Fonnte bisa retry webhook yang sama (timeout, jaringan, dst). Tanpa ini,
+  // retry berarti balasan terkirim DUA KALI ke peserta yang sama. Insert
+  // duluan ke wa_webhook_log - kalau message id ini sudah pernah masuk
+  // (PRIMARY KEY conflict), hentikan di sini, jangan proses ulang apa pun.
+  if (fonnteMessageId) {
+    const { error: dedupeErr } = await supabase
+      .from('wa_webhook_log')
+      .insert({ fonnte_message_id: String(fonnteMessageId) })
+    if (dedupeErr) {
+      // Conflict (kode 23505) = pesan ini sudah pernah diproses - berhenti.
+      // Error lain (mis. tabel belum ada) - jangan blokir bot, lanjut proses
+      // seperti biasa supaya gagal pada tahap idempotency tidak mematikan
+      // seluruh fitur balas pesan.
+      if ((dedupeErr as { code?: string }).code === '23505') {
+        return NextResponse.json({ ok: true, duplicate: true })
+      }
+    }
+  }
 
   // Abaikan pesan dari device sendiri (cegah loop balasan bot)
   const cleanDevice = String(device ?? '').replace(/\D/g, '')
@@ -62,8 +120,6 @@ export async function POST(request: Request) {
   if (cleanSender && cleanDevice && cleanSender === cleanDevice) {
     return NextResponse.json({ ok: true })
   }
-
-  const supabase = createServiceClient()
 
   // ── Handle pesan dari GRUP KOMUNITAS (Level 1) ────────────────────────────
   // Fonnte mengirim sender = "groupid@g.us" dan member = nomor pengirim asli
@@ -96,7 +152,7 @@ export async function POST(request: Request) {
           .select('id, name')
           .eq('user_id', benefit.user_id)
           .eq('phone', phoneNorm)
-          .eq('class_type', benefit.type)
+          .eq('class_type', benefit.type as 'zumba' | 'yoga' | 'pilates' | 'poundfit' | 'aerobic' | 'barre' | 'other')
           .maybeSingle()
 
         if (!existing) {
@@ -105,7 +161,7 @@ export async function POST(request: Request) {
             user_id: benefit.user_id,
             name: memberName,
             phone: phoneNorm,
-            class_type: benefit.type,   // poundfit / barre / dll
+            class_type: benefit.type as 'zumba' | 'yoga' | 'pilates' | 'poundfit' | 'aerobic' | 'barre' | 'other',   // poundfit / barre / dll
             source: 'wa_group',     // tandai asal dari grup WA
           })
         } else if (memberName && !existing.name) {
@@ -309,11 +365,68 @@ CARA MENJAWAB:
 
   const today = new Date().toISOString().split('T')[0]
 
+  // ── Sender Resolution + Multi-Community Context ───────────────────────────
+  // Bot perlu tahu SIAPA yang chat dan KOMUNITAS mana sebelum membalas -
+  // dicek berurutan: member terdaftar → kontak komunitas (sekaligus dapat
+  // class_type-nya) → pernah daftar kelas/event → tidak dikenal. Hasilnya
+  // cuma dicatat di wa_conversations (untuk histori/audit), TIDAK mengubah
+  // konten balasan atau apa yang dikirim ke AI.
+  type SenderKind = 'member' | 'community_contact' | 'registrant' | 'unknown'
+  let senderKind: SenderKind = 'unknown'
+  let senderRefId: string | null = null
+  let senderClassType: ClassType | null = null
+
+  if (cleanSender) {
+    const senderPhoneLocal = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
+    const senderPhoneIntl  = cleanSender.startsWith('0')  ? '62' + cleanSender.slice(1) : cleanSender
+    const phoneVariants = [...new Set([senderPhoneLocal, senderPhoneIntl])]
+
+    const { data: memberMatch } = await supabase
+      .from('members')
+      .select('id')
+      .eq('user_id', instructorProfile.id)
+      .in('phone', phoneVariants)
+      .maybeSingle()
+
+    if (memberMatch) {
+      senderKind = 'member'
+      senderRefId = memberMatch.id
+    } else {
+      const { data: contactMatch } = await supabase
+        .from('community_contacts')
+        .select('id, class_type')
+        .eq('user_id', instructorProfile.id)
+        .in('phone', phoneVariants)
+        .maybeSingle()
+
+      if (contactMatch) {
+        senderKind = 'community_contact'
+        senderRefId = contactMatch.id
+        senderClassType = contactMatch.class_type ?? null
+      } else {
+        const { data: regMatch } = await supabase
+          .from('registrations')
+          .select('id, classes(type)')
+          .eq('user_id', instructorProfile.id)
+          .in('registrant_phone', phoneVariants)
+          .order('registered_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (regMatch) {
+          senderKind = 'registrant'
+          senderRefId = regMatch.id
+          senderClassType = ((regMatch.classes as { type?: string } | null)?.type ?? null) as ClassType | null
+        }
+      }
+    }
+  }
+
   // ── Ambil data instruktur untuk konteks AI ────────────────────────────────
   const [{ data: classes }, { data: events }] = await Promise.all([
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, class_price')
+      .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price')
       .eq('user_id', instructorProfile.id)
       .order('day_of_week')
       .order('start_time'),
@@ -327,6 +440,38 @@ CARA MENJAWAB:
       .order('event_date')
       .limit(5),
   ])
+
+  // ── Context Filtering per Komunitas ───────────────────────────────────────
+  // Urutan kekuatan sinyal: pesan menyebut tipe lain secara eksplisit (menang
+  // mutlak - ini yang dianggap "bertanya lintas komunitas") → class_type dari
+  // resolusi pengirim (community_contact/registrant) → kalau member tanpa
+  // sinyal di atas, diturunkan dari riwayat kehadiran (attendance_summary,
+  // tipe yang paling sering diikuti) → kalau tidak ada sinyal sama sekali,
+  // tidak ada pembatasan (perilaku lama, tampil semua). Event TIDAK pernah
+  // dibatasi - event bersifat studio-level, bukan per-komunitas.
+  const explicitClassType = detectExplicitClassType(message)
+  let effectiveClassType: ClassType | null = explicitClassType ?? senderClassType
+
+  if (!effectiveClassType && senderKind === 'member' && senderRefId) {
+    const { data: attendanceRows } = await supabase
+      .from('attendance_summary')
+      .select('class_type')
+      .eq('member_id', senderRefId)
+    const counts: Record<string, number> = {}
+    ;(attendanceRows ?? []).forEach((r: any) => {
+      if (r.class_type) counts[r.class_type] = (counts[r.class_type] ?? 0) + 1
+    })
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
+    effectiveClassType = (top?.[0] as ClassType) ?? null
+  }
+
+  const communityScopedClasses = effectiveClassType
+    ? (classes ?? []).filter((c: any) => c.type === effectiveClassType)
+    : (classes ?? [])
+  // Fallback aman: kalau hasil filter kosong (mis. tipe yang terdeteksi sudah
+  // tidak ada kelasnya lagi), jangan sampai bot bilang "tidak ada kelas" -
+  // tampilkan semua saja seperti sebelum ada filter ini.
+  const finalScopedClasses = communityScopedClasses.length > 0 ? communityScopedClasses : (classes ?? [])
 
   const studioName = instructorProfile.business_name ?? instructorProfile.name
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -368,7 +513,7 @@ CARA MENJAWAB:
       `  Harga: ${price}\n  Daftar: ${regLink}`
   }
 
-  const classLines = (classes ?? []).map(formatClassLine).join('\n\n') || '- (belum ada kelas terdaftar)'
+  const classLines = finalScopedClasses.map(formatClassLine).join('\n\n') || '- (belum ada kelas terdaftar)'
 
   const eventLines = (events ?? []).map((e: any) => {
     const ebAvail = Number(e.early_bird_price) > 0 &&
@@ -387,8 +532,8 @@ CARA MENJAWAB:
   // lalu selesai. Dipakai semua fast-path di bawah (jadwal & laporan).
   async function sendFastReply(text: string) {
     await supabase.from('wa_conversations').insert([
-      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
-      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: text },
+      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message, sender_kind: senderKind, sender_ref_id: senderRefId, class_type: senderClassType },
+      { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: text, sender_kind: senderKind, sender_ref_id: senderRefId, class_type: senderClassType },
     ])
     const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
     await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
@@ -478,8 +623,8 @@ CARA MENJAWAB:
   const isScheduleQuery = /\bjadwal\b|kelas apa (aja|saja)|ada kelas apa/i.test(message)
   if (isScheduleQuery) {
     const asksToday = /hari ini/i.test(message)
-    const todayClasses = (classes ?? []).filter((c: any) => c.day_of_week === now.getDay())
-    const scopedClasses = asksToday ? todayClasses : (classes ?? [])
+    const todayClasses = finalScopedClasses.filter((c: any) => c.day_of_week === now.getDay())
+    const scopedClasses = asksToday ? todayClasses : finalScopedClasses
     const scopedLines = scopedClasses.length > 0
       ? scopedClasses.map(formatClassLine).join('\n\n')
       : (asksToday ? '- (tidak ada kelas hari ini)' : '- (belum ada kelas terdaftar)')
@@ -490,6 +635,74 @@ CARA MENJAWAB:
       `\n\nMau daftar kelas/event yang mana, Kak? Tinggal sebutin aja ya 😊`
 
     return sendFastReply(fastReply)
+  }
+
+  // ── Fast-path: harga ─────────────────────────────────────────────────────
+  if (/harga|biaya|berapa.*(bayar|harga)/i.test(message)) {
+    const lines = finalScopedClasses
+      .map((c: any) => `- *${c.name}*: ${Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'}`)
+      .join('\n') || '- (belum ada info harga)'
+    return sendFastReply(`Halo ${greetName}! 💰 Ini info harganya:\n\n${lines}\n\nMau daftar yang mana, Kak? 😊`)
+  }
+
+  // ── Fast-path: lokasi ────────────────────────────────────────────────────
+  if (/lokasi|alamat|dimana|di\s*mana/i.test(message)) {
+    const lines = finalScopedClasses
+      .map((c: any) => `- *${c.name}*: ${c.location ?? '(lokasi belum diisi)'}${c.google_maps_url ? `\n  ${c.google_maps_url}` : ''}`)
+      .join('\n') || '- (belum ada info lokasi)'
+    return sendFastReply(`Halo ${greetName}! 📍 Ini lokasinya:\n\n${lines}`)
+  }
+
+  // ── Fast-path: link komunitas ───────────────────────────────────────────
+  // Sebelumnya ini "bug fungsional" - Claude diinstruksikan jawab ramah soal
+  // gabung komunitas, tapi wa_invite_link TIDAK PERNAH ada di context-nya,
+  // jadi tidak mungkin kasih link yang benar. Sekarang dijawab deterministik
+  // langsung dari class_type_benefits. Kalau tidak ada link yang cocok sama
+  // sekali, fallback ke Claude seperti sebelumnya (tidak return).
+  if (/gabung.*(grup|komunitas)|join.*(grup|komunitas)/i.test(message)) {
+    const { data: benefits } = await supabase
+      .from('class_type_benefits')
+      .select('type, wa_invite_link')
+      .eq('user_id', instructorProfile.id)
+      .not('wa_invite_link', 'is', null)
+
+    const list = benefits ?? []
+    const matched = effectiveClassType ? list.find((b: any) => b.type === effectiveClassType) : null
+
+    if (matched) {
+      return sendFastReply(`Halo ${greetName}! 🙌 Yuk gabung komunitas kita, klik link ini ya:\n${matched.wa_invite_link}`)
+    } else if (list.length === 1) {
+      return sendFastReply(`Halo ${greetName}! 🙌 Yuk gabung komunitas kita, klik link ini ya:\n${(list[0] as any).wa_invite_link}`)
+    } else if (list.length > 1) {
+      const lines = list.map((b: any) =>
+        `- ${CLASS_TYPES.find(t => t.value === b.type)?.label ?? b.type}: ${b.wa_invite_link}`
+      ).join('\n')
+      return sendFastReply(`Halo ${greetName}! 🙌 Kita punya beberapa komunitas, pilih sesuai kelasmu ya:\n\n${lines}`)
+    }
+    // list.length === 0 → belum ada link dikonfigurasi sama sekali, lanjut ke Claude (perilaku lama).
+  }
+
+  // ── Fast-path: event terdekat ────────────────────────────────────────────
+  if (/event apa|ada\s*event|event\s*(terdekat|mendatang)/i.test(message)) {
+    return sendFastReply(`Halo ${greetName}! 🎉 Ini event mendatang:\n\n${eventLines}`)
+  }
+
+  // ── Handover ke instruktur ───────────────────────────────────────────────
+  // Komplain/cedera/refund/berhenti member bukan FAQ - bot tidak boleh "sok
+  // jawab". Klasifikasi pakai panggilan Claude TERPISAH dan KHUSUS (bukan
+  // systemPrompt utama di bawah, yang tetap tidak diubah) - kalau positif,
+  // langsung balas template + notifikasi WA ke nomor pribadi instruktur,
+  // tanpa pernah masuk ke alur jawab-pertanyaan biasa.
+  const needsHandover = await classifyHandover(message)
+  if (needsHandover) {
+    if (hasDistinctPersonalPhone && instructorProfile.phone) {
+      const notifyText =
+        `🔔 *Perlu perhatian Anda*\n\n` +
+        `Dari: ${senderName ? `${senderName} (${cleanSender})` : cleanSender}\n` +
+        `Pesan: "${message}"`
+      await sendWhatsApp(instructorProfile.phone, notifyText, instructorProfile.fonnte_token ?? null)
+    }
+    return sendFastReply(`Baik ${greetName}, aku teruskan ke ${instructorProfile.name} ya 🙏`)
   }
 
   const systemPrompt =
@@ -555,8 +768,8 @@ CARA MENJAWAB:
 
   // ── Simpan riwayat (pesan masuk + balasan) ──────────────────────────────────
   await supabase.from('wa_conversations').insert([
-    { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message },
-    ...(reply ? [{ user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: reply }] : []),
+    { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'user', message, sender_kind: senderKind, sender_ref_id: senderRefId, class_type: senderClassType },
+    ...(reply ? [{ user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: reply, sender_kind: senderKind, sender_ref_id: senderRefId, class_type: senderClassType }] : []),
   ])
 
   // ── Kirim balasan via Fonnte ──────────────────────────────────────────────

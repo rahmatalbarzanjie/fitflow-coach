@@ -75,6 +75,7 @@ export function NewClassForm() {
         start_time:        data.start_time,
         end_time:          data.end_time,
         location:          data.location || null,
+        google_maps_url:   data.google_maps_url || null,
         capacity:          data.capacity || null,
         description:       data.description || null,
         class_price:       data.class_price || null,
@@ -98,7 +99,7 @@ export function NewClassForm() {
   }
 
   return (
-    <div className="max-w-lg">
+    <div className="w-full max-w-lg mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/classes" className="text-gray-400 hover:text-gray-600 transition-colors">
           <ArrowLeft className="h-5 w-5" />
@@ -214,15 +215,24 @@ export function NewClassForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Kapasitas</label>
-              <input
-                {...register('capacity')}
-                type="number"
-                min="1"
-                placeholder="Tak terbatas"
-                className={inputClass}
-              />
+              <label className="block text-sm font-medium text-gray-700">
+                Link Google Maps
+                <span className="text-gray-400 font-normal ml-1 text-xs">(opsional)</span>
+              </label>
+              <input {...register('google_maps_url')} placeholder="https://maps.app.goo.gl/..." className={inputClass} />
+              {errors.google_maps_url && <p className="text-xs text-red-600">{errors.google_maps_url.message}</p>}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">Kapasitas</label>
+            <input
+              {...register('capacity')}
+              type="number"
+              min="1"
+              placeholder="Tak terbatas"
+              className={inputClass}
+            />
           </div>
 
           <div className="space-y-1.5">

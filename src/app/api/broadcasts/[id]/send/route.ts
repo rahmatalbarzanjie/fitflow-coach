@@ -29,6 +29,19 @@ export async function POST(
   if (!bc) return NextResponse.json({ error: 'Broadcast tidak ditemukan' }, { status: 404 })
   if ((bc as any).status === 'sent') return NextResponse.json({ error: 'Broadcast sudah terkirim sebelumnya' }, { status: 400 })
 
+  // Cek koneksi WA SEBELUM resolve target/buat recipient - gagal cepat dan
+  // jelas, jangan biarkan instruktur kira ada yang terkirim padahal belum
+  // pernah terhubung sama sekali.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('fonnte_token')
+    .eq('id', user.id)
+    .single()
+  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+  if (!instructorToken) {
+    return NextResponse.json({ error: 'WhatsApp belum terhubung. Hubungkan WA di Pengaturan terlebih dahulu.' }, { status: 400 })
+  }
+
   const audience = (bc as any).target_audience as string
 
   // Resolve target member IDs berdasarkan audience
@@ -110,13 +123,6 @@ export async function POST(
       { status: 403 }
     )
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('fonnte_token')
-    .eq('id', user.id)
-    .single()
-  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
 
   const title   = (bc as any).title   as string
   const content = (bc as any).content as string

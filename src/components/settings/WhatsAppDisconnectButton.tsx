@@ -2,26 +2,29 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Loader2, Unplug } from 'lucide-react'
 
 export function WhatsAppDisconnectButton() {
   const router   = useRouter()
-  const supabase = createClient()
   const [confirm,    setConfirm   ] = useState(false)
   const [loading,    setLoading   ] = useState(false)
+  const [error,      setError     ] = useState('')
 
   async function handleDisconnect() {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await (supabase.from('profiles') as any).update({
-      bot_phone:            null,
-      bot_phone_requested:  null,
-      fonnte_token:         null,
-    }).eq('id', user.id)
-    setLoading(false)
-    router.refresh()
+    setError('')
+    try {
+      const res = await fetch('/api/wa/disconnect', { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Gagal memutuskan koneksi')
+      }
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal memutuskan koneksi')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!confirm) {
@@ -40,6 +43,7 @@ export function WhatsAppDisconnectButton() {
       <p className="text-xs text-red-600 font-medium">
         Yakin ingin memutuskan koneksi WhatsApp? Broadcast dan notifikasi otomatis akan berhenti.
       </p>
+      {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex gap-2">
         <button onClick={() => setConfirm(false)}
           className="flex-1 h-10 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl text-sm font-medium">

@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { SectionList } from '@/components/ui/SectionList'
 import { EventSettingsForm } from '@/components/events/EventSettingsForm'
+import { EventGalleryUpload } from '@/components/events/EventGalleryUpload'
 
 export default async function EventSettingsPage({
   params,
@@ -12,9 +14,14 @@ export default async function EventSettingsPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [evRes, regCountRes] = await Promise.all([
+  const [evRes, regCountRes, galleryRes] = await Promise.all([
     supabase.from('events').select('*').eq('id', id).eq('user_id', user!.id).single(),
     supabase.from('registrations').select('id', { count: 'exact', head: true }).eq('event_id', id),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('event_gallery') as any)
+      .select('id, image_url, sort_order')
+      .eq('event_id', id)
+      .order('sort_order'),
   ])
 
   if (!evRes.data) notFound()
@@ -29,6 +36,20 @@ export default async function EventSettingsPage({
         subtitle={evRes.data.title}
       />
       <EventSettingsForm ev={evRes.data} hasRegistrations={hasRegistrations} />
+
+      <SectionList
+        label="Dokumentasi Event"
+        className="mt-4"
+        footer="Foto kegiatan event, ditampilkan di section Dokumentasi Event landing page setelah event selesai."
+      >
+        <div className="px-4 py-4">
+          <EventGalleryUpload
+            eventId={evRes.data.id}
+            userId={user!.id}
+            initialPhotos={(galleryRes.data as any[]) ?? []}
+          />
+        </div>
+      </SectionList>
     </div>
   )
 }

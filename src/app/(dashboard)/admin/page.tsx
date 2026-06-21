@@ -3,10 +3,11 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Users, Clock, CheckCircle, XCircle, Shield, Bell, Wallet, ArrowRight, MessageCircle } from 'lucide-react'
+import { Users, Clock, CheckCircle, XCircle, Shield, Bell, Wallet, ArrowRight, MessageCircle, Smartphone } from 'lucide-react'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { RequestActions } from '@/components/admin/RequestActions'
 import { ApproveLinkButton } from '@/components/admin/ApproveLinkButton'
+import { fonnteGetDevices, type FonnteDeviceRow } from '@/lib/whatsapp'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -47,6 +48,18 @@ export default async function AdminPage() {
   const profiles        = (profilesRes.data ?? []) as any[]
   const monthlyRevenue  = ((paymentsRes.data ?? []) as any[]).reduce((sum, p) => sum + Number(p.amount), 0)
   const linkRequests    = (linkRequestsRes.data ?? []) as any[]
+
+  // Info device fallback platform - terpisah dari device instruktur manapun,
+  // cuma untuk notifikasi sistem (konfirmasi pendaftaran, dst). Murni
+  // informasi, tidak pernah di-attach ke profile instruktur (lihat
+  // approve-link/route.ts).
+  const fallbackToken = process.env.FONNTE_TOKEN
+  let fallbackDevice: FonnteDeviceRow | null = null
+  if (fallbackToken) {
+    const accountToken = fallbackToken // fallback token-nya sendiri dipakai sebagai account token untuk lookup
+    const devices = await fonnteGetDevices(accountToken).catch(() => [])
+    fallbackDevice = devices.find(d => d.token === fallbackToken) ?? null
+  }
 
   const now = new Date()
   const stats = {
@@ -144,6 +157,24 @@ export default async function AdminPage() {
           </div>
         </Card>
       )}
+
+      {/* Device Fallback Platform - info saja, TIDAK pernah di-attach ke
+          instruktur manapun (itu konsep yang berbeda, lihat approve-link). */}
+      <div className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+          <Smartphone className="w-4 h-4 text-gray-500" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900">Device Fallback Platform</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {!fallbackToken
+              ? 'Belum ada token fallback dikonfigurasi (FONNTE_TOKEN)'
+              : fallbackDevice
+              ? `${fallbackDevice.status === 'connect' ? 'Terhubung' : 'Tidak terhubung'} - ${fallbackDevice.name ?? fallbackDevice.device} (${fallbackDevice.device})`
+              : 'Token terkonfigurasi, tapi device tidak ditemukan di Fonnte'}
+          </p>
+        </div>
+      </div>
 
       <Link
         href="/admin/instructors"

@@ -86,13 +86,13 @@ export default function CommunityConvertPage() {
         subtitle="Konfirmasi data sebelum mendaftar"
       />
 
-      {/* Info */}
-      <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-4 mb-4">
-        <p className="text-sm text-violet-800 font-semibold mb-1">Tentang konversi ke member</p>
-        <p className="text-xs text-violet-600 leading-relaxed">
-          Kontak ini akan didaftarkan sebagai member berbayar. Data nama dan HP akan disalin ke daftar member. Kontak komunitas tetap ada dan ditandai sudah menjadi member.
-        </p>
-      </div>
+      <SectionList label="Tentang Konversi">
+        <div className="px-4 py-3.5">
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Kontak ini akan didaftarkan sebagai member berbayar. Data nama dan HP akan disalin ke daftar member. Kontak komunitas tetap ada dan ditandai sudah menjadi member.
+          </p>
+        </div>
+      </SectionList>
 
       <SectionList label="Data Member Baru">
         <div className="px-4 py-5 space-y-4">

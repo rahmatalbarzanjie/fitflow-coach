@@ -46,6 +46,7 @@ export function EventSettingsForm({ ev, hasRegistrations }: Props) {
       start_time:          ev.start_time?.substring(0, 5) ?? '',
       end_time:            ev.end_time?.substring(0, 5) ?? '',
       location:            ev.location ?? '',
+      google_maps_url:     ev.google_maps_url ?? '',
       status:              ev.status,
       pricing_mode:        ev.pricing_mode ?? 'tiered',
       tier1_label:         ev.tier1_label ?? 'Early Bird',
@@ -101,6 +102,7 @@ export function EventSettingsForm({ ev, hasRegistrations }: Props) {
       start_time:          data.start_time,
       end_time:            data.end_time || null,
       location:            data.location || null,
+      google_maps_url:     data.google_maps_url || null,
       status:              statusValue,
       pricing_mode:        pricingMode,
       // Single: simpan harga di ots_price, kosongkan early bird
@@ -168,6 +170,10 @@ export function EventSettingsForm({ ev, hasRegistrations }: Props) {
               <div><label className={lbl}>Jam Selesai</label><input {...register('end_time')} type="time" className={inp} /></div>
             </div>
             <div><label className={lbl}>Lokasi</label><input {...register('location')} placeholder="Opsional" className={inp} /></div>
+            <div>
+              <label className={lbl}>Link Google Maps <span className="text-gray-400 font-normal text-xs">(opsional)</span></label>
+              <input {...register('google_maps_url')} placeholder="https://maps.app.goo.gl/..." className={inp} />
+            </div>
             <div>
               <label className={lbl}>Deskripsi</label>
               <textarea {...register('description')} rows={3}

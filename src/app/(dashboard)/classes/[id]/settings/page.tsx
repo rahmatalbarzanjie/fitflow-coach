@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { ClassSettingsForm } from '@/components/classes/ClassSettingsForm'
+import { ClassGalleryUpload } from '@/components/classes/ClassGalleryUpload'
 import { WaGroupPicker } from '@/components/classes/WaGroupPicker'
 import { DeleteButton } from '@/components/ui/DeleteButton'
 import { SectionList } from '@/components/ui/SectionList'
@@ -15,12 +16,14 @@ export default async function ClassSettingsPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: cls } = await supabase
-    .from('classes')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user!.id)
-    .single()
+  const [{ data: cls }, { data: galleryPhotos }] = await Promise.all([
+    supabase.from('classes').select('*').eq('id', id).eq('user_id', user!.id).single(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('class_gallery') as any)
+      .select('id, image_url, sort_order')
+      .eq('class_id', id)
+      .order('sort_order'),
+  ])
 
   if (!cls) notFound()
 
@@ -36,6 +39,20 @@ export default async function ClassSettingsPage({
       <SectionList label="Informasi Kelas">
         <div className="px-4 py-4">
           <ClassSettingsForm cls={cls} classId={id} />
+        </div>
+      </SectionList>
+
+      {/* Dokumentasi Kelas */}
+      <SectionList
+        label="Dokumentasi Kelas"
+        footer="Foto kegiatan kelas, ditampilkan di section Dokumentasi Kelas landing page."
+      >
+        <div className="px-4 py-4">
+          <ClassGalleryUpload
+            classId={cls.id}
+            userId={user!.id}
+            initialPhotos={(galleryPhotos as any[]) ?? []}
+          />
         </div>
       </SectionList>
 

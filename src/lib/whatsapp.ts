@@ -6,8 +6,27 @@ export function normalizePhone(phone: string): string {
   return target
 }
 
+/**
+ * Resolusi token Fonnte yang dipakai untuk satu pengiriman.
+ *
+ * - Kalau parameter instructorToken DIBERIKAN (walau isinya null/kosong) -
+ *   ini konteks "kirim atas nama instruktur tertentu" (broadcast, undangan
+ *   komunitas, balasan bot WA). Token instruktur WAJIB ada sendiri di sini.
+ *   TIDAK ADA fallback ke token platform - kalau token instruktur kosong,
+ *   kirim harus gagal dengan jelas, bukan diam-diam terkirim lewat identitas
+ *   bot platform/instruktur lain.
+ * - Kalau parameter instructorToken TIDAK DIBERIKAN SAMA SEKALI (dipanggil
+ *   tanpa argumen ke-3) - ini konteks notifikasi level platform/admin
+ *   (konfirmasi pendaftaran instruktur, lupa password, dst) yang memang
+ *   didesain memakai token sistem, bukan kegagalan yang harus di-fallback.
+ */
 async function resolveToken(instructorToken?: string | null): Promise<string | null> {
   if (instructorToken && instructorToken.trim().length > 10) return instructorToken.trim()
+
+  if (instructorToken !== undefined) {
+    // Konteks instruktur, tapi token-nya kosong - jangan fallback.
+    return null
+  }
 
   const dbToken = await getSystemConfig('fonnte_token').catch(() => null)
   const token = dbToken && dbToken.trim().length > 10 ? dbToken.trim() : process.env.FONNTE_TOKEN
@@ -96,17 +115,16 @@ export async function fetchWhatsAppGroups(
 }
 
 // Mapping nama paket Fonnte -> parameter `plan` (integer 1-7) di API Order.
-// TEBAKAN AWAL berdasarkan urutan wajar di pricing page Fonnte - dokumentasi
-// publik tidak menjelaskan angka mana = paket apa. Validasi di percobaan
-// pertama: cek paket yang benar-benar terpasang di dashboard Fonnte setelah
-// order, koreksi mapping ini kalau ternyata salah.
+// Dikonfirmasi dari dokumentasi resmi docs.fonnte.com/api-order - mapping
+// lama (tebakan awal) ternyata salah/tergeser, itu yang bikin Lite kepilih
+// tapi malah Free yang terpasang di percobaan pertama.
 export const FONNTE_PLAN_IDS: Record<string, number> = {
-  free:        1,
-  lite:        2,
-  regular:     3,
-  regular_pro: 4,
+  lite:        1,
+  regular:     2,
+  regular_pro: 3,
+  master:      4,
   super:       5,
-  master:      6,
+  advanced:    6,
   ultra:       7,
 }
 
@@ -184,7 +202,14 @@ export async function fonnteGetQr(
       body:    JSON.stringify({ type: 'qr' }),
     })
     const json = await res.json()
-    if (json.status === true && json.url) return { connected: false, qr: json.url }
+    if (json.status === true && json.url) {
+      // Fonnte balas data PNG base64 MENTAH di field `url` (nama field-nya
+      // menyesatkan - bukan link gambar). Tanpa prefix data URI, <img src>
+      // tidak bisa render ini sama sekali (selalu jadi ikon gambar rusak).
+      const raw = String(json.url)
+      const qr  = /^(https?:|data:)/.test(raw) ? raw : `data:image/png;base64,${raw}`
+      return { connected: false, qr }
+    }
     if (json.reason && String(json.reason).toLowerCase().includes('already connect')) {
       return { connected: true }
     }
@@ -209,5 +234,87 @@ export async function fonnteGetDeviceProfile(deviceToken: string): Promise<strin
   } catch (err) {
     console.error('[WA] Gagal ambil device profile:', err)
     return null
+  }
+}
+
+export interface FonnteDeviceRow {
+  device: string
+  name?:  string
+  status: string // "connect" | "disconnect"
+  token:  string
+}
+
+/**
+ * Daftar semua device di akun Fonnte (butuh master/account token, bukan
+ * token per-device) - sumber kebenaran status live, bukan kolom
+ * profiles.bot_phone yang cuma diisi sekali saat connect dan tidak pernah
+ * di-recheck.
+ */
+export async function fonnteGetDevices(masterToken: string): Promise<FonnteDeviceRow[]> {
+  try {
+    const res = await fetch('https://api.fonnte.com/get-devices', {
+      method:  'POST',
+      headers: { Authorization: masterToken },
+    })
+    const json = await res.json()
+    return Array.isArray(json?.data) ? json.data : []
+  } catch (err) {
+    console.error('[WA] Gagal ambil daftar device:', err)
+    return []
+  }
+}
+
+/**
+ * Cari device yang SUDAH ADA di akun Fonnte berdasarkan nomor HP, sebelum
+ * memutuskan add-device baru. Banyak instruktur (terutama yang lama/sudah
+ * pernah disconnect-reconnect) sebenarnya sudah punya device aktif di
+ * Fonnte - kalau itu tidak dicek dulu, add-device akan gagal ("device
+ * already exist") atau lebih parah, instruktur tidak pernah bisa pakai
+ * nomor itu lagi karena sudah "dijatah" device lain.
+ *
+ * Catatan: ini cuma seandal get-devices itu sendiri - device tier Free
+ * kadang tidak muncul di get-devices (sudah dibuktikan terpisah), jadi
+ * fungsi ini bisa saja TIDAK menemukan device yang sebenarnya ada kalau
+ * device itu Free tier. Tidak ketemu di sini ≠ pasti tidak ada.
+ */
+export async function fonnteFindDeviceByPhone(masterToken: string, phone: string): Promise<FonnteDeviceRow | null> {
+  const target  = normalizePhone(phone)
+  const devices = await fonnteGetDevices(masterToken)
+  return devices.find(d => normalizePhone(d.device) === target) ?? null
+}
+
+/**
+ * Cek status live satu device tertentu (dicocokkan lewat fonnte_token,
+ * karena device id yang kita kirim ke add-device adalah profileId, tapi
+ * lebih aman cocokkan via token yang memang unik per device).
+ */
+export async function fonnteIsDeviceConnected(masterToken: string, deviceToken: string): Promise<boolean | null> {
+  const devices = await fonnteGetDevices(masterToken)
+  const match = devices.find(d => d.token === deviceToken)
+  if (!match) return null // device tidak ditemukan di akun - tidak bisa dipastikan
+  return match.status === 'connect'
+}
+
+/**
+ * Logout sesi WA device dari Fonnte (tidak menghapus device, tidak butuh
+ * OTP - beda dari delete-device). Dipanggil sebelum membersihkan token di
+ * database lokal kita, supaya device benar-benar berhenti aktif di Fonnte,
+ * bukan cuma "dilupakan" di sisi kita.
+ */
+export async function fonnteDisconnectDevice(deviceToken: string): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    const res = await fetch('https://api.fonnte.com/disconnect', {
+      method:  'POST',
+      headers: { Authorization: deviceToken },
+    })
+    const json = await res.json()
+    // "device already disconnected" juga dianggap sukses - tujuan akhirnya
+    // (device tidak aktif) sudah tercapai.
+    if (json.status === true) return { ok: true }
+    if (String(json.detail ?? '').toLowerCase().includes('already disconnected')) return { ok: true }
+    return { ok: false, reason: json.detail ?? json.reason ?? 'Gagal disconnect' }
+  } catch (err) {
+    console.error('[WA] Gagal disconnect device:', err)
+    return { ok: false, reason: 'Koneksi ke Fonnte gagal' }
   }
 }

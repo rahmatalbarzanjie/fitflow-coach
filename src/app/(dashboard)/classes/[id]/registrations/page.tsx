@@ -58,7 +58,7 @@ export default async function ClassRegistrationsPage({
   const confirmed = registrations?.filter(r => r.payment_status === 'confirmed').length ?? 0
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href={`/classes/${id}`} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
@@ -155,6 +155,7 @@ export default async function ClassRegistrationsPage({
                     registrantPhone={r.registrant_phone}
                     canInviteToJoin={!!r.can_invite_to_join}
                     isInvited={!!r.invited_to_join_at}
+                    allowDelete
                   />
                 </div>
               </div>

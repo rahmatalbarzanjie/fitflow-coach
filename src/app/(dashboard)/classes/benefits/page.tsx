@@ -20,7 +20,7 @@ export default async function ClassBenefitsPage() {
   const typeLabel = Object.fromEntries(CLASS_TYPES.map(t => [t.value, t.label]))
 
   return (
-    <div className="max-w-xl">
+    <div className="w-full max-w-lg mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/classes" className="text-gray-400 hover:text-gray-600 transition-colors">
           <ArrowLeft className="h-5 w-5" />

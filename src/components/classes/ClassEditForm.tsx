@@ -19,6 +19,7 @@ interface Props {
     start_time: string
     end_time: string
     location: string | null
+    google_maps_url?: string | null
     capacity: number | null
     description?: string | null
     class_price?: number | null
@@ -57,6 +58,7 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
       start_time:        cls.start_time.substring(0, 5),
       end_time:          cls.end_time.substring(0, 5),
       location:          cls.location ?? '',
+      google_maps_url:   cls.google_maps_url ?? '',
       capacity:          cls.capacity ?? undefined,
       description:       cls.description ?? '',
       class_price:       cls.class_price ?? undefined,
@@ -84,6 +86,7 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
         start_time:        data.start_time,
         end_time:          data.end_time,
         location:          data.location || null,
+        google_maps_url:   data.google_maps_url || null,
         capacity:          data.capacity || null,
         description:       data.description || null,
         class_price:       data.class_price || null,
@@ -170,6 +173,15 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
           <label className="block text-sm font-medium text-gray-700">Kapasitas</label>
           <input {...register('capacity')} type="number" min="1" placeholder="Tak terbatas" className={inputClass} />
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-700">
+          Link Google Maps
+          <span className="text-gray-400 font-normal ml-1 text-xs">(opsional)</span>
+        </label>
+        <input {...register('google_maps_url')} placeholder="https://maps.app.goo.gl/..." className={inputClass} />
+        {errors.google_maps_url && <p className="text-xs text-red-600">{errors.google_maps_url.message}</p>}
       </div>
 
       <div className="space-y-1.5">
