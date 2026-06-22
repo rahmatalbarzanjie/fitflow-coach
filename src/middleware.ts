@@ -33,6 +33,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/daftar', request.url))
   }
 
+  // Segmen top-level dashboard yang sudah dipakai - HARUS dikecualikan dari
+  // regex "/{slug}" instructor landing page di bawah. Tanpa ini, request
+  // tanpa login ke /members, /packages, dst dianggap "public" (cocok regex
+  // satu-segmen), middleware tidak redirect ke /login, dan page-nya crash
+  // karena memanggil user!.id padahal user-nya null.
+  const RESERVED_TOP_SEGMENTS = new Set([
+    'admin', 'beranda', 'broadcasts', 'classes', 'community', 'content',
+    'events', 'members', 'packages', 'settings', 'expired',
+  ])
+  const topSegmentMatch = path.match(/^\/([^/]+)$/)
+  const isReservedTopSegment = !!topSegmentMatch && RESERVED_TOP_SEGMENTS.has(topSegmentMatch[1])
+
   // Routes accessible without login
   const isPublicRoute =
     path.startsWith('/login') ||
@@ -40,7 +52,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/home') ||
     path.startsWith('/daftar') ||
     path.startsWith('/api/') ||
-    path.match(/^\/[^/]+$/) !== null ||        // instructor landing pages /{slug}
+    (topSegmentMatch !== null && !isReservedTopSegment) || // instructor landing pages /{slug}
     path.match(/^\/[^/]+\/daftar/) !== null ||   // event registration /{slug}/daftar/...
     path.match(/^\/[^/]+\/testimoni/) !== null || // testimonial form /{slug}/testimoni/{memberId}
     path.match(/^\/[^/]+\/feedback/) !== null    // feedback form /{slug}/feedback/{inviteId}

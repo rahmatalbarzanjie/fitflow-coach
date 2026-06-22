@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionList } from '@/components/ui/SectionList'
 import { EventSettingsForm } from '@/components/events/EventSettingsForm'
 import { EventGalleryUpload } from '@/components/events/EventGalleryUpload'
+import { getEligiblePaymentProfiles } from '@/lib/paymentProfiles'
 
 export default async function EventSettingsPage({
   params,
@@ -14,7 +15,7 @@ export default async function EventSettingsPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [evRes, regCountRes, galleryRes] = await Promise.all([
+  const [evRes, regCountRes, galleryRes, paymentProfiles] = await Promise.all([
     supabase.from('events').select('*').eq('id', id).eq('user_id', user!.id).single(),
     supabase.from('registrations').select('id', { count: 'exact', head: true }).eq('event_id', id),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,6 +23,7 @@ export default async function EventSettingsPage({
       .select('id, image_url, sort_order')
       .eq('event_id', id)
       .order('sort_order'),
+    getEligiblePaymentProfiles(supabase, user!.id),
   ])
 
   if (!evRes.data) notFound()
@@ -35,7 +37,7 @@ export default async function EventSettingsPage({
         title="Pengaturan Event"
         subtitle={evRes.data.title}
       />
-      <EventSettingsForm ev={evRes.data} hasRegistrations={hasRegistrations} />
+      <EventSettingsForm ev={evRes.data} hasRegistrations={hasRegistrations} paymentProfiles={paymentProfiles} />
 
       <SectionList
         label="Dokumentasi Event"

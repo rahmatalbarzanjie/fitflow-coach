@@ -418,6 +418,7 @@ export type Database = {
           location: string | null
           name: string
           payment_mode: string | null
+          payment_profile_id: string | null
           revenue_share_pct: number
           show_registrations: boolean
           start_time: string
@@ -441,6 +442,7 @@ export type Database = {
           location?: string | null
           name: string
           payment_mode?: string | null
+          payment_profile_id?: string | null
           revenue_share_pct?: number
           show_registrations?: boolean
           start_time: string
@@ -464,6 +466,7 @@ export type Database = {
           location?: string | null
           name?: string
           payment_mode?: string | null
+          payment_profile_id?: string | null
           revenue_share_pct?: number
           show_registrations?: boolean
           start_time?: string
@@ -473,7 +476,15 @@ export type Database = {
           wa_group_id?: string | null
           wa_group_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "classes_payment_profile_id_fkey"
+            columns: ["payment_profile_id"]
+            isOneToOne: false
+            referencedRelation: "payment_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       community_contacts: {
         Row: {
@@ -679,6 +690,7 @@ export type Database = {
           location: string | null
           max_capacity: number | null
           ots_price: number
+          payment_profile_id: string | null
           pricing_mode: string | null
           slug: string
           start_time: string
@@ -706,6 +718,7 @@ export type Database = {
           location?: string | null
           max_capacity?: number | null
           ots_price?: number
+          payment_profile_id?: string | null
           pricing_mode?: string | null
           slug: string
           start_time: string
@@ -733,6 +746,7 @@ export type Database = {
           location?: string | null
           max_capacity?: number | null
           ots_price?: number
+          payment_profile_id?: string | null
           pricing_mode?: string | null
           slug?: string
           start_time?: string
@@ -743,7 +757,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_payment_profile_id_fkey"
+            columns: ["payment_profile_id"]
+            isOneToOne: false
+            referencedRelation: "payment_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feedback_invites: {
         Row: {
@@ -883,6 +905,76 @@ export type Database = {
         }
         Relationships: []
       }
+      member_memberships: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string
+          member_id: string
+          package_id: string
+          package_name: string
+          package_type: string
+          purchase_price: number | null
+          start_date: string
+          status: string
+          total_sessions: number | null
+          used_sessions: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          member_id: string
+          package_id: string
+          package_name: string
+          package_type: string
+          purchase_price?: number | null
+          start_date: string
+          status?: string
+          total_sessions?: number | null
+          used_sessions?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          member_id?: string
+          package_id?: string
+          package_name?: string
+          package_type?: string
+          purchase_price?: number | null
+          start_date?: string
+          status?: string
+          total_sessions?: number | null
+          used_sessions?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_memberships_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_memberships_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_memberships_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "membership_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           address: string | null
@@ -927,6 +1019,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      membership_packages: {
+        Row: {
+          class_type: Database["public"]["Enums"]["class_type"] | null
+          created_at: string | null
+          duration_days: number | null
+          id: string
+          is_active: boolean
+          name: string
+          package_type: string
+          payment_profile_id: string | null
+          price: number
+          total_sessions: number | null
+          user_id: string
+        }
+        Insert: {
+          class_type?: Database["public"]["Enums"]["class_type"] | null
+          created_at?: string | null
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          package_type: string
+          payment_profile_id?: string | null
+          price?: number
+          total_sessions?: number | null
+          user_id: string
+        }
+        Update: {
+          class_type?: Database["public"]["Enums"]["class_type"] | null
+          created_at?: string | null
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          package_type?: string
+          payment_profile_id?: string | null
+          price?: number
+          total_sessions?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_packages_payment_profile_id_fkey"
+            columns: ["payment_profile_id"]
+            isOneToOne: false
+            referencedRelation: "payment_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1037,6 +1179,77 @@ export type Database = {
           otp_code?: string
           profile_id?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          bank_name: string | null
+          created_at: string | null
+          id: string
+          method_type: string
+          payment_profile_id: string
+          qris_image_url: string | null
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          bank_name?: string | null
+          created_at?: string | null
+          id?: string
+          method_type: string
+          payment_profile_id: string
+          qris_image_url?: string | null
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          bank_name?: string | null
+          created_at?: string | null
+          id?: string
+          method_type?: string
+          payment_profile_id?: string
+          qris_image_url?: string | null
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_payment_profile_id_fkey"
+            columns: ["payment_profile_id"]
+            isOneToOne: false
+            referencedRelation: "payment_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          user_id?: string
         }
         Relationships: []
       }

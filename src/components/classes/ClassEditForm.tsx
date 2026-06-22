@@ -26,7 +26,9 @@ interface Props {
     revenue_share_pct?: number | null
     cover_image_url?: string | null
     show_registrations?: boolean | null
+    payment_profile_id?: string | null
   }
+  paymentProfiles?: { id: string; name: string }[]
   inModal?: boolean
   onClose?: () => void
   redirectTo?: string
@@ -44,7 +46,7 @@ const DAY_OPTIONS = [
 
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white disabled:bg-gray-50 disabled:text-gray-400'
 
-export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/classes' }: Props) {
+export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onClose, redirectTo = '/classes' }: Props) {
   const [serverError, setServerError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -59,6 +61,7 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
       end_time:          cls.end_time.substring(0, 5),
       location:          cls.location ?? '',
       google_maps_url:   cls.google_maps_url ?? '',
+      payment_profile_id: cls.payment_profile_id ?? '',
       capacity:          cls.capacity ?? undefined,
       description:       cls.description ?? '',
       class_price:       cls.class_price ?? undefined,
@@ -87,6 +90,7 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
         end_time:          data.end_time,
         location:          data.location || null,
         google_maps_url:   data.google_maps_url || null,
+        payment_profile_id: data.payment_profile_id || null,
         capacity:          data.capacity || null,
         description:       data.description || null,
         class_price:       data.class_price || null,
@@ -182,6 +186,24 @@ export function ClassEditForm({ cls, inModal = false, onClose, redirectTo = '/cl
         </label>
         <input {...register('google_maps_url')} placeholder="https://maps.app.goo.gl/..." className={inputClass} />
         {errors.google_maps_url && <p className="text-xs text-red-600">{errors.google_maps_url.message}</p>}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-700">
+          Payment Profile
+          <span className="text-gray-400 font-normal ml-1 text-xs">(tujuan pembayaran)</span>
+        </label>
+        <select {...register('payment_profile_id')} className={inputClass}>
+          <option value="">Belum diatur</option>
+          {paymentProfiles.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        {paymentProfiles.length === 0 && (
+          <p className="text-xs text-gray-400">
+            Belum ada Payment Profile yang siap (perlu minimal 1 metode pembayaran). Atur di menu Payment Profiles.
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">

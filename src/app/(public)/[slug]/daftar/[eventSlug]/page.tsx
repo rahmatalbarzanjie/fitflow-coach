@@ -36,6 +36,17 @@ export default async function PublicRegistrationPage({
 
   if (!event) notFound()
 
+  // Metode pembayaran dari Payment Profile yang dipilih instruktur untuk
+  // event ini - tampilkan SEMUA metode, peserta pilih sendiri (tidak ada
+  // konsep "default").
+  const { data: paymentMethods } = event.payment_profile_id
+    ? await supabase
+        .from('payment_methods')
+        .select('id, method_type, bank_name, account_number, account_name, qris_image_url')
+        .eq('payment_profile_id', event.payment_profile_id)
+        .order('sort_order')
+    : { data: [] }
+
   // Hitung kuota early bird yang tersisa
   const { count: earlyBirdUsed } = await supabase
     .from('registrations')
@@ -191,6 +202,7 @@ export default async function PublicRegistrationPage({
           pricingMode={(event.pricing_mode === 'single' || Number(event.early_bird_price) === 0) ? 'single' : 'tiered'}
           eventTitle={event.title}
           eventDescription={event.description ?? null}
+          paymentMethods={(paymentMethods as any[]) ?? []}
         />
       )}
     </div>

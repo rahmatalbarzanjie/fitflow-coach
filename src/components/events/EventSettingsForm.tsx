@@ -16,9 +16,10 @@ const lbl = 'block text-sm font-medium text-gray-700 mb-1.5'
 interface Props {
   ev: any
   hasRegistrations: boolean
+  paymentProfiles?: { id: string; name: string }[]
 }
 
-export function EventSettingsForm({ ev, hasRegistrations }: Props) {
+export function EventSettingsForm({ ev, hasRegistrations, paymentProfiles = [] }: Props) {
   const router   = useRouter()
   const id       = ev.id
   const supabase = createClient()
@@ -57,9 +58,7 @@ export function EventSettingsForm({ ev, hasRegistrations }: Props) {
       tier2_quota:         ev.max_capacity ?? undefined,
       ots_price:           Number(ev.ots_price) || 0,
       max_capacity:        ev.max_capacity ?? undefined,
-      bank_name:           ev.bank_name ?? '',
-      bank_account_number: ev.bank_account_number ?? '',
-      bank_account_name:   ev.bank_account_name ?? '',
+      payment_profile_id:  ev.payment_profile_id ?? '',
     },
   })
 
@@ -113,9 +112,7 @@ export function EventSettingsForm({ ev, hasRegistrations }: Props) {
       early_bird_quota:    isTiered ? (data.tier1_quota || null) : null,
       ots_price:           isTiered ? data.tier2_price : data.ots_price,
       max_capacity:        isTiered ? (data.tier2_quota || null) : (data.max_capacity || null),
-      bank_name:           data.bank_name || null,
-      bank_account_number: data.bank_account_number || null,
-      bank_account_name:   data.bank_account_name || null,
+      payment_profile_id:  data.payment_profile_id || null,
     }).eq('id', id)
 
     if (error) {
@@ -299,23 +296,23 @@ export function EventSettingsForm({ ev, hasRegistrations }: Props) {
               </>
             )}
 
-            {/* Rekening */}
-            <div className="space-y-3 pt-1">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rekening Pembayaran</p>
-              <div>
-                <label className={lbl}>Nama Bank</label>
-                <input {...register('bank_name')} placeholder="BCA, BRI, Mandiri..." className={inp} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Nomor Rekening</label>
-                  <input {...register('bank_account_number')} placeholder="1234567890" className={inp} />
-                </div>
-                <div>
-                  <label className={lbl}>Atas Nama</label>
-                  <input {...register('bank_account_name')} placeholder="Nama pemilik" className={inp} />
-                </div>
-              </div>
+            {/* Payment Profile */}
+            <div className="space-y-1.5 pt-1">
+              <label className={lbl}>
+                Payment Profile
+                <span className="text-gray-400 font-normal ml-1 text-xs">(tujuan pembayaran)</span>
+              </label>
+              <select {...register('payment_profile_id')} className={inp}>
+                <option value="">Belum diatur</option>
+                {paymentProfiles.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {paymentProfiles.length === 0 && (
+                <p className="text-xs text-gray-400">
+                  Belum ada Payment Profile yang siap (perlu minimal 1 metode pembayaran). Atur di menu Payment Profiles.
+                </p>
+              )}
             </div>
           </div>
         </SectionList>

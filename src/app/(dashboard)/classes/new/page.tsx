@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkClassQuota } from '@/lib/quota'
 import { NewClassForm } from '@/components/classes/NewClassForm'
 import { getSystemConfig } from '@/lib/system-config'
+import { getEligiblePaymentProfiles } from '@/lib/paymentProfiles'
 
 export default async function NewClassPage() {
   const supabase = await createClient()
@@ -49,5 +50,6 @@ export default async function NewClassPage() {
     )
   }
 
-  return <NewClassForm />
+  const paymentProfiles = await getEligiblePaymentProfiles(supabase, user!.id)
+  return <NewClassForm paymentProfiles={paymentProfiles} />
 }

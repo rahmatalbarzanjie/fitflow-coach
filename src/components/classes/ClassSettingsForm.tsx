@@ -12,14 +12,16 @@ import { ClassEditForm } from '@/components/classes/ClassEditForm'
 interface Props {
   cls: any
   classId: string
+  paymentProfiles?: { id: string; name: string }[]
 }
 
-export function ClassSettingsForm({ cls, classId }: Props) {
+export function ClassSettingsForm({ cls, classId, paymentProfiles }: Props) {
   const router = useRouter()
 
   return (
     <ClassEditForm
       cls={cls}
+      paymentProfiles={paymentProfiles}
       inModal={false}
       redirectTo={`/classes/${classId}`}
     />

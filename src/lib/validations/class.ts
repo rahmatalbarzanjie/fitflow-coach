@@ -17,6 +17,7 @@ export const classSchema = z.object({
   end_time:           z.string().regex(/^\d{2}:\d{2}$/, 'Format: HH:MM'),
   location:           z.string().optional(),
   google_maps_url:    z.string().url('URL tidak valid').optional().or(z.literal('')),
+  payment_profile_id: z.string().optional().or(z.literal('')),
   capacity:           optionalPositiveInt,
   description:        z.string().optional(),
   class_price:        z.coerce.number().min(0).optional().nullable(),

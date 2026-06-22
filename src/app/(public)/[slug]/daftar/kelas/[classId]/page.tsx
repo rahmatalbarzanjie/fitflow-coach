@@ -35,12 +35,22 @@ export default async function ClassRegistrationPage({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cls } = await (supabase.from('classes') as any)
-    .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price, is_active')
+    .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price, is_active, payment_profile_id')
     .eq('id', classId)
     .eq('user_id', profile.id)
     .eq('is_active', true)
     .single()
   if (!cls) notFound()
+
+  // Metode pembayaran dari Payment Profile kelas ini - tampilkan semua,
+  // peserta pilih sendiri.
+  const { data: paymentMethods } = cls.payment_profile_id
+    ? await supabase
+        .from('payment_methods')
+        .select('id, method_type, bank_name, account_number, account_name, qris_image_url')
+        .eq('payment_profile_id', cls.payment_profile_id)
+        .order('sort_order')
+    : { data: [] }
 
   const today = new Date()
   const in14Days = new Date(today)
@@ -133,6 +143,7 @@ export default async function ClassRegistrationPage({
           targetDate={targetDate}
           className={cls.name}
           classPrice={classPrice}
+          paymentMethods={(paymentMethods as any[]) ?? []}
         />
       )}
     </div>

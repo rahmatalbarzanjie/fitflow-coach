@@ -9,6 +9,7 @@ import { ArrowLeft, Upload, X, ToggleLeft, ToggleRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { eventSchema, type EventFormData, toSlug } from '@/lib/validations/event'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { getEligiblePaymentProfiles } from '@/lib/paymentProfiles'
 
 const inp = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
 const lbl = 'block text-sm font-medium text-gray-700'
@@ -19,8 +20,16 @@ export default function NewEventPage() {
   const [slugEdited, setSlugEdited]   = useState(false)
   const [coverFile, setCoverFile]     = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [paymentProfiles, setPaymentProfiles] = useState<{ id: string; name: string }[]>([])
   const router   = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      getEligiblePaymentProfiles(supabase, user.id).then(setPaymentProfiles)
+    })
+  }, [supabase])
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -85,10 +94,7 @@ export default function NewEventPage() {
         early_bird_quota:    isTimered ? (data.tier1_quota || null) : null,
         ots_price:           isTimered ? data.tier2_price  : data.ots_price,
         max_capacity:        isTimered ? (data.tier2_quota || null) : (data.max_capacity || null),
-        // bank
-        bank_name:           data.bank_name || null,
-        bank_account_number: data.bank_account_number || null,
-        bank_account_name:   data.bank_account_name || null,
+        payment_profile_id:  data.payment_profile_id || null,
       })
       .select('id')
       .single()
@@ -265,21 +271,22 @@ export default function NewEventPage() {
           {/* ── Pembayaran ── */}
           <p className={sectionTitle}>Info Pembayaran</p>
 
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label className={lbl}>Nama Bank</label>
-              <input {...register('bank_name')} placeholder="Contoh: BCA, BRI, Mandiri" className={inp} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className={lbl}>Nomor Rekening</label>
-                <input {...register('bank_account_number')} placeholder="1234567890" className={inp} />
-              </div>
-              <div className="space-y-1.5">
-                <label className={lbl}>Atas Nama</label>
-                <input {...register('bank_account_name')} placeholder="Nama pemilik rekening" className={inp} />
-              </div>
-            </div>
+          <div className="space-y-1.5">
+            <label className={lbl}>
+              Payment Profile
+              <span className="text-gray-400 font-normal ml-1 text-xs">(tujuan pembayaran)</span>
+            </label>
+            <select {...register('payment_profile_id')} className={inp}>
+              <option value="">Belum diatur</option>
+              {paymentProfiles.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {paymentProfiles.length === 0 && (
+              <p className="text-xs text-gray-400">
+                Belum ada Payment Profile yang siap (perlu minimal 1 metode pembayaran). Atur di menu Payment Profiles.
+              </p>
+            )}
           </div>
 
           {/* ── Flyer ── */}

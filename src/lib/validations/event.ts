@@ -19,6 +19,7 @@ export const eventSchema = z.object({
   end_time:            z.string().optional(),
   location:            z.string().optional(),
   google_maps_url:     z.string().url('URL tidak valid').optional().or(z.literal('')),
+  payment_profile_id:  z.string().optional().or(z.literal('')),
   // Pricing mode
   pricing_mode:        z.enum(['tiered', 'single']).default('tiered'),
   // Mode A - tiered
@@ -31,10 +32,6 @@ export const eventSchema = z.object({
   // Mode B - single (maps to ots_price + max_capacity)
   ots_price:           z.coerce.number().min(0).default(0),
   max_capacity:        optionalPositiveInt,
-  // Bank info
-  bank_name:           z.string().optional(),
-  bank_account_number: z.string().optional(),
-  bank_account_name:   z.string().optional(),
   status:              z.enum(['draft', 'published', 'completed', 'cancelled']).default('draft'),
 })
 
