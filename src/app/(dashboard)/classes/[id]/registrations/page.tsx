@@ -58,6 +58,11 @@ export default async function ClassRegistrationsPage({
   const total     = registrations?.length ?? 0
   const pending   = registrations?.filter(r => r.payment_status === 'pending').length ?? 0
   const confirmed = registrations?.filter(r => r.payment_status === 'confirmed').length ?? 0
+  // Revenue = uang yang PERNAH dikonfirmasi diterima (fakta historis),
+  // bukan status saat ini - lihat audit Revenue Settlement.
+  const revenue   = (registrations ?? [])
+    .filter((r: any) => r.confirmed_at !== null)
+    .reduce((s: number, r: any) => s + Number(r.amount_paid), 0)
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -70,6 +75,9 @@ export default async function ClassRegistrationsPage({
           <h1 className="text-xl font-semibold text-gray-900 truncate">{cls.name}</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             {total} peserta · {confirmed} terkonfirmasi
+          </p>
+          <p className="text-sm font-semibold text-violet-600 mt-0.5">
+            {formatRupiah(revenue)} <span className="text-xs font-normal text-gray-400">revenue</span>
           </p>
         </div>
       </div>

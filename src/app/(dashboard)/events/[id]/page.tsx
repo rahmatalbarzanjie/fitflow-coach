@@ -28,7 +28,7 @@ export default async function EventHubPage({
   const [evRes, regsRes, profileRes] = await Promise.all([
     supabase.from('events').select('*').eq('id', id).eq('user_id', user!.id).single(),
     supabase.from('registrations')
-      .select('id, payment_status, amount_paid, attended')
+      .select('id, payment_status, amount_paid, attended, confirmed_at')
       .eq('event_id', id),
     supabase.from('profiles').select('slug').eq('id', user!.id).single(),
   ])
@@ -41,8 +41,11 @@ export default async function EventHubPage({
   const pending   = regs.filter(r => r.payment_status === 'pending').length
   const confirmed = regs.filter(r => r.payment_status === 'confirmed').length
   const attended  = regs.filter(r => r.attended).length
+  // Revenue = uang yang PERNAH dikonfirmasi diterima (fakta historis),
+  // bukan status saat ini - kalau registrasi confirmed lalu dibatalkan,
+  // revenue-nya tetap terhitung (lihat audit Revenue Settlement).
   const revenue   = regs
-    .filter(r => r.payment_status === 'confirmed')
+    .filter(r => r.confirmed_at !== null)
     .reduce((s, r) => s + Number(r.amount_paid), 0)
 
   const rawUrl    = process.env.NEXT_PUBLIC_APP_URL ?? ''

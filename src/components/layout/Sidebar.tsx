@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Users, Users2, UserCog, Calendar, Zap, PenSquare, MessageSquare,
-  Activity, Settings, Shield, Package, Wallet,
+  Activity, Settings, Shield, Package, Wallet, Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -15,6 +15,7 @@ const instructorItems = [
   { href: '/members',          icon: Users,           label: 'Member'           },
   { href: '/packages',         icon: Package,         label: 'Packages'         },
   { href: '/payment-profiles', icon: Wallet,          label: 'Payment Profiles' },
+  { href: '/laporan',          icon: Receipt,         label: 'Laporan'          },
   { href: '/community',        icon: Users2,          label: 'Komunitas'        },
   { href: '/classes',    icon: Calendar,        label: 'Kelas'        },
   { href: '/events',     icon: Zap,             label: 'Events'       },
