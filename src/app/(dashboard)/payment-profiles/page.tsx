@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Plus, Wallet } from 'lucide-react'
+import { Plus, Wallet, TriangleAlert } from 'lucide-react'
+import { getActiveUsageCounts } from '@/lib/paymentProfiles'
 
 export default async function PaymentProfilesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [profilesRes, methodsRes] = await Promise.all([
+  const [profilesRes, methodsRes, usageCounts] = await Promise.all([
     supabase
       .from('payment_profiles')
       .select('id, name, is_active')
@@ -17,6 +18,7 @@ export default async function PaymentProfilesPage() {
       .from('payment_methods')
       .select('payment_profile_id')
       .eq('user_id', user!.id),
+    getActiveUsageCounts(supabase, user!.id),
   ])
 
   const profiles = (profilesRes.data ?? []) as any[]
@@ -52,6 +54,11 @@ export default async function PaymentProfilesPage() {
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
           {profiles.map(p => {
             const count = methodCounts[p.id] ?? 0
+            const usage = usageCounts[p.id] ?? { classes: 0, events: 0, packages: 0 }
+            // Severity cuma dipicu classes/events - membership package belum
+            // punya jalur pembelian publik, jadi belum risiko nyata ke peserta.
+            const activeImpact = usage.classes + usage.events
+            const showWarning = count === 0 && activeImpact > 0
             return (
               <Link
                 key={p.id}
@@ -65,9 +72,18 @@ export default async function PaymentProfilesPage() {
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Nonaktif</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {count === 0 ? 'Belum ada metode pembayaran' : `${count} metode pembayaran`}
-                  </p>
+                  {showWarning ? (
+                    <p className="text-xs text-amber-600 font-medium mt-0.5 flex items-center gap-1">
+                      <TriangleAlert className="w-3.5 h-3.5 shrink-0" />
+                      Dipakai {usage.classes > 0 && `${usage.classes} kelas`}
+                      {usage.classes > 0 && usage.events > 0 && ' dan '}
+                      {usage.events > 0 && `${usage.events} event`} tapi belum punya metode pembayaran
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {count === 0 ? 'Belum ada metode pembayaran' : `${count} metode pembayaran`}
+                    </p>
+                  )}
                 </div>
               </Link>
             )

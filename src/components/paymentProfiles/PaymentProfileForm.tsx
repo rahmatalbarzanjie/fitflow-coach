@@ -9,11 +9,13 @@ import { paymentProfileSchema, type PaymentProfileFormData } from '@/lib/validat
 
 interface Props {
   profile?: { id: string; name: string; is_active: boolean }
+  classCount?: number
+  eventCount?: number
 }
 
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
 
-export function PaymentProfileForm({ profile }: Props) {
+export function PaymentProfileForm({ profile, classCount = 0, eventCount = 0 }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -87,7 +89,12 @@ export function PaymentProfileForm({ profile }: Props) {
 
       {profile && !profile.is_active && (
         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-          Profile ini nonaktif - tidak muncul di pilihan baru untuk Class/Event/Package, tapi kelas/event yang sudah memakainya tetap berjalan normal.
+          Profile ini nonaktif - tidak muncul di pilihan baru untuk Class/Event/Package.
+          {classCount + eventCount > 0 ? (
+            <> Saat ini masih dipakai oleh {classCount > 0 && `${classCount} kelas`}{classCount > 0 && eventCount > 0 && ' dan '}{eventCount > 0 && `${eventCount} event`} aktif - mereka tetap berjalan normal, tapi pastikan Anda sudah siapkan pengganti untuk pendaftaran baru.</>
+          ) : (
+            <> Tidak ada kelas/event aktif yang memakainya saat ini.</>
+          )}
         </p>
       )}
     </form>

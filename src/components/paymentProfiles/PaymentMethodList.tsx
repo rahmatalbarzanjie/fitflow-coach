@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronUp, ChevronDown, X, Landmark, QrCode } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, Landmark, QrCode, TriangleAlert } from 'lucide-react'
 import { AddPaymentMethodForm } from './AddPaymentMethodForm'
 
 interface Method {
@@ -19,9 +19,11 @@ interface Props {
   profileId: string
   userId: string
   initialMethods: Method[]
+  classCount?: number
+  eventCount?: number
 }
 
-export function PaymentMethodList({ profileId, userId, initialMethods }: Props) {
+export function PaymentMethodList({ profileId, userId, initialMethods, classCount = 0, eventCount = 0 }: Props) {
   const supabase = createClient()
   const [methods, setMethods] = useState<Method[]>(
     [...initialMethods].sort((a, b) => a.sort_order - b.sort_order)
@@ -51,9 +53,20 @@ export function PaymentMethodList({ profileId, userId, initialMethods }: Props) 
   return (
     <div className="space-y-3">
       {methods.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-4">
-          Belum ada metode pembayaran. Profile ini belum bisa dipilih di Class/Event/Package sampai ada minimal 1 metode.
-        </p>
+        classCount + eventCount > 0 ? (
+          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-3 flex items-start gap-2">
+            <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Dipakai {classCount > 0 && `${classCount} kelas`}
+              {classCount > 0 && eventCount > 0 && ' dan '}
+              {eventCount > 0 && `${eventCount} event`} tapi belum punya metode pembayaran - peserta tidak akan tahu cara membayar.
+            </span>
+          </p>
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-4">
+            Belum ada metode pembayaran. Profile ini belum bisa dipilih di Class/Event/Package sampai ada minimal 1 metode.
+          </p>
+        )
       ) : (
         <div className="space-y-2">
           {methods.map((m, i) => (
