@@ -1359,6 +1359,7 @@ export type Database = {
         Row: {
           amount_paid: number
           attended: boolean
+          cancelled_at: string | null
           class_id: string | null
           confirmed_at: string | null
           event_id: string | null
@@ -1380,6 +1381,7 @@ export type Database = {
         Insert: {
           amount_paid?: number
           attended?: boolean
+          cancelled_at?: string | null
           class_id?: string | null
           confirmed_at?: string | null
           event_id?: string | null
@@ -1401,6 +1403,7 @@ export type Database = {
         Update: {
           amount_paid?: number
           attended?: boolean
+          cancelled_at?: string | null
           class_id?: string | null
           confirmed_at?: string | null
           event_id?: string | null
@@ -1923,6 +1926,10 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_registration: {
+        Args: { p_registration_id: string }
+        Returns: undefined
+      }
       confirm_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
@@ -1974,7 +1981,7 @@ export type Database = {
       payment_method: "cash" | "transfer"
       payment_method_type: "cash" | "transfer"
       payment_mode: "free" | "drop_in" | "prepaid" | "debt"
-      payment_status: "pending" | "confirmed" | "rejected"
+      payment_status: "pending" | "confirmed" | "rejected" | "cancelled"
       registration_tier: "early_bird" | "ots"
       session_status: "scheduled" | "ongoing" | "completed" | "cancelled"
     }
@@ -2139,7 +2146,7 @@ export const Constants = {
       payment_method: ["cash", "transfer"],
       payment_method_type: ["cash", "transfer"],
       payment_mode: ["free", "drop_in", "prepaid", "debt"],
-      payment_status: ["pending", "confirmed", "rejected"],
+      payment_status: ["pending", "confirmed", "rejected", "cancelled"],
       registration_tier: ["early_bird", "ots"],
       session_status: ["scheduled", "ongoing", "completed", "cancelled"],
     },

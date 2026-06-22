@@ -36,6 +36,7 @@ export const PAYMENT_STATUS = {
   pending:   { label: 'Menunggu Konfirmasi', color: 'yellow' },
   confirmed: { label: 'Terkonfirmasi',       color: 'green'  },
   rejected:  { label: 'Ditolak',             color: 'red'    },
+  cancelled: { label: 'Dibatalkan',          color: 'gray'   },
 } as const
 
 export const EVENT_STATUS = {

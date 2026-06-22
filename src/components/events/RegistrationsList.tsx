@@ -20,6 +20,7 @@ const STATUS_COLOR: Record<string, 'yellow' | 'green' | 'red' | 'gray'> = {
   pending:   'yellow',
   confirmed: 'green',
   rejected:  'red',
+  cancelled: 'gray',
 }
 
 const STATUS_TABS = [
@@ -27,6 +28,7 @@ const STATUS_TABS = [
   { key: 'pending',   label: 'Menunggu'   },
   { key: 'confirmed', label: 'Konfirmasi' },
   { key: 'rejected',  label: 'Ditolak'   },
+  { key: 'cancelled', label: 'Dibatalkan' },
 ]
 
 interface Reg {
@@ -56,9 +58,13 @@ interface Props {
 
 function ProofSheet({
   reg,
+  eventId,
+  userId,
   onClose,
 }: {
   reg: Reg
+  eventId: string
+  userId: string
   onClose: () => void
 }) {
   return (
@@ -99,13 +105,15 @@ function ProofSheet({
         <div className="px-4 py-3 border-t border-gray-100 shrink-0">
           <RegistrationActions
             registrationId={reg.id}
-            eventId=""
-            userId=""
+            eventId={eventId}
+            userId={userId}
             paymentStatus={reg.payment_status}
+            amountPaid={Number(reg.amount_paid) || 0}
             registrantName={reg.registrant_name}
             registrantPhone={reg.registrant_phone}
             canInviteToJoin={reg.can_invite_to_join}
             isInvited={!!reg.invited_to_join_at}
+            onSuccess={onClose}
           />
         </div>
       </div>
@@ -198,12 +206,15 @@ export function RegistrationsList({ registrations, eventId, userId, eventStatus 
 
                 {/* Aksi */}
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <AttendanceToggle registrationId={r.id} attended={!!r.attended} />
+                  {r.payment_status === 'confirmed' && (
+                    <AttendanceToggle registrationId={r.id} attended={!!r.attended} />
+                  )}
                   <RegistrationActions
                     registrationId={r.id}
                     eventId={eventId}
                     userId={userId}
                     paymentStatus={r.payment_status}
+                    amountPaid={Number(r.amount_paid) || 0}
                     registrantName={r.registrant_name}
                     registrantPhone={r.registrant_phone}
                     canInviteToJoin={!!r.can_invite_to_join}
@@ -218,7 +229,7 @@ export function RegistrationsList({ registrations, eventId, userId, eventStatus 
 
       {/* Proof sheet */}
       {proofReg && (
-        <ProofSheet reg={proofReg} onClose={() => setProofReg(null)} />
+        <ProofSheet reg={proofReg} eventId={eventId} userId={userId} onClose={() => setProofReg(null)} />
       )}
     </>
   )

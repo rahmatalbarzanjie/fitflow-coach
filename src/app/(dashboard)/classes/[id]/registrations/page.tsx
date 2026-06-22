@@ -7,10 +7,11 @@ import { RegistrationActions } from '@/components/events/RegistrationActions'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { PAYMENT_STATUS, PAYMENT_METHOD } from '@/lib/constants'
 
-const STATUS_COLOR: Record<string, 'yellow' | 'green' | 'red'> = {
+const STATUS_COLOR: Record<string, 'yellow' | 'green' | 'red' | 'gray'> = {
   pending:   'yellow',
   confirmed: 'green',
   rejected:  'red',
+  cancelled: 'gray',
 }
 
 const STATUS_TABS = [
@@ -18,6 +19,7 @@ const STATUS_TABS = [
   { key: 'pending',   label: 'Menunggu' },
   { key: 'confirmed', label: 'Konfirmasi' },
   { key: 'rejected',  label: 'Ditolak'  },
+  { key: 'cancelled', label: 'Dibatalkan' },
 ]
 
 export default async function ClassRegistrationsPage({
@@ -151,6 +153,7 @@ export default async function ClassRegistrationsPage({
                     eventId={id}
                     userId={user!.id}
                     paymentStatus={r.payment_status}
+                    amountPaid={Number(r.amount_paid) || 0}
                     registrantName={r.registrant_name}
                     registrantPhone={r.registrant_phone}
                     canInviteToJoin={!!r.can_invite_to_join}

@@ -4,15 +4,15 @@ import { sendWhatsApp } from '@/lib/whatsapp'
 
 /*
  * POST /api/notifications/registration
- * Dipanggil dari RegistrationActions setelah instruktur konfirmasi/tolak.
- * Body: { registrationId: string, type: 'confirm' | 'reject', reason?: string }
+ * Dipanggil dari RegistrationActions setelah instruktur konfirmasi/tolak/batalkan.
+ * Body: { registrationId: string, type: 'confirm' | 'reject' | 'invite' | 'cancel', reason?: string, wasConfirmed?: boolean }
  */
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { registrationId, type, reason } = await request.json().catch(() => ({}))
+  const { registrationId, type, reason, wasConfirmed } = await request.json().catch(() => ({}))
   if (!registrationId || !type) {
     return NextResponse.json({ error: 'Param tidak lengkap' }, { status: 400 })
   }
@@ -52,6 +52,11 @@ export async function POST(request: Request) {
       `Halo *${name}*! 🎉\n\n` +
       `Kamu sekarang resmi jadi member tetap kami! Terima kasih sudah ikut *${itemTitle}* 💪\n\n` +
       `Sampai jumpa di kelas berikutnya ya!`
+  } else if (type === 'cancel') {
+    message =
+      `Halo *${name}*,\n\n` +
+      `Pendaftaranmu untuk *${itemTitle}* sudah dibatalkan.` +
+      (wasConfirmed ? `\n\nUntuk info pengembalian dana, hubungi kami langsung ya 🙏` : '')
   } else {
     return NextResponse.json({ error: 'type tidak valid' }, { status: 400 })
   }
