@@ -5,9 +5,9 @@ import { SectionList } from '@/components/ui/SectionList'
 import { DetailRow } from '@/components/ui/DetailRow'
 import { MemberAvatar } from '@/components/members/MemberPhotoUpload'
 import { MemberStatusBadge } from '@/components/members/MemberStatusBadge'
-import { formatRupiah } from '@/lib/utils'
+import { formatRupiah, formatDateShort } from '@/lib/utils'
 import {
-  MessageSquareQuote, BookOpen,
+  MessageSquareQuote, BookOpen, Package,
   Settings, BarChart2, Calendar, Trophy, Banknote,
 } from 'lucide-react'
 
@@ -35,7 +35,7 @@ export default async function MemberHubPage({
   const { data: { user } } = await supabase.auth.getUser()
 
   // ── Fix #2: Satu query member, tidak duplikat ─────────────────────────────
-  const [memberRes, profileRes, attendanceRes] = await Promise.all([
+  const [memberRes, profileRes, attendanceRes, activeMembershipRes] = await Promise.all([
     (supabase.from('members') as any)
       .select('id, name, phone, notes, photo_url, status, last_attended_at')
       .eq('id', id)
@@ -51,10 +51,19 @@ export default async function MemberHubPage({
       .from('attendance')
       .select('id, created_at, amount_paid')
       .eq('member_id', id),
+
+    supabase
+      .from('member_memberships')
+      .select('package_name, package_type, end_date, total_sessions, used_sessions')
+      .eq('member_id', id)
+      .eq('status', 'active')
+      .maybeSingle(),
   ])
 
   const member = memberRes.data
   if (!member) notFound()
+
+  const activeMembership = activeMembershipRes.data as any
 
   // Hitung statistik
   const allAttendance     = (attendanceRes.data ?? []) as any[]
@@ -103,6 +112,22 @@ export default async function MemberHubPage({
           )}
         </div>
       </div>
+
+      {/* Section: Membership */}
+      <SectionList label="Membership">
+        <DetailRow
+          icon={<Package className="w-4 h-4" />}
+          label="Paket Membership"
+          sublabel={
+            activeMembership
+              ? activeMembership.package_type === 'unlimited'
+                ? `${activeMembership.package_name} · Aktif sampai ${formatDateShort(activeMembership.end_date)}`
+                : `${activeMembership.package_name} · Sisa ${(activeMembership.total_sessions ?? 0) - (activeMembership.used_sessions ?? 0)}/${activeMembership.total_sessions} sesi`
+              : 'Belum ada paket aktif'
+          }
+          href={`/members/${id}/membership`}
+        />
+      </SectionList>
 
       {/* ── Empty state untuk member baru ── */}
       {isNewMember ? (
