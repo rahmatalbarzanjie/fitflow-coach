@@ -4,6 +4,16 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, Upload, Loader2, Phone, Banknote, Landmark } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
+import { PaymentMethodsDisplay } from './PaymentMethodsDisplay'
+
+interface PaymentMethod {
+  id: string
+  method_type: string
+  bank_name: string | null
+  account_number: string | null
+  account_name: string | null
+  qris_image_url: string | null
+}
 
 interface Props {
   classId: string
@@ -12,6 +22,7 @@ interface Props {
   targetDate: string
   className: string
   classPrice: number
+  paymentMethods?: PaymentMethod[]
 }
 
 const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
@@ -23,6 +34,7 @@ export function ClassRegistrationForm({
   targetDate,
   className,
   classPrice,
+  paymentMethods = [],
 }: Props) {
   const isFree = classPrice <= 0
 
@@ -240,6 +252,10 @@ export function ClassRegistrationForm({
             <p className="text-sm text-gray-600">Total pembayaran</p>
             <span className="text-xl font-bold text-violet-700">{formatRupiah(classPrice)}</span>
           </div>
+        )}
+
+        {!isFree && method === 'transfer' && (
+          <PaymentMethodsDisplay methods={paymentMethods} />
         )}
 
         {!isFree && method === 'transfer' && (

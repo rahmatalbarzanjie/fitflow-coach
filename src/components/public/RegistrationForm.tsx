@@ -5,6 +5,16 @@ import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, Upload, Loader2, Phone } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { resizeAndCompressImage, ImageValidationError } from '@/lib/image-utils'
+import { PaymentMethodsDisplay } from './PaymentMethodsDisplay'
+
+interface PaymentMethod {
+  id: string
+  method_type: string
+  bank_name: string | null
+  account_number: string | null
+  account_name: string | null
+  qris_image_url: string | null
+}
 
 interface Props {
   eventId:            string
@@ -16,6 +26,7 @@ interface Props {
   pricingMode:        'single' | 'tiered'
   eventTitle:         string
   eventDescription:   string | null
+  paymentMethods?:    PaymentMethod[]
 }
 
 const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
@@ -30,6 +41,7 @@ export function RegistrationForm({
   pricingMode,
   eventTitle,
   eventDescription,
+  paymentMethods = [],
 }: Props) {
   const [name,     setName]     = useState('')
   const [phone,    setPhone]    = useState('')
@@ -238,6 +250,9 @@ export function RegistrationForm({
             {formatRupiah(amount)}
           </span>
         </div>
+
+        {/* Metode pembayaran - peserta pilih sendiri, tidak ada default */}
+        <PaymentMethodsDisplay methods={paymentMethods} />
 
         {/* Proof upload */}
         <div className="space-y-1.5">

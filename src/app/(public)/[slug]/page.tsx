@@ -7,6 +7,7 @@ import { ScrollReveal } from '@/components/public/ScrollReveal'
 import { EventCountdown } from '@/components/public/EventCountdown'
 import { ParticipantsList } from '@/components/public/ParticipantsList'
 import { CommunityPickerSheet } from '@/components/public/CommunityPickerSheet'
+import { GalleryGrid } from '@/components/public/GalleryGrid'
 import { CLASS_TYPES } from '@/lib/constants'
 
 // Halaman ini pakai service-role client (key statis, tidak ada cookie per
@@ -118,6 +119,7 @@ export default async function InstructorLandingPage({
       .from('classes')
       .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, description, cover_image_url, class_price, show_registrations')
       .eq('user_id', profile.id)
+      .eq('is_active', true)
       .order('day_of_week').order('start_time'),
     supabase
       .from('events')
@@ -277,10 +279,33 @@ export default async function InstructorLandingPage({
   }
   const eventDocPhotos = eventDocs.flatMap(d => d.photos)
 
-  // Hero harus selalu punya CTA. Kalau nomor WA belum ada, fallback ke
-  // scroll-to-section yang paling relevan (atau ke benefits kalau belum
-  // ada konten apa pun).
-  const heroScrollTarget = classGroups.length > 0 ? 'schedules' : events.length > 0 ? 'events' : 'benefits'
+  // Hero CTA: satu arah utama (primary), bukan beberapa tombol besar
+  // berdampingan. Primary mengikuti tujuan utama halaman - kalau sudah ada
+  // jadwal aktif, dorong peserta lihat jadwal dulu, baru tawarkan event/WA
+  // sebagai opsi sekunder. WA cuma jadi primary kalau memang belum ada
+  // jadwal maupun event untuk ditampilkan.
+  type HeroCta = { href: string; label: string; icon: string; primary: boolean; external?: boolean }
+  const heroCtas: HeroCta[] = []
+  if (classGroups.length > 0) {
+    heroCtas.push({ href: '#schedules', label: 'Lihat Jadwal', icon: 'calendar_month', primary: true })
+    if (events.length > 0) heroCtas.push({ href: '#events', label: 'Lihat Event', icon: 'event_upcoming', primary: false })
+    if (waNumber) heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: false, external: true })
+  } else if (events.length > 0) {
+    heroCtas.push({ href: '#events', label: 'Lihat Event', icon: 'event_upcoming', primary: true })
+    if (waNumber) heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: false, external: true })
+  } else if (waNumber) {
+    heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: true, external: true })
+  } else {
+    heroCtas.push({ href: '#benefits', label: 'Gabung Komunitas', icon: 'groups', primary: true })
+  }
+
+  // Activity preview - social proof ringan, bukan KPI dashboard. Cuma
+  // tampilkan angka yang > 0, sembunyikan strip-nya kalau semuanya nol.
+  const activityStats = [
+    classes.length        > 0 ? `${classes.length} Kelas Aktif`      : null,
+    events.length          > 0 ? `${events.length} Event Mendatang`   : null,
+    communityGroups.length > 0 ? `${communityGroups.length} Komunitas` : null,
+  ].filter(Boolean) as string[]
 
   const HERO_GRADIENT  = 'linear-gradient(135deg, #FFD1FF 0%, #D1E9FF 100%)'
 
@@ -290,7 +315,7 @@ export default async function InstructorLandingPage({
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
-        className="relative h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden"
+        className="relative h-[92vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden"
         style={{ background: HERO_GRADIENT }}
       >
         <div className="relative z-10 flex flex-col items-center">
@@ -331,32 +356,40 @@ export default async function InstructorLandingPage({
             </p>
           )}
 
-          {/* CTA - selalu ada minimal satu, WA kalau nomor tersedia,
-              kalau tidak fallback scroll ke section paling relevan */}
-          {waNumber ? (
-            <a
-              style={{ animationDelay: '480ms' }}
-              href={`https://wa.me/${waNumber}?text=${waMsg}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="animate-on-load bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group"
+          {/* CTA - satu arah utama (primary), sisanya sekunder. Primary
+              mengikuti konten yang tersedia (lihat heroCtas di atas). */}
+          <div
+            className="animate-on-load flex flex-col sm:flex-row items-center gap-3"
+            style={{ animationDelay: '480ms' }}
+          >
+            {heroCtas.map(cta => (
+              <a
+                key={cta.label}
+                href={cta.href}
+                {...(cta.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                className={
+                  cta.primary
+                    ? 'bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group'
+                    : 'bg-white/50 backdrop-blur-md border border-white/60 text-indigo-700 px-6 py-3 rounded-full font-semibold text-sm flex items-center gap-2 hover:bg-white/70 active:scale-95 transition-all'
+                }
+              >
+                <span className="material-symbols-outlined" style={cta.primary ? undefined : { fontSize: '18px' }}>{cta.icon}</span>
+                {cta.label}
+                {cta.primary && (
+                  <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                )}
+              </a>
+            ))}
+          </div>
+
+          {/* Activity preview - social proof ringan, bukan KPI dashboard */}
+          {activityStats.length > 0 && (
+            <p
+              className="animate-on-load text-on-surface-variant/70 text-xs font-medium tracking-wide mt-6"
+              style={{ animationDelay: '600ms' }}
             >
-              <span className="material-symbols-outlined">chat</span>
-              Chat WhatsApp
-              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
-          ) : (
-            <a
-              style={{ animationDelay: '480ms' }}
-              href={`#${heroScrollTarget}`}
-              className="animate-on-load bg-indigo-700 text-white px-10 py-4 rounded-full font-bold flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all group"
-            >
-              <span className="material-symbols-outlined">
-                {heroScrollTarget === 'schedules' ? 'calendar_month' : heroScrollTarget === 'events' ? 'event_upcoming' : 'groups'}
-              </span>
-              {heroScrollTarget === 'schedules' ? 'Lihat Jadwal Kelas' : heroScrollTarget === 'events' ? 'Lihat Event' : 'Gabung Komunitas'}
-              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
+              {activityStats.join(' · ')}
+            </p>
           )}
         </div>
 
@@ -580,24 +613,10 @@ export default async function InstructorLandingPage({
                 return (
                   <div key={cls.id}>
                     <h3 className={`font-montserrat text-lg font-bold mb-4 ${cfg.accentText}`}>{cls.name}</h3>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                      {photos.map((p: any, i: number) => (
-                        <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={p.image_url}
-                            alt={cls.name}
-                            loading="lazy"
-                            className="w-full h-full object-cover"
-                          />
-                          {i === photos.length - 1 && extra > 0 && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-sm font-bold">
-                              +{extra} foto lainnya
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <GalleryGrid
+                      photos={photos.map((p: any) => ({ id: p.id, url: p.image_url, alt: cls.name }))}
+                      extraCount={extra}
+                    />
                   </div>
                 )
               })}
@@ -780,19 +799,9 @@ export default async function InstructorLandingPage({
           <ScrollReveal><div className="max-w-container-max mx-auto px-4 md:px-10">
             <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-on-surface text-center mb-3">Dokumentasi Event</h2>
             <p className="text-on-surface-variant text-center mb-10">Momen terbaik dari event-event yang sudah berlangsung</p>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-              {eventDocPhotos.map((p: any) => (
-                <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.image_url}
-                    alt="Dokumentasi event"
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+            <GalleryGrid
+              photos={eventDocPhotos.map((p: any) => ({ id: p.id, url: p.image_url, alt: 'Dokumentasi event' }))}
+            />
           </div></ScrollReveal>
         </section>
       )}
