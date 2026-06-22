@@ -40,9 +40,9 @@ export default async function EventSettingsPage({
       <EventSettingsForm ev={evRes.data} hasRegistrations={hasRegistrations} paymentProfiles={paymentProfiles} />
 
       <SectionList
-        label="Dokumentasi Event"
+        label="Dokumentasi event & suasana kegiatan"
         className="mt-4"
-        footer="Foto kegiatan event, ditampilkan di section Dokumentasi Event landing page setelah event selesai."
+        footer="Tampilkan venue, peserta, aktivitas, dan momen event untuk membangun kepercayaan calon peserta."
       >
         <div className="px-4 py-4">
           <EventGalleryUpload

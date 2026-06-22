@@ -86,8 +86,10 @@ export function ClassPhotoUpload({ classId, currentUrl }: Props) {
         />
       </label>
       <div>
-        <p className="text-sm font-medium text-gray-700">Foto Kelas</p>
-        <p className="text-xs text-gray-400">Tampil di jadwal landing page. Klik foto untuk upload.</p>
+        <p className="text-sm font-medium text-gray-700">Foto kelas atau tempat latihan</p>
+        <p className="text-xs text-gray-400">
+          Tampil di jadwal landing page. Gunakan foto yang menunjukkan suasana kelas, studio, fasilitas, atau aktivitas peserta.
+        </p>
         {status === 'ok' && (
           <p className="flex items-center gap-1 text-xs text-green-600 mt-1">
             <CheckCircle className="w-3.5 h-3.5" /> Tersimpan

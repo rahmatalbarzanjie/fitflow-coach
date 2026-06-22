@@ -135,7 +135,7 @@ export function ClassGalleryUpload({ classId, userId, initialPhotos }: Props) {
 
       {error && <p className="text-xs text-red-600">{error}</p>}
       <p className="text-xs text-gray-400">
-        Foto kegiatan kelas untuk landing page. Hanya 6 foto terbaru per kelas yang ditampilkan publik.
+        Hanya 6 foto terbaru per kelas yang ditampilkan publik.
       </p>
     </div>
   )

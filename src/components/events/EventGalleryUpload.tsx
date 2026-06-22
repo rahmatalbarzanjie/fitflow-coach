@@ -133,7 +133,7 @@ export function EventGalleryUpload({ eventId, userId, initialPhotos }: Props) {
 
       {error && <p className="text-xs text-red-600">{error}</p>}
       <p className="text-xs text-gray-400">
-        Foto dokumentasi event. Tampil di landing page setelah event ini berstatus selesai (maks 6 foto/event).
+        Tampil di landing page setelah event ini berstatus selesai (maks 6 foto/event).
       </p>
     </div>
   )

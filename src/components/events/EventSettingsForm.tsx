@@ -183,7 +183,10 @@ export function EventSettingsForm({ ev, hasRegistrations, paymentProfiles = [] }
             </div>
             {/* Cover */}
             <div>
-              <label className={lbl}>Flyer / Cover <span className="text-gray-400 font-normal text-xs">(tampil di landing page)</span></label>
+              <label className={lbl}>Flyer atau foto event</label>
+              <p className="text-xs text-gray-400 mb-1.5">
+                Tampil di landing page. Bisa berupa flyer promosi atau foto venue/event sebelumnya.
+              </p>
               {coverUrl ? (
                 <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -46,8 +46,8 @@ export default async function ClassSettingsPage({
 
       {/* Dokumentasi Kelas */}
       <SectionList
-        label="Dokumentasi Kelas"
-        footer="Foto kegiatan kelas, ditampilkan di section Dokumentasi Kelas landing page."
+        label="Dokumentasi kelas & suasana latihan"
+        footer="Tampilkan suasana studio, fasilitas, aktivitas peserta, atau momen kelas untuk membangun kepercayaan calon peserta."
       >
         <div className="px-4 py-4">
           <ClassGalleryUpload
