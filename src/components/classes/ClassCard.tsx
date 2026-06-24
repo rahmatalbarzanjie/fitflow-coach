@@ -45,6 +45,7 @@ interface Props {
     location: string | null
     capacity: number | null
     class_price: number | null
+    is_active?: boolean
   }
   isToday:      boolean
   attendCount:  number
@@ -72,8 +73,19 @@ export function ClassCard({ cls, isToday, attendCount, sessionDate, typeLabel }:
 
   return (
     <div className={`bg-white rounded-2xl border transition-colors ${
+      cls.is_active === false ? 'opacity-60' : ''
+    } ${
       isToday ? 'border-violet-200 shadow-sm shadow-violet-100' : 'border-gray-100'
     }`}>
+      {/* Nonaktif indicator */}
+      {cls.is_active === false && (
+        <div className="px-4 pt-3 pb-0">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-100 px-2 py-0.5 rounded-full">
+            Nonaktif
+          </span>
+        </div>
+      )}
+
       {/* Hari ini indicator */}
       {isToday && (
         <div className="px-4 pt-3 pb-0">
@@ -190,7 +202,7 @@ export function ClassCard({ cls, isToday, attendCount, sessionDate, typeLabel }:
             </div>
             <p className="text-sm text-gray-600 mb-1">Kamu akan menghapus:</p>
             <p className="text-sm font-semibold text-gray-900 mb-3">"{cls.name}"</p>
-            <p className="text-xs text-red-500 mb-5">Semua sesi dan riwayat absensi juga akan terhapus.</p>
+            <p className="text-xs text-red-500 mb-5">Semua sesi, absensi, registrasi, dan riwayat pembayaran peserta juga akan terhapus.</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirm(false)}
                 className="flex-1 h-10 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">

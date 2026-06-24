@@ -83,6 +83,11 @@ export default async function ClassDetailPage({
   const emoji         = TYPE_EMOJI[cls.type] ?? '🎯'
   const label         = typeLabel[cls.type] ?? cls.type
   const todaySession  = todaySessionRes.data
+  // Hari ini bisa jadi hari kelas ini meski belum ada baris `sessions` -
+  // sesi dibuat JIT saat halaman absensi dibuka, bukan harus sudah ada
+  // dulu. Jangan disable berdasarkan keberadaan baris, cek day_of_week.
+  const todayDowWIB    = new Date(Date.now() + 7 * 60 * 60 * 1000).getUTCDay()
+  const isClassToday   = cls.day_of_week === todayDowWIB
   const todayHadir    = todaySession
     ? (Array.isArray(todaySession.attendance) ? todaySession.attendance.length : 0)
     : 0
@@ -128,14 +133,14 @@ export default async function ClassDetailPage({
           icon={<CheckSquare className="w-4 h-4" />}
           label="Absensi Hari Ini"
           sublabel={
-            todaySession
-              ? todayHadir > 0
-                ? `${todayHadir} hadir`
-                : 'Belum ada absensi'
-              : 'Tidak ada sesi hari ini'
+            !isClassToday
+              ? 'Tidak ada sesi hari ini'
+              : todaySession
+                ? (todayHadir > 0 ? `${todayHadir} hadir` : 'Belum ada absensi')
+                : 'Tap untuk mulai absen'
           }
-          href={todaySession ? `/classes/${id}/attendance?date=${today}` : undefined}
-          disabled={!todaySession}
+          href={isClassToday ? `/classes/${id}/attendance?date=${today}` : undefined}
+          disabled={!isClassToday}
         />
       </SectionList>
 

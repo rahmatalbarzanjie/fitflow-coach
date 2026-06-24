@@ -38,7 +38,7 @@ export async function POST() {
     // Generate sessions for classes that need it
     await Promise.all(
       needFill.map(c =>
-        supabase.rpc('generate_sessions_for_class', { p_class_id: c.id, p_days: 56 })
+        supabase.rpc('generate_sessions_for_class', { p_class_id: c.id, p_days_ahead: 56 })
       )
     )
 

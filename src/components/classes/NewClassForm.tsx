@@ -96,7 +96,7 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
     // Auto-generate sessions for the next 56 days (8 weeks)
     await supabase.rpc('generate_sessions_for_class', {
       p_class_id: cls.id,
-      p_days: 56,
+      p_days_ahead: 56,
     })
 
     router.push('/classes')

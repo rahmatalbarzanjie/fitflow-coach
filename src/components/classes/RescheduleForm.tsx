@@ -163,7 +163,7 @@ export function RescheduleForm({
           disabled={loading}
           className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white rounded-xl text-sm font-semibold transition-colors"
         >
-          {loading ? 'Menyimpan...' : notifyWA ? 'Simpan & Kirim Notif' : 'Simpan Saja'}
+          {loading ? 'Menyimpan...' : notifyWA ? 'Simpan & Buat Draft Notif' : 'Simpan Saja'}
         </button>
       </div>
     </form>

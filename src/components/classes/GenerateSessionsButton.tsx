@@ -20,7 +20,7 @@ export function GenerateSessionsButton({ classId, variant = 'default' }: Props) 
     setLoading(true)
     await supabase.rpc('generate_sessions_for_class', {
       p_class_id: classId,
-      p_days: 56,
+      p_days_ahead: 56,
     })
     setLoading(false)
     setDone(true)

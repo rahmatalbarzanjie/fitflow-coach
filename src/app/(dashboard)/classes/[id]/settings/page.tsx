@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { ClassSettingsForm } from '@/components/classes/ClassSettingsForm'
+import { ClassActiveToggle } from '@/components/classes/ClassActiveToggle'
 import { ClassGalleryUpload } from '@/components/classes/ClassGalleryUpload'
 import { WaGroupPicker } from '@/components/classes/WaGroupPicker'
 import { DeleteButton } from '@/components/ui/DeleteButton'
@@ -72,17 +73,21 @@ export default async function ClassSettingsPage({
         </div>
       </SectionList>
 
+      {/* Status aktif/nonaktif */}
+      <ClassActiveToggle classId={cls.id} initialIsActive={cls.is_active} />
+
       {/* Hapus kelas */}
       <SectionList label="Zona Berbahaya">
         <div className="px-4 py-4">
           <p className="text-xs text-gray-400 mb-3">
-            Menghapus kelas akan menghapus semua sesi dan riwayat absensi secara permanen.
+            Menghapus kelas akan menghapus semua sesi, riwayat absensi, riwayat registrasi,
+            dan riwayat pembayaran peserta secara permanen.
           </p>
           <DeleteButton
             table="classes"
             id={cls.id}
             redirectTo="/classes"
-            confirmText={`Hapus kelas "${cls.name}"? Semua sesi dan absensi akan terhapus.`}
+            confirmText={`Hapus kelas "${cls.name}"? Semua sesi, absensi, registrasi, dan riwayat pembayaran peserta akan terhapus.`}
           />
         </div>
       </SectionList>

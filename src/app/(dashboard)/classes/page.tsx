@@ -23,7 +23,7 @@ export default async function ClassesPage() {
   const [classesRes, todaySessionsRes] = await Promise.all([
     timed('query:/classes:classes', supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, class_price')
+      .select('id, name, type, day_of_week, start_time, end_time, location, capacity, class_price, is_active')
       .eq('user_id', user!.id)
       .order('day_of_week')
       .order('start_time')),
@@ -66,7 +66,10 @@ export default async function ClassesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Kelas</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{classes.length} kelas aktif</p>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {classes.filter(c => c.is_active !== false).length} kelas aktif
+            {classes.some(c => c.is_active === false) && ` · ${classes.filter(c => c.is_active === false).length} nonaktif`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
