@@ -18,7 +18,6 @@ interface PaymentMethod {
 
 interface Props {
   eventId:            string
-  userId:             string
   instructorPhone:    string | null
   earlyBirdAvailable: boolean
   earlyBirdPrice:     number
@@ -33,7 +32,6 @@ const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:ou
 
 export function RegistrationForm({
   eventId,
-  userId,
   instructorPhone,
   earlyBirdAvailable,
   earlyBirdPrice,
@@ -85,28 +83,24 @@ export function RegistrationForm({
       // Upload gagal → lanjutkan tanpa proof (bisa kirim via WA)
     }
 
-    // ID di-generate di client supaya tidak perlu .select() setelah insert -
-    // peserta publik (anon) cuma punya izin INSERT, bukan SELECT, jadi
-    // .select().single() setelah insert akan gagal kena RLS.
-    const registrationId = crypto.randomUUID()
-
-    // Simpan registrasi
-    const { error: regErr } = await supabase
-      .from('registrations')
-      .insert({
-        id:               registrationId,
-        event_id:         eventId,
-        user_id:          userId,
-        registrant_name:  name.trim(),
-        registrant_phone: phone.trim(),
-        tier,
-        amount_paid:      amount,
-        payment_status:   'pending',
-        proof_url:        proofUrl,
-      })
+    // tier & amount_paid TIDAK dikirim dari client - create_event_registration
+    // RPC menghitung ulang deadline/kuota/kapasitas early bird dan harga
+    // final di server, supaya browser tidak bisa menentukan harga sendiri
+    // (early bird bisa "dikunci" lewat tab basi sebelum perbaikan ini).
+    const { data: registrationId, error: regErr } = await supabase.rpc('create_event_registration', {
+      p_event_id:         eventId,
+      p_registrant_name:  name.trim(),
+      p_registrant_phone: phone.trim(),
+      p_proof_url:        proofUrl ?? undefined,
+    })
 
     if (regErr) {
-      setError('Gagal mendaftar. Coba lagi dalam beberapa saat.')
+      const msg = regErr.message?.includes('event_full')
+        ? 'Maaf, kapasitas event sudah penuh. Coba muat ulang halaman.'
+        : regErr.message?.includes('event_not_found')
+          ? 'Event tidak ditemukan atau sudah ditutup. Coba muat ulang halaman.'
+          : 'Gagal mendaftar. Coba lagi dalam beberapa saat.'
+      setError(msg)
       setSubmitting(false)
       return
     }

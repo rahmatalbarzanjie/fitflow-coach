@@ -1934,6 +1934,15 @@ export type Database = {
         Args: { p_registration_id: string }
         Returns: undefined
       }
+      create_event_registration: {
+        Args: {
+          p_event_id: string
+          p_proof_url?: string
+          p_registrant_name: string
+          p_registrant_phone: string
+        }
+        Returns: string
+      }
       generate_sessions_for_class: {
         Args: { p_class_id: string; p_days_ahead?: number }
         Returns: number

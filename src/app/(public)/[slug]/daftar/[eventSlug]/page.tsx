@@ -47,12 +47,16 @@ export default async function PublicRegistrationPage({
         .order('sort_order')
     : { data: [] }
 
-  // Hitung kuota early bird yang tersisa
+  // Hitung kuota early bird yang tersisa - hanya yang masih berlaku
+  // (pending/confirmed), bukan yang sudah rejected/cancelled, supaya
+  // tampilan SEBELUM submit konsisten dengan yang dihitung ulang
+  // create_event_registration RPC saat submit.
   const { count: earlyBirdUsed } = await supabase
     .from('registrations')
     .select('id', { count: 'exact', head: true })
     .eq('event_id', event.id)
     .eq('tier', 'early_bird')
+    .in('payment_status', ['pending', 'confirmed'])
 
   const ebDeadlinePassed = event.early_bird_deadline
     ? new Date(event.early_bird_deadline) < new Date()
@@ -67,11 +71,13 @@ export default async function PublicRegistrationPage({
     !ebDeadlinePassed &&
     !ebQuotaFull
 
-  // Hitung total pendaftar
+  // Hitung total pendaftar - hanya yang masih berlaku (pending/confirmed),
+  // sama alasan dengan kuota early bird di atas.
   const { count: totalRegistrations } = await supabase
     .from('registrations')
     .select('id', { count: 'exact', head: true })
     .eq('event_id', event.id)
+    .in('payment_status', ['pending', 'confirmed'])
 
   const isFull = event.max_capacity !== null
     ? (totalRegistrations ?? 0) >= event.max_capacity
@@ -194,7 +200,6 @@ export default async function PublicRegistrationPage({
       ) : (
         <RegistrationForm
           eventId={event.id}
-          userId={profile.id}
           instructorPhone={profile.phone}
           earlyBirdAvailable={earlyBirdAvailable}
           earlyBirdPrice={Number(event.early_bird_price)}
