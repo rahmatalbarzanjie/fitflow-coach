@@ -86,7 +86,7 @@ export default async function AdminPage() {
           { label: 'Free Trial',       value: stats.trial,   icon: Clock,       color: 'text-blue-600',   bg: 'bg-blue-50'   },
           { label: 'Berlangganan',     value: stats.active,  icon: CheckCircle, color: 'text-green-600',  bg: 'bg-green-50'  },
           { label: 'Akses Habis',      value: stats.expired, icon: XCircle,     color: 'text-red-600',    bg: 'bg-red-50'    },
-          { label: 'Pendapatan Bulan Ini', value: formatRupiah(monthlyRevenue), icon: Wallet, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Pendapatan Langganan Bulan Ini', value: formatRupiah(monthlyRevenue), icon: Wallet, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="p-4">
             <div className="flex items-start justify-between">

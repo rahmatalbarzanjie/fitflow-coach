@@ -13,8 +13,8 @@ import { createClient } from '@/lib/supabase/client'
 const instructorItems = [
   { href: '/',                 icon: LayoutDashboard, label: 'Beranda'          },
   { href: '/members',          icon: Users,           label: 'Member'           },
-  { href: '/packages',         icon: Package,         label: 'Packages'         },
-  { href: '/payment-profiles', icon: Wallet,          label: 'Payment Profiles' },
+  { href: '/packages',         icon: Package,         label: 'Paket Membership' },
+  { href: '/payment-profiles', icon: Wallet,          label: 'Metode Pembayaran' },
   { href: '/laporan',          icon: Receipt,         label: 'Laporan'          },
   { href: '/community',        icon: Users2,          label: 'Komunitas'        },
   { href: '/classes',    icon: Calendar,        label: 'Kelas'        },

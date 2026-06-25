@@ -258,22 +258,29 @@ export function RegistrationActions({
 
       {/* Inline delete confirm */}
       {allowDelete && confirmingDel && (
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          <span className="text-xs text-gray-500">Hapus booking ini permanen?</span>
-          <button
-            onClick={deleteRegistration}
-            disabled={deleting}
-            className="h-7 px-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
-          >
-            {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
-            Ya, Hapus
-          </button>
-          <button
-            onClick={() => setConfirmingDel(false)}
-            className="h-7 px-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition-colors"
-          >
-            Batal
-          </button>
+        <div className="flex flex-col items-end gap-1.5 mt-1">
+          {paymentStatus === 'confirmed' && amountPaid > 0 && (
+            <p className="text-xs text-amber-600 max-w-[220px] text-right">
+              Peserta ini sudah membayar Rp {amountPaid.toLocaleString('id-ID')}. Nominal ini akan ikut terhapus dari Laporan kalau dilanjutkan.
+            </p>
+          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-gray-500">Hapus booking ini permanen?</span>
+            <button
+              onClick={deleteRegistration}
+              disabled={deleting}
+              className="h-7 px-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+            >
+              {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
+              Ya, Hapus
+            </button>
+            <button
+              onClick={() => setConfirmingDel(false)}
+              className="h-7 px-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition-colors"
+            >
+              Batal
+            </button>
+          </div>
         </div>
       )}
 

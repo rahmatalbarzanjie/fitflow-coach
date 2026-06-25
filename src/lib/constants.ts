@@ -22,9 +22,13 @@ export const CLASS_TYPES = [
   { value: 'other',    label: 'Lainnya'  },
 ] as const
 
+// Label "Reguler" (bukan "OTS") supaya tidak rancu dengan PAYMENT_METHOD.cash
+// di bawah - keduanya sama-sama berasal dari kolom enum bernilai 'ots', tapi
+// makna istilahnya beda total: di sini soal tier HARGA (reguler vs early
+// bird), di PAYMENT_METHOD soal METODE bayar (tunai di tempat vs transfer).
 export const REGISTRATION_TIER = {
   early_bird: { label: 'Early Bird' },
-  ots:        { label: 'OTS'        },
+  ots:        { label: 'Reguler'    },
 } as const
 
 export const PAYMENT_METHOD = {

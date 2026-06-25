@@ -21,13 +21,17 @@ export default function NewEventPage() {
   const [coverFile, setCoverFile]     = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [paymentProfiles, setPaymentProfiles] = useState<{ id: string; name: string }[]>([])
+  const [paymentProfilesLoaded, setPaymentProfilesLoaded] = useState(false)
   const router   = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      getEligiblePaymentProfiles(supabase, user.id).then(setPaymentProfiles)
+      getEligiblePaymentProfiles(supabase, user.id).then(profiles => {
+        setPaymentProfiles(profiles)
+        setPaymentProfilesLoaded(true)
+      })
     })
   }, [supabase])
 
@@ -258,8 +262,8 @@ export default function NewEventPage() {
           ) : (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className={lbl}>Harga (Rp) <span className="text-red-500">*</span></label>
-                <input {...register('ots_price')} type="number" min="0" className={inp} />
+                <label className={lbl}>Harga (Rp)</label>
+                <input {...register('ots_price')} type="number" min="0" placeholder="0 = gratis" className={inp} />
               </div>
               <div className="space-y-1.5">
                 <label className={lbl}>Kapasitas Total</label>
@@ -282,7 +286,7 @@ export default function NewEventPage() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            {paymentProfiles.length === 0 && (
+            {paymentProfilesLoaded && paymentProfiles.length === 0 && (
               <p className="text-xs text-gray-400">
                 Belum ada Payment Profile yang siap (perlu minimal 1 metode pembayaran). Atur di menu Payment Profiles.
               </p>

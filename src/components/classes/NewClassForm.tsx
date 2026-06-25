@@ -323,7 +323,7 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
             )}
           </div>
 
-          <p className="text-xs text-gray-400">Jadwal sesi akan dibuat otomatis untuk 8 minggu ke depan.</p>
+          <p className="text-xs text-gray-400">Jadwal sesi awal dibuat untuk 8 minggu ke depan. Setelah itu, tambah sesi lagi dari halaman detail kelas.</p>
 
           <div className="flex gap-3 pt-1">
             <Link

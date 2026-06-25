@@ -180,7 +180,7 @@ export default async function PublicRegistrationPage({
               )}
               <div className="p-3 bg-violet-50 border-2 border-violet-300 rounded-xl">
                 <p className="text-xs font-semibold text-violet-700">
-                  {Number(event.early_bird_price) > 0 ? 'OTS' : 'Harga Tiket'}
+                  {Number(event.early_bird_price) > 0 ? 'Harga Reguler' : 'Harga Tiket'}
                 </p>
                 <p className="text-2xl font-bold text-violet-800 mt-0.5">
                   {formatRupiah(Number(event.ots_price))}

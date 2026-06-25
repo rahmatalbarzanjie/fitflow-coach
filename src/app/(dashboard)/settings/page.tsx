@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionList } from '@/components/ui/SectionList'
 import { DetailRow } from '@/components/ui/DetailRow'
 import { LogoutButton } from '@/components/settings/LogoutButton'
-import { User, Smartphone, Quote, Star, LogOut } from 'lucide-react'
+import { User, Smartphone, Quote, Star, LogOut, Package, Wallet, Receipt } from 'lucide-react'
 
 function getSubscriptionLabel(status: string | null, expiresAt: string | null) {
   if (status === 'active') return { label: 'Aktif', color: 'text-green-600', sub: 'Langganan aktif' }
@@ -81,6 +81,30 @@ export default async function SettingsPage({
           label="Profil Instruktur"
           sublabel={profile?.name ?? 'Lengkapi profil'}
           href="/settings/profile"
+        />
+      </SectionList>
+
+      {/* BISNIS - jalur akses untuk Packages/Payment Profiles/Laporan di
+          mobile, yang sebelumnya hanya ada di Sidebar desktop (BottomNav
+          mobile tidak punya slot untuk 3 halaman ini sama sekali). */}
+      <SectionList label="Bisnis">
+        <DetailRow
+          icon={<Receipt className="w-4 h-4" />}
+          label="Laporan"
+          sublabel="Revenue & rincian sumber pemasukan"
+          href="/laporan"
+        />
+        <DetailRow
+          icon={<Package className="w-4 h-4" />}
+          label="Paket Membership"
+          sublabel="Kelola paket untuk member"
+          href="/packages"
+        />
+        <DetailRow
+          icon={<Wallet className="w-4 h-4" />}
+          label="Metode Pembayaran"
+          sublabel="Untuk kelas & event"
+          href="/payment-profiles"
         />
       </SectionList>
 

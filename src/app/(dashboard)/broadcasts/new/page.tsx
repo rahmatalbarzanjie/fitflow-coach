@@ -25,6 +25,7 @@ export default function NewBroadcastPage() {
   const [error,    setError]    = useState<string | null>(null)
 
   const [groupClasses,    setGroupClasses]    = useState<{ id: string; name: string; wa_group_name: string | null }[]>([])
+  const [groupClassesLoaded, setGroupClassesLoaded] = useState(false)
   const [alsoSendGroup,   setAlsoSendGroup]   = useState(false)
   const [targetClassId,   setTargetClassId]   = useState('')
 
@@ -42,6 +43,7 @@ export default function NewBroadcastPage() {
       setGroupClasses(
         ((data ?? []) as any[]).map(c => ({ id: c.id, name: c.name, wa_group_name: c.wa_group_name }))
       )
+      setGroupClassesLoaded(true)
     })
   }, [])
 
@@ -134,7 +136,7 @@ export default function NewBroadcastPage() {
         </div>
 
         {/* Komunitas group */}
-        {groupClasses.length > 0 && (
+        {groupClasses.length > 0 ? (
           <div className="space-y-1.5 p-3 bg-violet-50/50 border border-violet-100 rounded-xl">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
               <input
@@ -157,7 +159,11 @@ export default function NewBroadcastPage() {
               Pesan akan diposting sekali ke grup WA, terpisah dari kiriman personal ke Member.
             </p>
           </div>
-        )}
+        ) : groupClassesLoaded ? (
+          <p className="text-xs text-gray-400 px-1">
+            Belum ada kelas yang terhubung ke grup WA - hubungkan di halaman pengaturan kelas untuk bisa kirim broadcast sekaligus ke grup.
+          </p>
+        ) : null}
 
         {/* Content */}
         <div className="space-y-1.5">
