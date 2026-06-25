@@ -1934,6 +1934,17 @@ export type Database = {
         Args: { p_registration_id: string }
         Returns: undefined
       }
+      create_class_registration: {
+        Args: {
+          p_class_id: string
+          p_payment_method?: Database["public"]["Enums"]["payment_method"]
+          p_proof_url?: string
+          p_registrant_name: string
+          p_registrant_phone: string
+          p_session_date: string
+        }
+        Returns: string
+      }
       create_event_registration: {
         Args: {
           p_event_id: string

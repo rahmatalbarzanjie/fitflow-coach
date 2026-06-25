@@ -17,7 +17,6 @@ interface PaymentMethod {
 
 interface Props {
   classId: string
-  userId: string
   instructorPhone: string | null
   targetDate: string
   className: string
@@ -29,7 +28,6 @@ const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:ou
 
 export function ClassRegistrationForm({
   classId,
-  userId,
   instructorPhone,
   targetDate,
   className,
@@ -79,31 +77,26 @@ export function ClassRegistrationForm({
     }
 
     const paymentMethod = isFree ? null : method
-    const paymentStatus = isFree || method === 'cash' ? 'confirmed' : 'pending'
 
-    // ID di-generate di client supaya tidak perlu .select() setelah insert -
-    // peserta publik (anon) cuma punya izin INSERT, bukan SELECT, jadi
-    // .select().single() setelah insert akan gagal kena RLS.
-    const registrationId = crypto.randomUUID()
-
-    const { error: regErr } = await supabase
-      .from('registrations')
-      .insert({
-        id:                registrationId,
-        class_id:         classId,
-        session_date:     targetDate,
-        user_id:          userId,
-        registrant_name:  name.trim(),
-        registrant_phone: phone.trim(),
-        tier:             'ots',
-        amount_paid:      isFree ? 0 : classPrice,
-        payment_method:   paymentMethod,
-        payment_status:   paymentStatus,
-        proof_url:        proofUrl,
-      })
+    // RPC adalah satu-satunya sumber kebenaran untuk kapasitas, duplikat,
+    // dan harga - server me-lock baris kelas, re-validasi kuota, dan
+    // menghitung amount_paid sendiri (bukan dari nilai client). Browser
+    // tidak lagi menentukan apa pun selain identitas pendaftar.
+    const { data: registrationId, error: regErr } = await supabase.rpc('create_class_registration', {
+      p_class_id:         classId,
+      p_session_date:     targetDate,
+      p_registrant_name:  name.trim(),
+      p_registrant_phone: phone.trim(),
+      p_payment_method:   paymentMethod ?? undefined,
+      p_proof_url:        proofUrl ?? undefined,
+    })
 
     if (regErr) {
-      setError('Gagal mendaftar. Coba lagi dalam beberapa saat.')
+      setError(
+        regErr.message === 'class_full'
+          ? 'Maaf, kuota kelas ini sudah penuh.'
+          : 'Gagal mendaftar. Coba lagi dalam beberapa saat.'
+      )
       setSubmitting(false)
       return
     }

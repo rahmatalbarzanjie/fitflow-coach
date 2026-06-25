@@ -138,7 +138,6 @@ export default async function ClassRegistrationPage({
       ) : (
         <ClassRegistrationForm
           classId={cls.id}
-          userId={profile.id}
           instructorPhone={profile.phone}
           targetDate={targetDate}
           className={cls.name}
