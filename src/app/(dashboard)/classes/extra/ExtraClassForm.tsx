@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { CalendarDays, Clock, MapPin, Users, AlertCircle, Sparkles } from 'lucide-react'
 import { generateExtraClassMessage } from '@/lib/class-notifications'
 import { formatTime } from '@/lib/utils'
+import { Time24Input } from '@/components/ui/Time24Input'
 
 interface ClassOption {
   id: string; name: string; type: string
@@ -138,8 +139,7 @@ export function ExtraClassForm({ classes }: Props) {
             <Clock className="w-3.5 h-3.5 inline mr-1" />
             Jam Mulai
           </label>
-          <input
-            type="time"
+          <Time24Input
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
             required
@@ -148,8 +148,7 @@ export function ExtraClassForm({ classes }: Props) {
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1.5">Jam Selesai</label>
-          <input
-            type="time"
+          <Time24Input
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
             required

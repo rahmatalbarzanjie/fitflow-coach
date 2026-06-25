@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { eventSchema, type EventFormData } from '@/lib/validations/event'
 import { SectionList } from '@/components/ui/SectionList'
+import { Time24Input } from '@/components/ui/Time24Input'
 import { EVENT_STATUS } from '@/lib/constants'
 import { Upload, X, Loader2, Trash2 } from 'lucide-react'
 
@@ -163,8 +164,8 @@ export function EventSettingsForm({ ev, hasRegistrations, paymentProfiles = [] }
             <div><label className={lbl}>Judul Event</label><input {...register('title')} className={inp} /></div>
             <div><label className={lbl}>Tanggal</label><input {...register('event_date')} type="date" className={inp} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={lbl}>Jam Mulai</label><input {...register('start_time')} type="time" className={inp} /></div>
-              <div><label className={lbl}>Jam Selesai</label><input {...register('end_time')} type="time" className={inp} /></div>
+              <div><label className={lbl}>Jam Mulai</label><Time24Input {...register('start_time')} className={inp} /></div>
+              <div><label className={lbl}>Jam Selesai</label><Time24Input {...register('end_time')} className={inp} /></div>
             </div>
             <div><label className={lbl}>Lokasi</label><input {...register('location')} placeholder="Opsional" className={inp} /></div>
             <div>

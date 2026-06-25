@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
+import { Time24Input } from '@/components/ui/Time24Input'
 
 const DAY_OPTIONS = [
   { value: 0, label: 'Minggu' },
@@ -198,14 +199,14 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
               <label className="block text-sm font-medium text-gray-700">
                 Jam Mulai <span className="text-red-500">*</span>
               </label>
-              <input {...register('start_time')} type="time" step="60" className={inputClass} />
+              <Time24Input {...register('start_time')} className={inputClass} />
               {errors.start_time && <p className="text-xs text-red-600">{errors.start_time.message}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
                 Jam Selesai <span className="text-red-500">*</span>
               </label>
-              <input {...register('end_time')} type="time" step="60" className={inputClass} />
+              <Time24Input {...register('end_time')} className={inputClass} />
               {errors.end_time && <p className="text-xs text-red-600">{errors.end_time.message}</p>}
             </div>
           </div>

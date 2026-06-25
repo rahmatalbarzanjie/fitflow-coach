@@ -9,6 +9,7 @@ import { ArrowLeft, Upload, X, ToggleLeft, ToggleRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { eventSchema, type EventFormData, toSlug } from '@/lib/validations/event'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Time24Input } from '@/components/ui/Time24Input'
 import { getEligiblePaymentProfiles } from '@/lib/paymentProfiles'
 
 const inp = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
@@ -155,11 +156,11 @@ export default function NewEventPage() {
             </div>
             <div className="space-y-1.5">
               <label className={lbl}>Mulai <span className="text-red-500">*</span></label>
-              <input {...register('start_time')} type="time" className={inp} />
+              <Time24Input {...register('start_time')} className={inp} />
             </div>
             <div className="space-y-1.5">
               <label className={lbl}>Selesai</label>
-              <input {...register('end_time')} type="time" className={inp} />
+              <Time24Input {...register('end_time')} className={inp} />
             </div>
           </div>
 

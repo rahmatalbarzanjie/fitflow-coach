@@ -9,6 +9,7 @@ import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
 import { ClassPhotoUpload } from './ClassPhotoUpload'
+import { Time24Input } from '@/components/ui/Time24Input'
 
 interface Props {
   cls: {
@@ -148,20 +149,16 @@ export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onCl
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">Jam Mulai</label>
-          <input
+          <Time24Input
             {...register('start_time')}
-            type="time"
-            step="60"
             className={inputClass}
           />
           {errors.start_time && <p className="text-xs text-red-600">{errors.start_time.message}</p>}
         </div>
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">Jam Selesai</label>
-          <input
+          <Time24Input
             {...register('end_time')}
-            type="time"
-            step="60"
             className={inputClass}
           />
           {errors.end_time && <p className="text-xs text-red-600">{errors.end_time.message}</p>}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarDays, Clock, AlertCircle } from 'lucide-react'
 import { generateRescheduleMessage } from '@/lib/class-notifications'
 import { DAY_NAMES, formatTime } from '@/lib/utils'
+import { Time24Input } from '@/components/ui/Time24Input'
 
 interface Props {
   sessionId:    string
@@ -91,8 +92,7 @@ export function RescheduleForm({
             <Clock className="w-3.5 h-3.5 inline mr-1" />
             Jam Mulai
           </label>
-          <input
-            type="time"
+          <Time24Input
             value={newStart}
             onChange={e => setNewStart(e.target.value)}
             required
@@ -101,8 +101,7 @@ export function RescheduleForm({
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1.5">Jam Selesai</label>
-          <input
-            type="time"
+          <Time24Input
             value={newEnd}
             onChange={e => setNewEnd(e.target.value)}
             required
