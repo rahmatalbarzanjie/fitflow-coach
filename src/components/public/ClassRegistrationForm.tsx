@@ -43,6 +43,7 @@ export function ClassRegistrationForm({
   const [submitting, setSubmitting] = useState(false)
   const [error,      setError]      = useState<string | null>(null)
   const [success,    setSuccess]    = useState(false)
+  const [proofFailed, setProofFailed] = useState(false)
 
   const supabase = createClient()
   const waNumber  = instructorPhone?.replace(/\D/g, '').replace(/^0/, '62')
@@ -60,6 +61,7 @@ export function ClassRegistrationForm({
     setError(null)
 
     let proofUrl: string | null = null
+    let uploadFailed = false
 
     if (!isFree && method === 'transfer' && proofFile) {
       const ext      = proofFile.name.split('.').pop()
@@ -73,8 +75,14 @@ export function ClassRegistrationForm({
           .from('payment-proofs')
           .getPublicUrl(uploadData.path)
         proofUrl = urlData?.publicUrl ?? null
+      } else {
+        // Upload gagal - lanjutkan pendaftaran (jangan blokir), tapi success
+        // screen nanti perlu tahu ini supaya tidak salah klaim "bukti sudah
+        // diterima" dan tetap menawarkan kirim manual via WA.
+        uploadFailed = true
       }
     }
+    setProofFailed(uploadFailed)
 
     const paymentMethod = isFree ? null : method
 
@@ -128,14 +136,22 @@ export function ClassRegistrationForm({
         <p className="text-sm font-semibold text-violet-700 mb-4">{className}</p>
 
         {needsTransferInstructions ? (
-          <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-left mb-4">
-            <p className="text-xs font-semibold text-yellow-700 mb-1">Langkah selanjutnya:</p>
-            <ol className="text-xs text-yellow-700 space-y-1 list-decimal list-inside">
-              <li>Transfer pembayaran sebesar <strong>{formatRupiah(classPrice)}</strong></li>
-              <li>Kirim bukti transfer ke instruktur</li>
-              <li>Tunggu konfirmasi dari instruktur</li>
-            </ol>
-          </div>
+          proofFailed ? (
+            <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-left mb-4">
+              <p className="text-xs font-semibold text-yellow-700 mb-1">⚠️ Bukti transfer gagal terupload otomatis:</p>
+              <ol className="text-xs text-yellow-700 space-y-1 list-decimal list-inside">
+                <li>Transfer pembayaran sebesar <strong>{formatRupiah(classPrice)}</strong> (kalau belum)</li>
+                <li>Kirim bukti transfer ke instruktur manual via WhatsApp</li>
+                <li>Tunggu konfirmasi dari instruktur</li>
+              </ol>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-left mb-4">
+              <p className="text-xs text-green-700">
+                Bukti transfer <strong>{formatRupiah(classPrice)}</strong> sudah kami terima ✅. Instruktur akan cek dan konfirmasi pembayaranmu. Tidak perlu kirim ulang ya.
+              </p>
+            </div>
+          )
         ) : !isFree ? (
           <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-left mb-4">
             <p className="text-xs text-green-700">
@@ -148,7 +164,7 @@ export function ClassRegistrationForm({
           </div>
         )}
 
-        {needsTransferInstructions && waNumber && (
+        {needsTransferInstructions && proofFailed && waNumber && (
           <a
             href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo, saya ${name} (${phone}) baru mendaftar untuk ${className}. Berikut bukti transfer saya.`)}`}
             target="_blank"

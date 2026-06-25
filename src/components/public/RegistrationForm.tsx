@@ -50,6 +50,7 @@ export function RegistrationForm({
   const [submitting, setSubmitting] = useState(false)
   const [error,     setError]   = useState<string | null>(null)
   const [success,   setSuccess] = useState(false)
+  const [proofFailed, setProofFailed] = useState(false)
 
   const supabase    = createClient()
   const amount      = tier === 'early_bird' ? earlyBirdPrice : otsPrice
@@ -65,6 +66,7 @@ export function RegistrationForm({
     setError(null)
 
     let proofUrl: string | null = null
+    let uploadFailed = false
 
     // Upload bukti transfer ke Supabase Storage (jika ada file)
     if (proofFile) {
@@ -79,9 +81,14 @@ export function RegistrationForm({
           .from('payment-proofs')
           .getPublicUrl(uploadData.path)
         proofUrl = urlData?.publicUrl ?? null
+      } else {
+        // Upload gagal → lanjutkan tanpa proof, tapi success screen perlu
+        // tahu ini supaya tidak salah klaim "bukti sudah diterima" dan
+        // tetap menawarkan kirim manual via WA.
+        uploadFailed = true
       }
-      // Upload gagal → lanjutkan tanpa proof (bisa kirim via WA)
     }
+    setProofFailed(uploadFailed)
 
     // tier & amount_paid TIDAK dikirim dari client - create_event_registration
     // RPC menghitung ulang deadline/kuota/kapasitas early bird dan harga
@@ -131,12 +138,18 @@ export function RegistrationForm({
         <p className="text-sm font-semibold text-violet-700 mb-4">{eventTitle}</p>
 
         {/* Status pendaftaran */}
-        <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-left mb-4">
-          <p className="text-xs font-semibold text-green-700 mb-2">Status pendaftaran kamu:</p>
-          <ul className="text-xs text-green-700 space-y-1.5">
-            <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span> Bukti pembayaran diterima
-            </li>
+        <div className={`border rounded-xl p-4 text-left mb-4 ${proofFailed ? 'bg-yellow-50 border-yellow-100' : 'bg-green-50 border-green-100'}`}>
+          <p className={`text-xs font-semibold mb-2 ${proofFailed ? 'text-yellow-700' : 'text-green-700'}`}>Status pendaftaran kamu:</p>
+          <ul className={`text-xs space-y-1.5 ${proofFailed ? 'text-yellow-700' : 'text-green-700'}`}>
+            {proofFailed ? (
+              <li className="flex items-center gap-2">
+                <span className="text-yellow-500">⚠️</span> Bukti transfer gagal terupload otomatis - kirim manual via WhatsApp
+              </li>
+            ) : (
+              <li className="flex items-center gap-2">
+                <span className="text-green-500">✓</span> Bukti pembayaran diterima
+              </li>
+            )}
             <li className="flex items-center gap-2">
               <span className="text-green-500">✓</span> Pendaftaran berhasil dikirim
             </li>
@@ -155,6 +168,19 @@ export function RegistrationForm({
             <p className="text-xs font-semibold text-violet-700 mb-1.5">📋 Info dari instruktur:</p>
             <p className="text-xs text-violet-700 whitespace-pre-line leading-relaxed">{eventDescription}</p>
           </div>
+        )}
+
+        {/* Kirim bukti manual - hanya muncul kalau upload otomatis gagal */}
+        {proofFailed && waNumber && (
+          <a
+            href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo, saya ${name} (${phone}) baru mendaftar untuk ${eventTitle}. Bukti transfer saya gagal terupload di form, berikut saya kirimkan manual.`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full h-11 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-colors mb-2"
+          >
+            <Phone className="w-4 h-4" />
+            Kirim Bukti Transfer via WhatsApp
+          </a>
         )}
 
         {/* Tombol hubungi instruktur (opsional, bukan kirim bukti ulang) */}
