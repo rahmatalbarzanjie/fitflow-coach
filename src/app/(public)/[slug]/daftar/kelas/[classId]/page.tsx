@@ -35,7 +35,7 @@ export default async function ClassRegistrationPage({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cls } = await (supabase.from('classes') as any)
-    .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price, is_active, payment_profile_id')
+    .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price, is_active, payment_profile_id, payment_methods_enabled')
     .eq('id', classId)
     .eq('user_id', profile.id)
     .eq('is_active', true)
@@ -143,6 +143,7 @@ export default async function ClassRegistrationPage({
           className={cls.name}
           classPrice={classPrice}
           paymentMethods={(paymentMethods as any[]) ?? []}
+          paymentMethodsEnabled={cls.payment_methods_enabled}
         />
       )}
     </div>

@@ -10,6 +10,7 @@ import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
 import { ClassPhotoUpload } from './ClassPhotoUpload'
 import { Time24Input } from '@/components/ui/Time24Input'
+import { PaymentMethodsEnabledPicker } from './PaymentMethodsEnabledPicker'
 
 interface Props {
   cls: {
@@ -28,6 +29,7 @@ interface Props {
     cover_image_url?: string | null
     show_registrations?: boolean | null
     payment_profile_id?: string | null
+    payment_methods_enabled?: string | null
   }
   paymentProfiles?: { id: string; name: string }[]
   inModal?: boolean
@@ -63,6 +65,7 @@ export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onCl
       location:          cls.location ?? '',
       google_maps_url:   cls.google_maps_url ?? '',
       payment_profile_id: cls.payment_profile_id ?? '',
+      payment_methods_enabled: (cls.payment_methods_enabled as ClassFormData['payment_methods_enabled']) ?? 'both',
       capacity:          cls.capacity ?? undefined,
       description:       cls.description ?? '',
       class_price:       cls.class_price ?? undefined,
@@ -71,8 +74,10 @@ export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onCl
     },
   })
 
-  const classPrice       = useWatch({ control, name: 'class_price' })
-  const revenueSharePct  = useWatch({ control, name: 'revenue_share_pct' })
+  const classPrice            = useWatch({ control, name: 'class_price' })
+  const revenueSharePct       = useWatch({ control, name: 'revenue_share_pct' })
+  const paymentMethodsEnabled = useWatch({ control, name: 'payment_methods_enabled' })
+  const profileDisabled       = paymentMethodsEnabled === 'ots_only'
 
   const priceNum   = Number(classPrice)   || 0
   const shareNum   = Number(revenueSharePct) ?? 50
@@ -92,6 +97,7 @@ export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onCl
         location:          data.location || null,
         google_maps_url:   data.google_maps_url || null,
         payment_profile_id: data.payment_profile_id || null,
+        payment_methods_enabled: data.payment_methods_enabled,
         capacity:          data.capacity || null,
         description:       data.description || null,
         class_price:       data.class_price || null,
@@ -185,18 +191,24 @@ export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onCl
         {errors.google_maps_url && <p className="text-xs text-red-600">{errors.google_maps_url.message}</p>}
       </div>
 
+      <PaymentMethodsEnabledPicker control={control} />
+
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">
           Payment Profile
           <span className="text-gray-400 font-normal ml-1 text-xs">(tujuan pembayaran)</span>
         </label>
-        <select {...register('payment_profile_id')} className={inputClass}>
+        <select {...register('payment_profile_id')} disabled={profileDisabled} className={inputClass}>
           <option value="">Belum diatur</option>
           {paymentProfiles.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
-        {paymentProfiles.length === 0 && (
+        {profileDisabled ? (
+          <p className="text-xs text-gray-400">Tidak diperlukan untuk OTS saja.</p>
+        ) : errors.payment_profile_id ? (
+          <p className="text-xs text-red-600">{errors.payment_profile_id.message}</p>
+        ) : paymentProfiles.length === 0 && (
           <p className="text-xs text-gray-400">
             Belum ada Payment Profile yang siap (perlu minimal 1 metode pembayaran). Atur di menu Payment Profiles.
           </p>

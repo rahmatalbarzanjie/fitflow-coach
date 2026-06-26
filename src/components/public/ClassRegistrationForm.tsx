@@ -22,6 +22,7 @@ interface Props {
   className: string
   classPrice: number
   paymentMethods?: PaymentMethod[]
+  paymentMethodsEnabled?: string | null
 }
 
 const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
@@ -33,12 +34,19 @@ export function ClassRegistrationForm({
   className,
   classPrice,
   paymentMethods = [],
+  paymentMethodsEnabled = 'both',
 }: Props) {
   const isFree = classPrice <= 0
+  // Kalau OTS/Transfer dimatikan instruktur, peserta tidak punya pilihan -
+  // metode-nya dipaksa, toggle tidak ditampilkan sama sekali (lihat
+  // showToggle di bawah).
+  const showToggle = paymentMethodsEnabled === 'both' || !paymentMethodsEnabled
 
   const [name,       setName]       = useState('')
   const [phone,      setPhone]      = useState('')
-  const [method,     setMethod]     = useState<'cash' | 'transfer'>('cash')
+  const [method,     setMethod]     = useState<'cash' | 'transfer'>(
+    paymentMethodsEnabled === 'transfer_only' ? 'transfer' : 'cash'
+  )
   const [proofFile,  setProofFile]  = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error,      setError]      = useState<string | null>(null)
@@ -103,7 +111,9 @@ export function ClassRegistrationForm({
       setError(
         regErr.message === 'class_full'
           ? 'Maaf, kuota kelas ini sudah penuh.'
-          : 'Gagal mendaftar. Coba lagi dalam beberapa saat.'
+          : regErr.message === 'payment_method_not_allowed'
+            ? 'Metode pembayaran ini tidak tersedia untuk kelas ini. Muat ulang halaman.'
+            : 'Gagal mendaftar. Coba lagi dalam beberapa saat.'
       )
       setSubmitting(false)
       return
@@ -224,7 +234,7 @@ export function ClassRegistrationForm({
           <p className="text-xs text-gray-400">Untuk konfirmasi pendaftaran</p>
         </div>
 
-        {!isFree && (
+        {!isFree && showToggle && (
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">Metode Pembayaran</label>
             <div className="grid grid-cols-2 gap-2">

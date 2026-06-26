@@ -11,6 +11,7 @@ import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
 import { Time24Input } from '@/components/ui/Time24Input'
+import { PaymentMethodsEnabledPicker } from './PaymentMethodsEnabledPicker'
 
 const DAY_OPTIONS = [
   { value: 0, label: 'Minggu' },
@@ -22,7 +23,7 @@ const DAY_OPTIONS = [
   { value: 6, label: 'Sabtu' },
 ]
 
-const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
+const inputClass = 'w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white disabled:bg-gray-50 disabled:text-gray-400'
 
 interface Props {
   paymentProfiles?: { id: string; name: string }[]
@@ -41,11 +42,14 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
       type:              'zumba',
       day_of_week:       new Date().getDay(),
       revenue_share_pct: 50,
+      show_registrations: false,
     },
   })
 
-  const classPrice      = useWatch({ control, name: 'class_price' })
-  const revenueSharePct = useWatch({ control, name: 'revenue_share_pct' })
+  const classPrice            = useWatch({ control, name: 'class_price' })
+  const revenueSharePct       = useWatch({ control, name: 'revenue_share_pct' })
+  const paymentMethodsEnabled = useWatch({ control, name: 'payment_methods_enabled' })
+  const profileDisabled       = paymentMethodsEnabled === 'ots_only'
 
   const priceNum    = Number(classPrice) || 0
   const shareNum    = Number(revenueSharePct) ?? 50
@@ -82,10 +86,12 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
         location:          data.location || null,
         google_maps_url:   data.google_maps_url || null,
         payment_profile_id: data.payment_profile_id || null,
+        payment_methods_enabled: data.payment_methods_enabled,
         capacity:          data.capacity || null,
         description:       data.description || null,
         class_price:       data.class_price || null,
         revenue_share_pct: data.revenue_share_pct,
+        show_registrations: data.show_registrations,
       })
       .select('id')
       .single()
@@ -230,17 +236,23 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
             </div>
           </div>
 
+          <PaymentMethodsEnabledPicker control={control} />
+
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
               Payment Profile
               <span className="text-gray-400 font-normal ml-1 text-xs">(tujuan pembayaran)</span>
             </label>
-            <select {...register('payment_profile_id')} className={inputClass}>
+            <select {...register('payment_profile_id')} disabled={profileDisabled} className={inputClass}>
               <option value="">Belum diatur</option>
               {paymentProfiles.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            {profileDisabled
+              ? <p className="text-xs text-gray-400">Tidak diperlukan untuk OTS saja.</p>
+              : errors.payment_profile_id && <p className="text-xs text-red-600">{errors.payment_profile_id.message}</p>
+            }
           </div>
 
           <div className="space-y-1.5">
@@ -323,6 +335,15 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
               </div>
             )}
           </div>
+
+          {/* Tampilkan di landing page — paling bawah, sama seperti ClassEditForm */}
+          <label className="flex items-center gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50 cursor-pointer">
+            <input {...register('show_registrations')} type="checkbox" className="w-4 h-4 rounded accent-violet-600" />
+            <span className="text-sm text-gray-700">
+              Tampilkan peserta &amp; kuota di landing page
+              <span className="block text-xs text-gray-400">Pengunjung bisa lihat siapa saja yang sudah daftar dan sisa kuota kelas ini</span>
+            </span>
+          </label>
 
           <p className="text-xs text-gray-400">Jadwal sesi awal dibuat untuk 8 minggu ke depan. Setelah itu, tambah sesi lagi dari halaman detail kelas.</p>
 

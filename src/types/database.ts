@@ -417,6 +417,7 @@ export type Database = {
           is_active: boolean
           location: string | null
           name: string
+          payment_methods_enabled: string
           payment_mode: string | null
           payment_profile_id: string | null
           revenue_share_pct: number
@@ -441,6 +442,7 @@ export type Database = {
           is_active?: boolean
           location?: string | null
           name: string
+          payment_methods_enabled?: string
           payment_mode?: string | null
           payment_profile_id?: string | null
           revenue_share_pct?: number
@@ -465,6 +467,7 @@ export type Database = {
           is_active?: boolean
           location?: string | null
           name?: string
+          payment_methods_enabled?: string
           payment_mode?: string | null
           payment_profile_id?: string | null
           revenue_share_pct?: number
