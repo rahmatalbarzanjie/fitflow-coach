@@ -114,7 +114,7 @@ export default async function InstructorLandingPage({
   const in7DaysStr = in7Days.toISOString().split('T')[0]
 
   // Classes + Events + Sessions with changes in next 7 days
-  const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes, activeMemberCountRes] = await Promise.all([
+  const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes] = await Promise.all([
     supabase
       .from('classes')
       .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, description, cover_image_url, class_price, show_registrations')
@@ -147,12 +147,6 @@ export default async function InstructorLandingPage({
       .from('class_type_benefits')
       .select('type, benefits, wa_invite_link')
       .eq('user_id', profile.id),
-    // Trust Section (M9) - cuma count, tidak fetch baris member (privasi).
-    supabase
-      .from('members')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', profile.id)
-      .eq('status', 'active'),
   ])
 
   const classes        = classesRes.data         ?? []
@@ -224,28 +218,6 @@ export default async function InstructorLandingPage({
   const waNumber = (profile.bot_phone ?? profile.phone)?.replace(/\D/g, '').replace(/^0/, '62')
   const waMsg    = encodeURIComponent(`Halo ${studio}! Aku mau tanya-tanya soal kelas 😊`)
   const hasContent = classGroups.length > 0 || events.length > 0
-
-  // ── Trust Section (M9) ──────────────────────────────────────────────
-  // Spesialisasi dari tipe kelas yang benar-benar diajar - bukan field
-  // baru. Dibatasi 3 tipe biar tidak jadi kalimat panjang kalau
-  // instruktur punya banyak tipe kelas.
-  const specialtyLabels = classGroups.map(([type]) => getTypeConfig(type).label)
-  const specialtyText = specialtyLabels.length === 0
-    ? null
-    : specialtyLabels.length <= 3
-      ? specialtyLabels.join(' & ')
-      : `${specialtyLabels.slice(0, 2).join(', ')} & lainnya`
-
-  const activeMemberCount = activeMemberCountRes.count ?? 0
-
-  // Prioritas: member > kelas > komunitas (event sengaja tidak dipakai -
-  // "1 event mendatang" sering terasa lemah sebagai social proof).
-  // Cuma render yang nilainya > 0, tanpa placeholder nol.
-  const trustProofs = [
-    activeMemberCount      > 0 ? `${activeMemberCount} member aktif`              : null,
-    classes.length          > 0 ? `${classes.length} kelas rutin setiap minggu`     : null,
-    communityGroups.length  > 0 ? `${communityGroups.length} komunitas aktif`       : null,
-  ].filter(Boolean) as string[]
 
   // ── Dokumentasi Kelas ────────────────────────────────────────────────
   // Maks 3 kelas x 6 foto. Query dibatasi (LIMIT/range) per kelas - TIDAK
@@ -323,12 +295,9 @@ export default async function InstructorLandingPage({
     heroCtas.push({ href: '#schedules', label: 'Lihat Jadwal', icon: 'calendar_month', primary: true })
   } else if (events.length > 0) {
     heroCtas.push({ href: '#events', label: 'Lihat Event', icon: 'event_upcoming', primary: true })
-  } else {
-    // Tidak ada apa pun untuk ditautkan (WA belum terhubung, belum ada
-    // kelas/event/komunitas) - tetap pastikan ada 1 CTA, dipakai juga oleh
-    // section Trust di bawah (heroCtas[0]).
-    heroCtas.push({ href: '#trust', label: 'Lihat Profil', icon: 'person', primary: true })
   }
+  // Else: belum ada WA/komunitas/kelas/event - profil baru, kosongkan CTA
+  // (kasus ini sudah ditangani EMPTY STATE section di bawah).
 
   const HERO_GRADIENT  = 'linear-gradient(135deg, #FFD1FF 0%, #D1E9FF 100%)'
 
@@ -338,13 +307,13 @@ export default async function InstructorLandingPage({
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
-        className="relative h-[100vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden"
+        className="relative h-dvh flex flex-col items-center justify-start pt-24 md:pt-28 text-center px-4 overflow-hidden"
         style={{ background: HERO_GRADIENT }}
       >
         <div className="relative z-10 flex flex-col items-center">
           {/* Badge */}
           <div
-            className="animate-on-load inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-indigo-700 mb-6 shadow-sm"
+            className="animate-on-load inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-indigo-700 mb-4 shadow-sm"
             style={{ animationDelay: '0ms' }}
           >
             <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
@@ -352,23 +321,34 @@ export default async function InstructorLandingPage({
           </div>
 
           {/* Photo */}
-          <div className="animate-on-load relative mb-8 group" style={{ animationDelay: '120ms' }}>
+          <div className="animate-on-load relative mb-5 group" style={{ animationDelay: '120ms' }}>
             <div className="absolute inset-0 bg-indigo-400/20 rounded-full blur-3xl group-hover:bg-pink-400/30 transition-all duration-500" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={profile.photo_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(studio)}&size=256&background=4f46e5&color=fff&bold=true`}
               alt={studio}
-              className="w-48 h-48 md:w-64 md:h-64 rounded-full object-cover border-4 border-white shadow-2xl relative z-10"
+              className="w-44 h-44 md:w-72 md:h-72 rounded-full object-cover border-4 border-white shadow-2xl relative z-10"
             />
           </div>
 
           {/* Name */}
           <h1
-            className="animate-on-load font-montserrat uppercase text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-on-surface mb-6 leading-tight tracking-tight break-words max-w-[90vw] text-center"
+            className="animate-on-load font-montserrat uppercase text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extralight text-on-surface mb-2 leading-tight tracking-tight break-words max-w-[90vw] text-center"
             style={{ animationDelay: '240ms' }}
           >
             {profile.name}
           </h1>
+
+          {/* Tagline - bio singkat, dipindah dari Trust section (dihapus
+              2026-06-26, isinya redundan dengan hero ini). */}
+          {profile.bio && (
+            <p
+              className="animate-on-load text-sm font-semibold text-on-surface/70 leading-snug tracking-normal max-w-xs sm:max-w-sm mb-8"
+              style={{ animationDelay: '300ms' }}
+            >
+              {profile.bio}
+            </p>
+          )}
 
           {/* CTA - satu arah utama (primary), sisanya sekunder. Primary
               mengikuti konten yang tersedia (lihat heroCtas di atas). */}
@@ -397,58 +377,23 @@ export default async function InstructorLandingPage({
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-          <span className="material-symbols-outlined text-on-surface/30">keyboard_double_arrow_down</span>
-        </div>
+        {/* Scroll indicator - sekarang satu-satunya petunjuk ke jadwal/event
+            di bawah hero (tombol "Lihat Jadwal"/"Lihat Event" sudah dihapus
+            dari CTA, lihat heroCtas di atas), jadi dikasih label biar tidak
+            ambigu cuma panah doang. */}
+        <a
+          href="#schedules"
+          className="absolute bottom-6 inset-x-0 flex flex-col items-center gap-1 animate-bounce text-on-surface/40 hover:text-on-surface/70 transition-colors"
+        >
+          <span className="text-xs font-semibold uppercase tracking-widest">Lihat Jadwal</span>
+          <span className="material-symbols-outlined">keyboard_double_arrow_down</span>
+        </a>
       </section>
 
-      {/* ── TRUST SECTION (M9) ──────────────────────────────────────────────
-          Humanize the coach, bukan dashboard statistik - foto kecil sejajar
-          nama (bukan stacked-center seperti hero, biar tidak terasa seperti
-          hero kedua), bio (dipindah dari hero), proof point seadanya. */}
-      <section className="py-20 px-4 bg-white" id="trust">
-        <div className="max-w-xl mx-auto">
-          <div className="flex items-center gap-4 mb-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={profile.photo_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(studio)}&size=128&background=4f46e5&color=fff&bold=true`}
-              alt={profile.name}
-              className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-md shrink-0"
-            />
-            <div>
-              <p className="font-montserrat text-2xl font-bold text-on-surface">{profile.name}</p>
-              {specialtyText && (
-                <p className="text-sm text-violet-600 font-semibold">Instruktur {specialtyText}</p>
-              )}
-            </div>
-          </div>
-
-          {profile.bio && (
-            <p className="text-base text-on-surface-variant leading-relaxed mb-6">{profile.bio}</p>
-          )}
-
-          {trustProofs.length > 0 && (
-            <ul className="space-y-3 mb-8">
-              {trustProofs.map(p => (
-                <li key={p} className="flex items-center gap-2.5 text-base text-on-surface-variant">
-                  <span className="material-symbols-outlined text-lg text-emerald-500">check_circle</span>
-                  {p}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <a
-            href={heroCtas[0].href}
-            {...(heroCtas[0].external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-            className="inline-flex items-center gap-2 bg-indigo-700 text-white px-8 py-3.5 rounded-full font-bold shadow-md hover:scale-105 active:scale-95 transition-all"
-          >
-            <span className="material-symbols-outlined">{heroCtas[0].icon}</span>
-            {heroCtas[0].label}
-          </a>
-        </div>
-      </section>
+      {/* Trust section (nama/foto kecil, specialty, bio, proof bullets, CTA
+          kedua) dihapus 2026-06-26 - isinya cuma mengulang hero (keputusan
+          eksplisit user, lihat screenshot pembanding). Hero di atas sekarang
+          satu-satunya tempat info instruktur ditampilkan. */}
 
       {/* ── EMPTY STATE — instruktur baru, belum ada kelas/event ──────────── */}
       {!hasContent && (

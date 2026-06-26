@@ -22,13 +22,28 @@ function pad(n: number) {
 
 export function EventCountdown({ eventDate, startTime }: Props) {
   const target = new Date(`${eventDate}T${startTime}`)
-  const [remaining, setRemaining] = useState(() => getRemaining(target))
+  // Mulai dari `undefined` (belum dihitung), BUKAN getRemaining(target) -
+  // Date.now() di server (saat SSR) dan di client (saat hydrate) beda
+  // beberapa detik, jadi kalau dihitung langsung di initial state, server
+  // dan client render angka yang berbeda -> hydration mismatch. Placeholder
+  // yang sama di kedua sisi, baru dihitung ulang via useEffect (client-only).
+  const [remaining, setRemaining] = useState<ReturnType<typeof getRemaining> | undefined>(undefined)
 
   useEffect(() => {
+    setRemaining(getRemaining(target))
     const interval = setInterval(() => setRemaining(getRemaining(target)), 1000)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventDate, startTime])
+
+  if (remaining === undefined) {
+    return (
+      <div className="bg-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 tabular-nums">
+        <span className="material-symbols-outlined text-sm">timer</span>
+        --:--:--
+      </div>
+    )
+  }
 
   if (!remaining) {
     return (
