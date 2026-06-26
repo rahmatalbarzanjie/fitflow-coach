@@ -24,6 +24,18 @@ function nextOccurrence(dayOfWeek: number, from: Date) {
   return d.toISOString().split('T')[0]
 }
 
+// Format jeda waktu untuk konteks AI ("2 jam", "45 menit") - dipakai supaya
+// bot sadar kalau balasan terakhirnya sudah lama, bukan baru saja, jadi
+// tidak asal lanjutkan tawaran/topik basi (lihat isFreshThread & ack
+// fast-path di bawah).
+function formatElapsed(minutes: number): string {
+  if (minutes < 1) return 'kurang dari 1 menit'
+  if (minutes < 60) return `${Math.round(minutes)} menit`
+  const hours = minutes / 60
+  if (hours < 24) return `${Math.round(hours)} jam`
+  return `${Math.round(hours / 24)} hari`
+}
+
 type ClassType = 'poundfit' | 'barre' | 'zumba' | 'yoga' | 'pilates' | 'aerobic' | 'other'
 
 // Niat lintas-komunitas selalu menang - kalau pesan menyebut tipe kelas lain
@@ -87,10 +99,15 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ ok: false })
 
-  const { device, sender, message, name: senderName, instructor_id, id: fonnteMessageId } = body
+  const { device, sender, message: rawMessage, name: senderName, instructor_id, id: fonnteMessageId } = body
 
   // Abaikan jika tidak ada pesan teks
-  if (!message || typeof message !== 'string') return NextResponse.json({ ok: true })
+  if (!rawMessage || typeof rawMessage !== 'string') return NextResponse.json({ ok: true })
+
+  // `message` di-reassign nanti kalau pesan ini bagian dari burst beruntun
+  // yang digabung (lihat blok debounce di bawah) - lihat juga komentar di
+  // formatElapsed soal alasan kenapa ini perlu jadi `let`, bukan `const`.
+  let message: string = rawMessage
 
   const supabase = createServiceClient()
 
@@ -363,6 +380,53 @@ CARA MENJAWAB:
     return sendAdminReply(prospectReply)
   }
 
+  // ── Debounce pesan beruntun ──────────────────────────────────────────────
+  // Peserta WA sering kirim beberapa pesan pendek berturutan (mis. "kak"
+  // lalu 2 detik kemudian "ada kelas yoga besok?") - tanpa ini, bot membalas
+  // ke pesan PERTAMA yang belum lengkap, kelihatan motong omongan. Trik:
+  // tiap pesan masuk dicatat ke wa_message_buffer SEGERA, invocation ini
+  // tunggu DEBOUNCE_MS. Kalau selama nunggu muncul pesan lebih baru dari
+  // sender yang sama, invocation ini "kalah" - berhenti tanpa balas (biar
+  // invocation milik pesan TERBARU yang menang dan gabungkan semua pesan
+  // yang masih menumpuk jadi satu giliran percakapan sebelum diproses).
+  const DEBOUNCE_MS = 3000
+  const senderPhoneKey = normalizePhone(cleanSender)
+
+  const { data: bufferedRow } = await supabase
+    .from('wa_message_buffer')
+    .insert({ user_id: instructorProfile.id, phone: senderPhoneKey, message: rawMessage })
+    .select('id, created_at')
+    .single()
+
+  if (bufferedRow) {
+    await new Promise(resolve => setTimeout(resolve, DEBOUNCE_MS))
+
+    const { count: newerCount } = await supabase
+      .from('wa_message_buffer')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', instructorProfile.id)
+      .eq('phone', senderPhoneKey)
+      .gt('created_at', bufferedRow.created_at)
+
+    if ((newerCount ?? 0) > 0) {
+      // Bukan invocation terbaru - pesan yang lebih baru akan menggabungkan
+      // (termasuk pesan ini) dan membalas sekali untuk semuanya.
+      return NextResponse.json({ ok: true, debounced: true })
+    }
+
+    const { data: pending } = await supabase
+      .from('wa_message_buffer')
+      .select('id, message')
+      .eq('user_id', instructorProfile.id)
+      .eq('phone', senderPhoneKey)
+      .order('created_at', { ascending: true })
+
+    if (pending && pending.length > 0) {
+      message = pending.map(p => p.message).join('\n')
+      await supabase.from('wa_message_buffer').delete().in('id', pending.map(p => p.id))
+    }
+  }
+
   const today = new Date().toISOString().split('T')[0]
 
   // ── Sender Resolution + Multi-Community Context ───────────────────────────
@@ -494,15 +558,50 @@ CARA MENJAWAB:
     .join('\n')
 
   // ── Riwayat percakapan thread ini (instruktur + nomor pengirim) ────────────
-  const senderPhoneKey = normalizePhone(cleanSender)
+  // senderPhoneKey sudah dihitung di blok debounce di atas - dipakai ulang
+  // di sini supaya konsisten dengan kunci yang dipakai wa_message_buffer.
   const { data: historyRows } = await supabase
     .from('wa_conversations')
-    .select('role, message')
+    .select('role, message, created_at')
     .eq('user_id', instructorProfile.id)
     .eq('phone', senderPhoneKey)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT)
   const history = (historyRows ?? []).reverse()
+
+  // ── Kesadaran waktu sejak balasan terakhir ──────────────────────────────
+  // Tanpa ini, bot tidak bisa beda-bedakan "ok" yang datang 10 detik vs 2
+  // jam setelah tawaran terakhirnya - keduanya kelihatan identik di riwayat
+  // teks polos. minutesSinceLast dipakai utk 2 hal: (1) fast-path balasan
+  // penutup singkat di bawah, (2) konteks tambahan di system prompt Claude
+  // supaya AI sendiri yang menilai kasus-kasus di luar pola regex yang jelas.
+  const lastHistoryMsg = history[history.length - 1] as { role: string; message: string; created_at: string } | undefined
+  const minutesSinceLast = lastHistoryMsg
+    ? (now.getTime() - new Date(lastHistoryMsg.created_at).getTime()) / 60000
+    : null
+
+  // "Obrolan baru" = belum pernah chat sama sekali, ATAU jeda dari balasan
+  // terakhir sudah lama - dipakai supaya bot tidak menyapa "Halo Kak!"
+  // berulang-ulang di setiap balasan saat obrolan masih berjalan terus
+  // (jadwal → harga → lokasi beruntun), yang kelihatan robotic dibanding
+  // obrolan manusia asli yang cuma menyapa sekali di awal.
+  const GREET_RESET_MINUTES = 45
+  const isFreshThread = history.length === 0 || (minutesSinceLast !== null && minutesSinceLast > GREET_RESET_MINUTES)
+  const greetPrefix = isFreshThread ? `Halo ${greetName}! ` : ''
+
+  // ── Fast-path: balasan penutup singkat ("ok"/"oke"/"sip"/"makasih" dst) ──
+  // Tanpa cek jeda waktu, balasan penutup yang datang lama setelah tawaran
+  // terakhir bisa disalahartikan sebagai konfirmasi tawaran BASI itu (lihat
+  // kasus nyata: peserta jawab "ok" 1.5 jam setelah bot menawarkan event,
+  // bot malah kirim ulang link & info seolah baru saja ditawarkan). Kalau
+  // jeda sudah lewat ACK_STALE_MINUTES, anggap ini cuma penutup obrolan -
+  // balas singkat, JANGAN lanjut ke Claude (yang masih bisa "tergoda"
+  // melanjutkan konteks lama).
+  const ACK_STALE_MINUTES = 15
+  const isShortAck = /^(ok(e|ay)?|s?iap|baik|noted|makasih|terima\s*kasih|thanks?|trims?|sip)(\s+kaka?)?[\s!.,🙏👍😊]*$/iu.test(message.trim())
+  if (isShortAck && minutesSinceLast !== null && minutesSinceLast > ACK_STALE_MINUTES) {
+    return sendFastReply(`Siap, ${greetName} 🙏`)
+  }
 
   function formatClassLine(c: any) {
     const price = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
@@ -630,7 +729,7 @@ CARA MENJAWAB:
       : (asksToday ? '- (tidak ada kelas hari ini)' : '- (belum ada kelas terdaftar)')
 
     const fastReply =
-      `Halo ${greetName}! 👋 ${asksToday ? `Jadwal hari ini (${todayLabel}):` : `Ini jadwal kelas di *${studioName}*:`}\n\n${scopedLines}` +
+      `${greetPrefix}👋 ${asksToday ? `Jadwal hari ini (${todayLabel}):` : `Ini jadwal kelas di *${studioName}*:`}\n\n${scopedLines}` +
       (!asksToday && events && events.length > 0 ? `\n\nEvent mendatang:\n\n${eventLines}` : '') +
       `\n\nMau daftar kelas/event yang mana, Kak? Tinggal sebutin aja ya 😊`
 
@@ -642,7 +741,7 @@ CARA MENJAWAB:
     const lines = finalScopedClasses
       .map((c: any) => `- *${c.name}*: ${Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'}`)
       .join('\n') || '- (belum ada info harga)'
-    return sendFastReply(`Halo ${greetName}! 💰 Ini info harganya:\n\n${lines}\n\nMau daftar yang mana, Kak? 😊`)
+    return sendFastReply(`${greetPrefix}💰 Ini info harganya:\n\n${lines}\n\nMau daftar yang mana, Kak? 😊`)
   }
 
   // ── Fast-path: lokasi ────────────────────────────────────────────────────
@@ -650,7 +749,7 @@ CARA MENJAWAB:
     const lines = finalScopedClasses
       .map((c: any) => `- *${c.name}*: ${c.location ?? '(lokasi belum diisi)'}${c.google_maps_url ? `\n  ${c.google_maps_url}` : ''}`)
       .join('\n') || '- (belum ada info lokasi)'
-    return sendFastReply(`Halo ${greetName}! 📍 Ini lokasinya:\n\n${lines}`)
+    return sendFastReply(`${greetPrefix}📍 Ini lokasinya:\n\n${lines}`)
   }
 
   // ── Fast-path: link komunitas ───────────────────────────────────────────
@@ -670,21 +769,21 @@ CARA MENJAWAB:
     const matched = effectiveClassType ? list.find((b: any) => b.type === effectiveClassType) : null
 
     if (matched) {
-      return sendFastReply(`Halo ${greetName}! 🙌 Yuk gabung komunitas kita, klik link ini ya:\n${matched.wa_invite_link}`)
+      return sendFastReply(`${greetPrefix}🙌 Yuk gabung komunitas kita, klik link ini ya:\n${matched.wa_invite_link}`)
     } else if (list.length === 1) {
-      return sendFastReply(`Halo ${greetName}! 🙌 Yuk gabung komunitas kita, klik link ini ya:\n${(list[0] as any).wa_invite_link}`)
+      return sendFastReply(`${greetPrefix}🙌 Yuk gabung komunitas kita, klik link ini ya:\n${(list[0] as any).wa_invite_link}`)
     } else if (list.length > 1) {
       const lines = list.map((b: any) =>
         `- ${CLASS_TYPES.find(t => t.value === b.type)?.label ?? b.type}: ${b.wa_invite_link}`
       ).join('\n')
-      return sendFastReply(`Halo ${greetName}! 🙌 Kita punya beberapa komunitas, pilih sesuai kelasmu ya:\n\n${lines}`)
+      return sendFastReply(`${greetPrefix}🙌 Kita punya beberapa komunitas, pilih sesuai kelasmu ya:\n\n${lines}`)
     }
     // list.length === 0 → belum ada link dikonfigurasi sama sekali, lanjut ke Claude (perilaku lama).
   }
 
   // ── Fast-path: event terdekat ────────────────────────────────────────────
   if (/event apa|ada\s*event|event\s*(terdekat|mendatang)/i.test(message)) {
-    return sendFastReply(`Halo ${greetName}! 🎉 Ini event mendatang:\n\n${eventLines}`)
+    return sendFastReply(`${greetPrefix}🎉 Ini event mendatang:\n\n${eventLines}`)
   }
 
   // ── Handover ke instruktur ───────────────────────────────────────────────
@@ -713,6 +812,7 @@ INFORMASI STUDIO:
 - Instruktur: ${instructorProfile.name}
 - Hari ini: ${todayLabel}
 - Halaman publik: ${appUrl}/${slug}
+- Status obrolan: ${isFreshThread ? 'AWAL OBROLAN BARU (belum pernah chat, atau sudah lama tidak chat)' : `LANJUTAN OBROLAN YANG MASIH BERJALAN (balasanmu terakhir ke peserta ini ${formatElapsed(minutesSinceLast ?? 0)} yang lalu)`}
 
 JADWAL KELAS RUTIN:
 ${classLines}
@@ -726,6 +826,8 @@ ${titleLines}
 
 CARA MENJAWAB:
 - WAJIB selalu panggil orang yang chat dengan sebutan "Kak" - contoh: "Halo ${greetName}!", "Boleh, Kak!", "Siap, Kak 😊". Jangan pernah panggil nama tanpa "Kak" di depannya
+- Soal sapaan "Halo Kak ...!" di awal balasan: HANYA pakai kalau status obrolan di atas "AWAL OBROLAN BARU". Kalau statusnya "LANJUTAN OBROLAN YANG MASIH BERJALAN", JANGAN sapa "Halo Kak!" lagi - langsung ke isi jawaban, supaya tidak kelihatan seperti mengulang skrip robot di setiap balasan
+- Kalau status "LANJUTAN OBROLAN" TAPI jeda yang disebutkan di atas sudah cukup lama (lebih dari sekitar 30 menit) dan peserta cuma membalas singkat tanpa pertanyaan baru (mis. "ok", "sip", "noted", "boleh", emoji jempol) - JANGAN otomatis melanjutkan atau mengulang tawaran/info/link dari balasanmu sebelumnya. Anggap obrolan sebelumnya sudah selesai, balas santai dan singkat saja tanpa mengulang apa pun yang sudah kamu kirim
 - Selalu bersikap suportif, hangat, dan memotivasi - buat orang yang chat merasa dihargai dan disambut baik, bukan dilayani robot
 - Gunakan Bahasa Indonesia yang ramah dan santai, emoji secukupnya
 - Jawaban ringkas (idealnya 3-5 kalimat), TAPI kalau ada lebih dari satu topik/konteks dalam satu balasan, pisah jadi paragraf baru (baris kosong) per topik - jangan ditumpuk jadi satu paragraf panjang, supaya nyaman dibaca di WhatsApp

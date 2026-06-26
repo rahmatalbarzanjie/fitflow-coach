@@ -1737,6 +1737,30 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_message_buffer: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          phone: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          phone: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          phone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wa_webhook_log: {
         Row: {
           fonnte_message_id: string
