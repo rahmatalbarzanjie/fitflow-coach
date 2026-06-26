@@ -571,7 +571,12 @@ export default async function InstructorLandingPage({
                           <p className={`text-sm flex items-center gap-1.5 mb-1 ${cfg.dayText}`}>
                             <span className="material-symbols-outlined text-base">schedule</span>
                             {reschedSess
-                              ? <>{formatTime(reschedSess.start_time)} – {formatTime(reschedSess.end_time)} <span className="text-on-surface-variant/50 line-through text-xs">{formatTime(cls.start_time)}</span></>
+                              ? <>
+                                  {formatTime(reschedSess.start_time)} – {formatTime(reschedSess.end_time)}
+                                  {formatTime(reschedSess.start_time) !== formatTime(cls.start_time) && (
+                                    <span className="text-on-surface-variant/50 line-through text-xs"> {formatTime(cls.start_time)}</span>
+                                  )}
+                                </>
                               : <>{formatTime(cls.start_time)} – {formatTime(cls.end_time)}</>
                             }
                           </p>

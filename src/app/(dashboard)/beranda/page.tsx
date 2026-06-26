@@ -132,12 +132,13 @@ export default async function BerandaPage() {
   const memberNew       = summary.member_new ?? 0
   const revenueMonth    = Number(summary.revenue_month ?? 0)
   const pendingEvents   = (summary.pending_events ?? []) as { id: string; title: string; count: number }[]
+  const pendingClasses  = (summary.pending_classes ?? []) as { id: string; name: string; count: number }[]
 
   // Kelas hari ini
   const todayClasses  = classes.filter(c => c.day_of_week === todayDow)
   const sessMap       = new Map(todaySessions.map((s: any) => [s.class_id, s]))
 
-  const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0 || invitationsPending > 0
+  const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0 || pendingClasses.length > 0 || invitationsPending > 0
 
   console.timeEnd('page:/beranda')
 
@@ -274,6 +275,21 @@ export default async function BerandaPage() {
                       {pe.count} peserta menunggu konfirmasi
                     </p>
                     <p className="text-xs text-gray-400 truncate">{pe.title}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                </Link>
+              ))}
+              {pendingClasses.map(pc => (
+                <Link key={pc.id} href={`/classes/${pc.id}/registrations?status=pending`}
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {pc.count} peserta menunggu konfirmasi
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">{pc.name}</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                 </Link>
