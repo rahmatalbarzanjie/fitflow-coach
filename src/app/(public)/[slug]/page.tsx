@@ -307,24 +307,27 @@ export default async function InstructorLandingPage({
   }
   const eventDocPhotos = eventDocs.flatMap(d => d.photos)
 
-  // Hero CTA: satu arah utama (primary), bukan beberapa tombol besar
-  // berdampingan. Primary mengikuti tujuan utama halaman - kalau sudah ada
-  // jadwal aktif, dorong peserta lihat jadwal dulu, baru tawarkan event/WA
-  // sebagai opsi sekunder. WA cuma jadi primary kalau memang belum ada
-  // jadwal maupun event untuk ditampilkan.
+  // Hero CTA: SATU tombol saja (keputusan eksplisit user, 2026-06-26) -
+  // hero sudah punya scroll-hint di bawah yang mengarahkan ke jadwal/event,
+  // jadi tombol "Lihat Jadwal"/"Lihat Event" jadi redundan dan bentrok
+  // pesannya dengan scroll-hint. WA jadi satu-satunya aksi karena itu satu-
+  // satunya hal yang TIDAK bisa dicapai lewat scroll (kontak langsung).
+  // Fallback kalau WA belum terhubung: komunitas (juga aksi, bukan navigasi).
   type HeroCta = { href: string; label: string; icon: string; primary: boolean; external?: boolean }
   const heroCtas: HeroCta[] = []
-  if (classGroups.length > 0) {
+  if (waNumber) {
+    heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: true, external: true })
+  } else if (communityGroups.length > 0) {
+    heroCtas.push({ href: '#benefits', label: 'Gabung Komunitas', icon: 'groups', primary: true })
+  } else if (classGroups.length > 0) {
     heroCtas.push({ href: '#schedules', label: 'Lihat Jadwal', icon: 'calendar_month', primary: true })
-    if (events.length > 0) heroCtas.push({ href: '#events', label: 'Lihat Event', icon: 'event_upcoming', primary: false })
-    if (waNumber) heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: false, external: true })
   } else if (events.length > 0) {
     heroCtas.push({ href: '#events', label: 'Lihat Event', icon: 'event_upcoming', primary: true })
-    if (waNumber) heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: false, external: true })
-  } else if (waNumber) {
-    heroCtas.push({ href: `https://wa.me/${waNumber}?text=${waMsg}`, label: 'Chat WhatsApp', icon: 'chat', primary: true, external: true })
   } else {
-    heroCtas.push({ href: '#benefits', label: 'Gabung Komunitas', icon: 'groups', primary: true })
+    // Tidak ada apa pun untuk ditautkan (WA belum terhubung, belum ada
+    // kelas/event/komunitas) - tetap pastikan ada 1 CTA, dipakai juga oleh
+    // section Trust di bawah (heroCtas[0]).
+    heroCtas.push({ href: '#trust', label: 'Lihat Profil', icon: 'person', primary: true })
   }
 
   const HERO_GRADIENT  = 'linear-gradient(135deg, #FFD1FF 0%, #D1E9FF 100%)'
@@ -335,7 +338,7 @@ export default async function InstructorLandingPage({
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
-        className="relative h-[92vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden"
+        className="relative h-[100vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden"
         style={{ background: HERO_GRADIENT }}
       >
         <div className="relative z-10 flex flex-col items-center">
@@ -404,7 +407,7 @@ export default async function InstructorLandingPage({
           Humanize the coach, bukan dashboard statistik - foto kecil sejajar
           nama (bukan stacked-center seperti hero, biar tidak terasa seperti
           hero kedua), bio (dipindah dari hero), proof point seadanya. */}
-      <section className="py-20 px-4 bg-white">
+      <section className="py-20 px-4 bg-white" id="trust">
         <div className="max-w-xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
