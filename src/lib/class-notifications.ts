@@ -8,6 +8,7 @@ interface RescheduleParams {
   newStartTime: string   // HH:MM
   newEndTime:   string
   location:     string
+  reason?:      string | null
 }
 
 interface LocationParams {
@@ -41,7 +42,7 @@ Kelas ${p.className} yang biasanya ${p.originalDay} ${p.originalTime} minggu ini
 
 📅 ${dayNew}, ${dateNew}
 ⏰ ${formatTime(p.newStartTime)} – ${formatTime(p.newEndTime)}
-📍 ${loc} (tetap sama)
+📍 ${loc} (tetap sama)${p.reason ? `\n\nAlasan: ${p.reason}` : ''}
 
 Maaf ya atas perubahannya 🙏
 Sampai ketemu!`

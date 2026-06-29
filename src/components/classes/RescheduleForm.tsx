@@ -39,6 +39,7 @@ export function RescheduleForm({
     className, originalDay, originalTime,
     newDate, newStartTime: newStart, newEndTime: newEnd,
     location: location || 'Lokasi biasa',
+    reason,
   })
 
   async function handleSubmit(e: React.FormEvent) {

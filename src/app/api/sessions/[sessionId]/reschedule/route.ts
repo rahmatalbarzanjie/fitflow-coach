@@ -57,6 +57,7 @@ export async function PATCH(
         newStartTime,
         newEndTime,
         location:     cls.location ?? '',
+        reason,
       })
 
       const { data: broadcast } = await supabase.from('broadcasts').insert({
