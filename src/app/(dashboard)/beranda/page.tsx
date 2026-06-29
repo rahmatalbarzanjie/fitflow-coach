@@ -21,56 +21,67 @@ import { timed } from '@/lib/perf'
  * Pakai service-role client (bukan client per-request) karena unstable_cache
  * bisa menyajikan hasil yang dihitung dari request/sesi lain - keamanan
  * dijaga manual lewat filter .eq('user_id', userId) di setiap query, bukan RLS.
+ *
+ * Tag `beranda-${userId}` per user (bukan tag global statis) - dibungkus
+ * ulang di setiap pemanggilan supaya tag-nya bisa dinamis berisi userId.
+ * Dedup cache tetap jalan normal karena Next.js men-key dari keyParts+args,
+ * bukan dari identitas closure ini. Dipasang supaya mutasi (lihat
+ * src/lib/invalidate-dashboard.ts) bisa membuang cache SATU user lewat
+ * revalidateTag tanpa ikut membuang cache user lain - sebelumnya cache ini
+ * cuma punya TTL 45s tanpa cara dibuang lebih awal sama sekali, itulah akar
+ * bug "Perlu Perhatian" tetap muncul sesaat setelah dikonfirmasi.
  */
-const getCachedBerandaData = unstable_cache(
-  async (userId: string, today: string, monthStart: string) => {
-    const supabase = createServiceClient()
+function getCachedBerandaData(userId: string, today: string, monthStart: string) {
+  return unstable_cache(
+    async (userId: string, today: string, monthStart: string) => {
+      const supabase = createServiceClient()
 
-    const [profileRes, classesRes, atRiskRes, eventsRes, invitationsPendingRes, summaryRes] = await Promise.all([
-      timed('query:/beranda:profile', supabase.from('profiles')
-        .select('name').eq('id', userId).single()),
+      const [profileRes, classesRes, atRiskRes, eventsRes, invitationsPendingRes, summaryRes] = await Promise.all([
+        timed('query:/beranda:profile', supabase.from('profiles')
+          .select('name').eq('id', userId).single()),
 
-      timed('query:/beranda:classes', supabase.from('classes')
-        .select('id, name, type, day_of_week, start_time, end_time, location')
-        .eq('user_id', userId)
-        .order('start_time')),
+        timed('query:/beranda:classes', supabase.from('classes')
+          .select('id, name, type, day_of_week, start_time, end_time, location')
+          .eq('user_id', userId)
+          .order('start_time')),
 
-      timed('query:/beranda:atRisk', supabase.from('members')
-        .select('id, name, last_attended_at')
-        .eq('user_id', userId)
-        .eq('status', 'at_risk')),
+        timed('query:/beranda:atRisk', supabase.from('members')
+          .select('id, name, last_attended_at')
+          .eq('user_id', userId)
+          .eq('status', 'at_risk')),
 
-      timed('query:/beranda:events', supabase.from('events')
-        .select('id, title, event_date, start_time, location')
-        .eq('user_id', userId)
-        .eq('status', 'published')
-        .gte('event_date', today)
-        .order('event_date')
-        .limit(2)),
+        timed('query:/beranda:events', supabase.from('events')
+          .select('id, title, event_date, start_time, location')
+          .eq('user_id', userId)
+          .eq('status', 'published')
+          .gte('event_date', today)
+          .order('event_date')
+          .limit(2)),
 
-      timed<any>('query:/beranda:invitationsPending', (supabase.from('community_invitation_candidates') as any)
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('status', 'pending')),
+        timed<any>('query:/beranda:invitationsPending', (supabase.from('community_invitation_candidates') as any)
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('status', 'pending')),
 
-      timed<any>('query:/beranda:summary', (supabase.rpc as any)('get_dashboard_summary', {
-        p_user_id:     userId,
-        p_month_start: monthStart,
-      })),
-    ])
+        timed<any>('query:/beranda:summary', (supabase.rpc as any)('get_dashboard_summary', {
+          p_user_id:     userId,
+          p_month_start: monthStart,
+        })),
+      ])
 
-    return {
-      instructorName:      profileRes.data?.name ?? null,
-      classes:             (classesRes.data ?? []) as any[],
-      atRiskMembers:       (atRiskRes.data ?? []) as any[],
-      events:              (eventsRes.data ?? []) as any[],
-      invitationsPending:  invitationsPendingRes.count ?? 0,
-      summary:             (summaryRes.data ?? {}) as any,
-    }
-  },
-  ['beranda-cached-data'],
-  { revalidate: 45 }
-)
+      return {
+        instructorName:      profileRes.data?.name ?? null,
+        classes:             (classesRes.data ?? []) as any[],
+        atRiskMembers:       (atRiskRes.data ?? []) as any[],
+        events:              (eventsRes.data ?? []) as any[],
+        invitationsPending:  invitationsPendingRes.count ?? 0,
+        summary:             (summaryRes.data ?? {}) as any,
+      }
+    },
+    ['beranda-cached-data'],
+    { revalidate: 45, tags: [`beranda-${userId}`] }
+  )(userId, today, monthStart)
+}
 
 const TYPE_EMOJI: Record<string, string> = {
   poundfit: '⚡', barre: '🩰', zumba: '💃',

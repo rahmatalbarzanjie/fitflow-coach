@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
@@ -108,6 +109,7 @@ export function ClassEditForm({ cls, paymentProfiles = [], inModal = false, onCl
 
     if (error) { setServerError(error.message); return }
 
+    invalidateDashboardCache()
     if (inModal) {
       onClose?.()
       router.refresh()

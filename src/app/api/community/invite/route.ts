@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 
 /**
  * POST /api/community/invite
@@ -117,5 +118,8 @@ Sampai jumpa di kelas berikutnya 💜`
   }
 
   const successCount = results.filter(r => r.success).length
+  // Status 'invited' mengurangi invitationsPending di cache Beranda -
+  // satu kali setelah loop selesai, bukan per-kandidat.
+  if (successCount > 0) revalidateTag(`beranda-${user.id}`)
   return NextResponse.json({ results, successCount })
 }

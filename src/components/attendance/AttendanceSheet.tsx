@@ -19,6 +19,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { Loader2, CheckCircle2, Circle, UserPlus, X } from 'lucide-react'
 import { formatDateShort, formatTime } from '@/lib/utils'
 
@@ -323,6 +324,11 @@ export function AttendanceSheet({
 
       // Update session status
       await supabase.from('sessions').update({ status: 'completed' }).eq('id', session.id)
+
+      // Absensi memengaruhi attendance_month/atRiskMembers di cache Beranda -
+      // satu invalidasi di sini sudah cukup, candidate komunitas di bawah ikut
+      // tag yang sama (sama-sama bagian dari getCachedBerandaData).
+      invalidateDashboardCache()
 
       // Absensi sukses — tampilkan toast dulu
       setToast(`✓ ${hadirCount} orang hadir tersimpan`)

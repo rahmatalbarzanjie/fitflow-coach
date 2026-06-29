@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { CheckCircle, Upload, Loader2, Phone, ArrowLeft } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { resizeAndCompressImage, ImageValidationError } from '@/lib/image-utils'
@@ -122,6 +123,12 @@ export function RegistrationForm({
     }).catch(() => {
       // notifikasi WA gagal tidak perlu blokir UI
     })
+
+    // Registrasi baru (biasanya pending) harus langsung muncul di "Perlu
+    // Perhatian" instruktur, bukan menunggu TTL cache Beranda - peserta
+    // di sini belum login, jadi pakai eventId supaya route bisa cari
+    // pemiliknya sendiri.
+    invalidateDashboardCache({ eventId })
 
     setSuccess(true)
     setSubmitting(false)

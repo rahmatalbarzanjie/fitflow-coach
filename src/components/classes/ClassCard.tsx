@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MapPin, Clock, Users, CheckSquare, MoreVertical, Trash2, X, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { getDayName, formatTime, formatRupiah } from '@/lib/utils'
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -63,6 +64,7 @@ export function ClassCard({ cls, isToday, attendCount, sessionDate, typeLabel }:
   async function handleDelete() {
     setDeleting(true)
     await (supabase.from('classes') as any).delete().eq('id', cls.id)
+    invalidateDashboardCache()
     router.refresh()
   }
 

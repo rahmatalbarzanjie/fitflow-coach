@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { MoreHorizontal, Pencil, Trash2, X, Loader2, CalendarDays } from 'lucide-react'
 import { ClassEditForm } from '@/components/classes/ClassEditForm'
 import { ClassScheduleManager } from '@/app/(dashboard)/classes/[id]/ClassScheduleManager'
@@ -124,6 +125,7 @@ function DeleteModal({ cls, onClose }: { cls: Cls; onClose: () => void }) {
   async function handleDelete() {
     setLoading(true)
     await (supabase.from('classes') as any).delete().eq('id', cls.id)
+    invalidateDashboardCache()
     onClose()
     router.push('/classes')
     router.refresh()

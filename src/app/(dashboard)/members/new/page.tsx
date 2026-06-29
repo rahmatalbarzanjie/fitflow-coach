@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Camera, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { z } from 'zod'
 
@@ -64,6 +65,7 @@ export default function NewMemberPage() {
       }
     }
 
+    invalidateDashboardCache()
     router.push('/members')
     // refresh dipanggil setelah push agar data server ter-update
     setTimeout(() => router.refresh(), 100)

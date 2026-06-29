@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle, XCircle, UserPlus, Loader2, Send, Trash2, Ban } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 
 interface Props {
   registrationId: string
@@ -80,6 +81,7 @@ export function RegistrationActions({
     } else {
       // Kirim notif WA ke peserta (fire and forget)
       notifyRegistrant(registrationId, 'confirm').then(() => setNotifSent('confirm'))
+      invalidateDashboardCache()
       router.refresh()
       onSuccess?.()
     }
@@ -98,6 +100,7 @@ export function RegistrationActions({
       // Kirim notif WA ke peserta
       notifyRegistrant(registrationId, 'reject', rejectNote || undefined).then(() => setNotifSent('reject'))
       setRejecting(false)
+      invalidateDashboardCache()
       router.refresh()
       onSuccess?.()
     }
@@ -115,6 +118,7 @@ export function RegistrationActions({
     } else {
       notifyRegistrant(registrationId, 'cancel', undefined, wasConfirmed).then(() => setNotifSent('cancel'))
       setConfirmingCancel(false)
+      invalidateDashboardCache()
       router.refresh()
       onSuccess?.()
     }
@@ -152,6 +156,7 @@ export function RegistrationActions({
       setError(inviteErr.message)
     } else {
       notifyRegistrant(registrationId, 'invite').then(() => setNotifSent('invite'))
+      invalidateDashboardCache()
       router.refresh()
       onSuccess?.()
     }
@@ -169,6 +174,7 @@ export function RegistrationActions({
       setError(err.message)
       setDeleting(false)
     } else {
+      invalidateDashboardCache()
       router.refresh()
     }
   }

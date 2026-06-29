@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { eventSchema, type EventFormData } from '@/lib/validations/event'
 import { Upload, X, Loader2 } from 'lucide-react'
 
@@ -124,6 +125,7 @@ export function EventEditForm({ ev }: Props) {
       setErr(error.code === '23505' ? 'Slug sudah dipakai.' : error.message)
       return
     }
+    invalidateDashboardCache()
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }

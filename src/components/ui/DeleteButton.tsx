@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { Trash2 } from 'lucide-react'
 
 interface Props {
@@ -21,6 +22,10 @@ export function DeleteButton({ table, id, redirectTo, confirmText }: Props) {
   async function handleDelete() {
     setDeleting(true)
     await supabase.from(table).delete().eq('id', id)
+    // Selalu invalidasi - overhead-nya kecil dan tabel yang dipakai
+    // komponen ini (events/members/classes) semua memengaruhi cache
+    // Beranda, jadi lebih aman default invalidate daripada gating per-tabel.
+    invalidateDashboardCache()
     router.push(redirectTo)
     router.refresh()
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { formatRupiah, formatDateShort } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 
@@ -109,6 +110,7 @@ export function AssignPackageForm({ memberId, userId, packages, activeMembership
         p_start_date:     startDate,
       })
       if (rpcErr) { setError(rpcErr.message); setSubmitting(false); return }
+      invalidateDashboardCache()
       router.push(`/members/${memberId}/membership`)
       router.refresh()
       return
@@ -138,6 +140,7 @@ export function AssignPackageForm({ memberId, userId, packages, activeMembership
 
     if (insertErr) { setError(insertErr.message); setSubmitting(false); return }
 
+    invalidateDashboardCache()
     router.push(`/members/${memberId}/membership`)
     router.refresh()
   }

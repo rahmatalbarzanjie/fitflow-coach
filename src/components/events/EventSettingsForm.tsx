@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { eventSchema, type EventFormData } from '@/lib/validations/event'
@@ -66,6 +67,7 @@ export function EventSettingsForm({ ev, hasRegistrations, paymentProfiles = [] }
   async function saveStatus() {
     setSavingStatus(true)
     await supabase.from('events').update({ status: statusValue }).eq('id', id)
+    invalidateDashboardCache()
     setSavingStatus(false)
     setStatusSaved(true)
     setTimeout(() => setStatusSaved(false), 2000)
@@ -120,6 +122,7 @@ export function EventSettingsForm({ ev, hasRegistrations, paymentProfiles = [] }
       setServerError(error.code === '23505' ? 'Slug sudah dipakai.' : error.message)
       return
     }
+    invalidateDashboardCache()
     router.push(`/events/${id}`)
     router.refresh()
   }
@@ -127,6 +130,7 @@ export function EventSettingsForm({ ev, hasRegistrations, paymentProfiles = [] }
   async function handleDelete() {
     setDeleting(true)
     await supabase.from('events').delete().eq('id', id)
+    invalidateDashboardCache()
     router.push('/events')
     router.refresh()
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { CheckCircle, Upload, Loader2, Phone, Banknote, Landmark, ArrowLeft } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { PaymentMethodsDisplay } from './PaymentMethodsDisplay'
@@ -129,6 +130,10 @@ export function ClassRegistrationForm({
     }).catch(() => {
       // notifikasi WA gagal tidak perlu blokir UI
     })
+
+    // Sama seperti registrasi event - peserta belum login, kirim classId
+    // supaya cache Beranda instruktur yang benar bisa ditemukan & dibuang.
+    invalidateDashboardCache({ classId })
 
     setSuccess(true)
     setSubmitting(false)

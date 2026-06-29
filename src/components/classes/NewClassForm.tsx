@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Upload, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { classSchema, type ClassFormData } from '@/lib/validations/class'
 import { CLASS_TYPES } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
@@ -106,6 +107,7 @@ export function NewClassForm({ paymentProfiles = [] }: Props) {
       p_days_ahead: 56,
     })
 
+    invalidateDashboardCache()
     router.push('/classes')
     router.refresh()
   }

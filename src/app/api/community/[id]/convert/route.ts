@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(
@@ -38,6 +39,10 @@ export async function POST(
     .from('community_contacts')
     .update({ converted_member_id: member.id })
     .eq('id', id)
+
+  // Member baru memengaruhi member_new di cache Beranda - sudah di server,
+  // langsung revalidateTag tanpa perlu lewat fetch helper.
+  revalidateTag(`beranda-${user.id}`)
 
   return NextResponse.json({ ok: true, memberId: member.id })
 }

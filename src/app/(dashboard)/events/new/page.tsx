@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Upload, X, ToggleLeft, ToggleRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
 import { eventSchema, type EventFormData, toSlug } from '@/lib/validations/event'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Time24Input } from '@/components/ui/Time24Input'
@@ -111,6 +112,7 @@ export default function NewEventPage() {
 
     if (coverFile) await uploadCover(ev.id, coverFile)
 
+    invalidateDashboardCache()
     router.push('/events')
     router.refresh()
   }
