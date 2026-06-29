@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
   // karena memanggil user!.id padahal user-nya null.
   const RESERVED_TOP_SEGMENTS = new Set([
     'admin', 'beranda', 'broadcasts', 'classes', 'community', 'content',
-    'events', 'members', 'packages', 'settings', 'expired',
+    'events', 'laporan', 'members', 'packages', 'settings', 'expired',
   ])
   const topSegmentMatch = path.match(/^\/([^/]+)$/)
   const isReservedTopSegment = !!topSegmentMatch && RESERVED_TOP_SEGMENTS.has(topSegmentMatch[1])
