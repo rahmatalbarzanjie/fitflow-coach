@@ -143,7 +143,7 @@ export default async function BerandaPage() {
   console.timeEnd('page:/beranda')
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
 
       {/* ── Salam ── */}
       <div className="mb-5">

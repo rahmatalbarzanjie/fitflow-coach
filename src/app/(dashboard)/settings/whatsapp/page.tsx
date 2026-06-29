@@ -38,7 +38,7 @@ export default async function SettingsWhatsAppPage() {
   const hasToken     = !!(profile.fonnte_token?.trim())
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/settings" title="WhatsApp" />
 
       {/* Status card */}

@@ -85,7 +85,7 @@ export default async function AttendancePage({
   const subtitle = `${formatDateShort(date)} · ${formatTime(cls.start_time)}–${formatTime(cls.end_time)}`
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-2xl mx-auto">
       <div className="px-4 pt-4">
         <PageHeader
           backHref={`/classes/${id}`}

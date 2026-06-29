@@ -23,7 +23,7 @@ export default async function BroadcastSettingsPage({
   const sentCount = ((recipientsRes.data ?? []) as { status: string }[]).filter(r => r.status === 'sent').length
 
   return (
-    <div className="w-full max-w-lg mx-auto pb-10">
+    <div className="w-full max-w-2xl mx-auto pb-10">
       <PageHeader
         backHref={`/broadcasts/${id}`}
         title="Pengaturan Broadcast"

@@ -51,7 +51,7 @@ export default async function SettingsPage({
   const subStatus   = getSubscriptionLabel(profile?.subscription_status ?? 'trial', profile?.trial_expires_at ?? null)
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader title="Pengaturan" />
 
       {welcome === '1' && (

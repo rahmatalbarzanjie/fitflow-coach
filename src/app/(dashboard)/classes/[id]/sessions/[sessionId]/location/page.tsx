@@ -23,7 +23,7 @@ export default async function ChangeSessionLocationPage({
   const backHref = `/classes/${id}/sessions/${sessionId}`
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader
         backHref={backHref}
         title="Ubah Lokasi Sesi"

@@ -36,7 +36,7 @@ export default async function PaymentProfileDetailPage({
   const eventCount = usage.events.length
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/payment-profiles" title={profile.name} />
 
       <SectionList label="Nama & Status">

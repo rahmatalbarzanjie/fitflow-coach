@@ -13,7 +13,7 @@ export default async function SettingsTestimonialsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/settings" title="Testimoni" subtitle="Tampil di halaman publikmu" />
       <TestimonialsManager initialTestimonials={(testimonials ?? []) as any} />
     </div>

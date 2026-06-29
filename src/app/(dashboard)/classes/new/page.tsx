@@ -17,7 +17,7 @@ export default async function NewClassPage() {
     const waLink   = adminWA ? `https://wa.me/${adminWA.replace(/\D/g, '')}?text=${waMsg}` : null
 
     return (
-      <div className="w-full max-w-lg mx-auto">
+      <div className="w-full max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/classes" className="text-gray-400 hover:text-gray-600 transition-colors">
             <ArrowLeft className="h-5 w-5" />

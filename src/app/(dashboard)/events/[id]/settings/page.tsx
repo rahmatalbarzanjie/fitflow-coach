@@ -31,7 +31,7 @@ export default async function EventSettingsPage({
   const hasRegistrations = (regCountRes.count ?? 0) > 0
 
   return (
-    <div className="w-full max-w-lg mx-auto pb-10">
+    <div className="w-full max-w-2xl mx-auto pb-10">
       <PageHeader
         backHref={`/events/${id}`}
         title="Pengaturan Event"

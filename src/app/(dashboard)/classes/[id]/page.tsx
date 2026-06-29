@@ -100,7 +100,7 @@ export default async function ClassDetailPage({
   const pesertaCount  = (pesertaRes.data ?? []).length
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader
         backHref="/classes"
         title={`${emoji} ${cls.name}`}

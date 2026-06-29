@@ -34,7 +34,7 @@ export default async function AssignPackagePage({
   const packages = (packagesRes.data ?? []) as any[]
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref={`/members/${id}/membership`} title="Assign Paket" subtitle={member.name} />
 
       {packages.length === 0 ? (

@@ -22,7 +22,7 @@ export default async function ClassSchedulePage({
   if (!cls) notFound()
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader
         backHref={`/classes/${id}`}
         title="Kelola Jadwal"

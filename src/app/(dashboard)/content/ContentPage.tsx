@@ -136,7 +136,7 @@ export function ContentPage({ initialHistory }: { initialHistory: RawHistoryItem
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl">
+    <div className="w-full max-w-2xl mx-auto">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">Buat Konten</h1>

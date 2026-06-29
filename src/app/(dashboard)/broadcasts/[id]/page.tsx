@@ -68,7 +68,7 @@ export default async function BroadcastHubPage({
   const canSendGroup = !!(bc as any).target_class_id && !(bc as any).group_sent_at
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader
         backHref="/broadcasts"
         title={(bc as any).title}

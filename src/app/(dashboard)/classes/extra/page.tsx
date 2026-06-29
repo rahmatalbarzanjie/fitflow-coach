@@ -19,7 +19,7 @@ export default async function ExtraClassPage() {
     .order('name')
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader
         backHref="/classes"
         title="Tambah Kelas Ekstra"

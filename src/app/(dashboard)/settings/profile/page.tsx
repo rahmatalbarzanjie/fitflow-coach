@@ -16,7 +16,7 @@ export default async function SettingsProfilePage() {
   const appUrl    = rawAppUrl && !rawAppUrl.startsWith('http') ? `https://${rawAppUrl}` : rawAppUrl
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/settings" title="Profil Instruktur" />
       <SectionList>
         <div className="px-4 py-5">

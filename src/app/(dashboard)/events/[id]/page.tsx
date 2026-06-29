@@ -56,7 +56,7 @@ export default async function EventHubPage({
   const statusLabel = EVENT_STATUS[ev.status as keyof typeof EVENT_STATUS]?.label ?? ev.status
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader
         backHref="/events"
         title={ev.title}

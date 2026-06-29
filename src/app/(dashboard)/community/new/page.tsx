@@ -39,7 +39,7 @@ export default function CommunityNewPage() {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/community" title="Tambah Kontak" />
 
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">

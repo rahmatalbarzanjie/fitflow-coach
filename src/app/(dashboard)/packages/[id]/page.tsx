@@ -26,7 +26,7 @@ export default async function EditPackagePage({
   if (!pkg) notFound()
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/packages" title="Edit Paket" subtitle={pkg.name} />
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
         <PackageForm pkg={pkg as any} paymentProfiles={paymentProfiles} />

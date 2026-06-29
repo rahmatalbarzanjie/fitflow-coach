@@ -104,7 +104,7 @@ export default function NewBroadcastPage() {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/broadcasts" title="Buat Broadcast" />
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
