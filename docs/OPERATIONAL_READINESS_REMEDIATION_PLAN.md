@@ -14,27 +14,65 @@ jauh ke instruktur lain dalam kondisi saat ini"**.
 
 ---
 
+## 0. Update Log — 2026-06-29 (dokumen sebelumnya stale di beberapa poin)
+
+Dicek ulang langsung ke `git log`, bukan diasumsikan dari catatan lama. Beberapa
+item yang masih tertulis "open"/"belum dikerjakan" di bawah ternyata **sudah
+closed** sejak dokumen ini ditulis (2026-06-25) — riwayat aslinya dipertahankan
+di bawah untuk konteks, tapi status sekarang dikoreksi di setiap section:
+
+- **P1-B (Membership Lifecycle Engine)** — CLOSED hari ini. Bukan cuma yang
+  direncanakan Sprint 4 dulu (expired-detection + promosi pending→active +
+  deduksi sesi), tapi lebih lengkap: ditambah booking-via-membership di landing
+  page, cancel/refund auto-promote, dan refund-by-period revenue. Lihat §8a.
+- **Class Reschedule V1** — sudah diimplementasi (commit `9fce383`, `f371507`,
+  `a132043`, dan 2 fix lanjutan `0748395`, `674d8da`). Dokumen lama menulis
+  "belum ada satu baris kode pun ditulis" — itu sudah tidak benar.
+- **Participant Management: cancellation workflow** — sudah diimplementasi
+  (commit `2fa010a`), termasuk fix P0 ownership-check (`9c12f14`). Item roadmap
+  produk 2026-06-22 ini sudah selesai, bukan menggantung seperti catatan lama.
+- **P1-A, P1-D, P2-D** — closed di Sprint 1 (sudah tercatat benar di §8, cuma
+  tabel ringkasan §1 belum disesuaikan - sekarang sudah).
+- **P1-C (Historical Data Retention)** — dicek ulang, **masih genuinely open**,
+  tidak ada commit terkait sama sekali. Ini sekarang satu-satunya P1 yang
+  tersisa di seluruh dokumen.
+
+---
+
 ## 1. Daftar Temuan Open (lintas 10 modul)
 
 ### P1 — Dampak operasional/revenue/trust nyata
 
-| ID | Temuan | Modul Asal | Bukti |
-|---|---|---|---|
-| P1-A | **Dashboard revenue ≠ Laporan revenue** — `get_dashboard_summary()` hanya baca `attendance`, tidak pernah baca `registrations`/`member_memberships`. Live-proven: Rp0 di Dashboard vs Rp465.000 di Laporan, instruktur+bulan yang sama. | Dashboard | Master UAT — Dashboard |
-| P1-B | **Membership Lifecycle Engine tidak ada** — pending→active tidak pernah otomatis (padahal UI menjanjikan), expired tidak pernah terdeteksi, `used_sessions` tidak pernah berkurang dari attendance. Satu engine yang hilang, bukan 3 bug terpisah. | Membership | Master UAT — Membership |
-| P1-C | **Historical Data Retention Policy belum diputuskan** — cascade delete menghapus riwayat revenue/kehadiran secara permanen. Terjadi berulang di 4 entity berbeda (Member→membership, Class→registrations, Event→registrations, Member→attendance). Perlu SATU keputusan (Opsi A: block delete, atau Opsi B: snapshot+SET NULL), diterapkan konsisten ke semuanya — bukan ditambal satu-satu. | Members, Class, Event, Operational Readiness Audit | Operational Readiness Audit; Master UAT — Events; Master UAT — Members |
-| P1-D | **Capacity Class bisa oversell** — tidak ada re-check kapasitas di server saat insert (beda dari Event yang sudah punya RPC+row lock). Live-proven: 2 insert bersamaan ke kelas kuota 1, keduanya sukses, jadi 2/1. Bukan race sempit — tidak ada guard sama sekali. | Landing Page | docs/UAT_LANDING_PAGE_REPORT.md |
+| ID | Temuan | Modul Asal | Bukti | Status |
+|---|---|---|---|---|
+| P1-A | **Dashboard revenue ≠ Laporan revenue** — `get_dashboard_summary()` hanya baca `attendance`, tidak pernah baca `registrations`/`member_memberships`. Live-proven: Rp0 di Dashboard vs Rp465.000 di Laporan, instruktur+bulan yang sama. | Dashboard | Master UAT — Dashboard | **CLOSED** — lihat §8 |
+| P1-B | **Membership Lifecycle Engine tidak ada** — pending→active tidak pernah otomatis (padahal UI menjanjikan), expired tidak pernah terdeteksi, `used_sessions` tidak pernah berkurang dari attendance. Satu engine yang hilang, bukan 3 bug terpisah. | Membership | Master UAT — Membership | **CLOSED 2026-06-29** — lihat §8a |
+| P1-C | **Historical Data Retention Policy belum diputuskan** — cascade delete menghapus riwayat revenue/kehadiran secara permanen. Terjadi berulang di 4 entity berbeda (Member→membership, Class→registrations, Event→registrations, Member→attendance). Perlu SATU keputusan (Opsi A: block delete, atau Opsi B: snapshot+SET NULL), diterapkan konsisten ke semuanya — bukan ditambal satu-satu. | Members, Class, Event, Operational Readiness Audit | Operational Readiness Audit; Master UAT — Events; Master UAT — Members | **OPEN — satu-satunya P1 yang tersisa** |
+| P1-D | **Capacity Class bisa oversell** — tidak ada re-check kapasitas di server saat insert (beda dari Event yang sudah punya RPC+row lock). Live-proven: 2 insert bersamaan ke kelas kuota 1, keduanya sukses, jadi 2/1. Bukan race sempit — tidak ada guard sama sekali. | Landing Page | docs/UAT_LANDING_PAGE_REPORT.md | **CLOSED** — lihat §8 |
 
 ### P2 — Nyata tapi dampak lebih kecil (data quality, auditability, administratif)
 
-| ID | Temuan | Modul Asal |
+| ID | Temuan | Modul Asal | Status |
+|---|---|---|---|
+| P2-A | Members double-convert — API convert-from-community-contact tidak ada guard server-side, bisa convert 2x jadi member duplikat + orphan link | Members | Open |
+| P2-B | Payment Profile snapshot gap — `registrations` tidak menyimpan metode pembayaran yang ditampilkan saat itu, menyulitkan rekonsiliasi kalau metode berubah/dihapus setelahnya | Payment Profile | Open |
+| P2-C | WhatsApp Notification Delivery Visibility — notifikasi sekunder (confirm/reject/cancel/feedback) gagal terkirim tanpa sinyal apa pun ke instruktur. Desain perbaikan sudah ada: kolom `notification_status`/`notification_sent_at`/`notification_error` + badge kecil | WhatsApp | Open |
+| P2-D | Duplicate/accidental resubmit — registrant identik (nama+telepon+kelas+tanggal) bisa submit berulang tanpa hambatan apa pun, live-proven (2 insert identik, 0,36 detik, keduanya sukses) | Landing Page | **CLOSED** — lihat §8 |
+| P2-E | Attendance architecture Class vs Event tidak konsisten — Event pakai kolom `attended` di `registrations`, Class pakai tabel `attendance` terpisah tanpa FK balik ke `registrations` (korelasi cuma nama/telepon, rentan typo) | Registrations | Open |
+| P2-F | Delete-registration confirm dialog tidak menyebut `amount_paid` (beda dari Cancel yang sudah benar) | Registrations | Open |
+
+### P3 — Temuan baru dari audit domain Membership (2026-06-29), sengaja dijadikan backlog
+
+Ditemukan saat menutup P1-B, bukan blocker untuk penutupan itu sendiri — dicatat
+di sini supaya tidak hilang, bukan diam-diam diasumsikan selesai:
+
+| ID | Temuan | Status |
 |---|---|---|
-| P2-A | Members double-convert — API convert-from-community-contact tidak ada guard server-side, bisa convert 2x jadi member duplikat + orphan link | Members |
-| P2-B | Payment Profile snapshot gap — `registrations` tidak menyimpan metode pembayaran yang ditampilkan saat itu, menyulitkan rekonsiliasi kalau metode berubah/dihapus setelahnya | Payment Profile |
-| P2-C | WhatsApp Notification Delivery Visibility — notifikasi sekunder (confirm/reject/cancel/feedback) gagal terkirim tanpa sinyal apa pun ke instruktur. Desain perbaikan sudah ada: kolom `notification_status`/`notification_sent_at`/`notification_error` + badge kecil | WhatsApp |
-| P2-D | Duplicate/accidental resubmit — registrant identik (nama+telepon+kelas+tanggal) bisa submit berulang tanpa hambatan apa pun, live-proven (2 insert identik, 0,36 detik, keduanya sukses) | Landing Page |
-| P2-E | Attendance architecture Class vs Event tidak konsisten — Event pakai kolom `attended` di `registrations`, Class pakai tabel `attendance` terpisah tanpa FK balik ke `registrations` (korelasi cuma nama/telepon, rentan typo) | Registrations |
-| P2-F | Delete-registration confirm dialog tidak menyebut `amount_paid` (beda dari Cancel yang sudah benar) | Registrations |
+| P3-F | **Upgrade/downgrade membership** — tidak ada mekanisme proration/transfer sisa sesi antar `package_id` berbeda. Sengaja dikeluarkan dari scope Sprint Membership Hardening (eksplisit JANGAN dari user). Tunda sampai ada kebutuhan nyata, sama seperti keputusan awal di `docs/MEMBERSHIP_LIFECYCLE_ENGINE_DESIGN.md` §7 Tahap 3. | Deferred by design |
+| P3-G | **Revenue Sharing per-instruktur untuk konsumsi membership** — nol implementasi. Sama seperti P3-F, ditunda sampai ada instruktur yang benar-benar butuh bagi hasil membership (Tahap 3 dokumen desain). | Deferred by design |
+| P3-H | **Membership Sale belum punya `payment_status`/`confirmed_at`** seperti Registration (instruktur input penjualan dianggap selalu lunas seketika, tidak ada gerbang "uang belum benar-benar masuk"). Tahap 4 dokumen desain, ditandai non-urgent sejak awal. | Deferred by design |
+| P3-I | `AssignPackageForm.tsx` tidak validasi `purchase_price` negatif atau `class_type` aneh secara server-side — risiko rendah (cuma instruktur sendiri yang isi form ini, bukan permukaan publik). | Open, low priority |
+| P3-J | pg_cron job baru `membership-nightly-sweep` (expired + pending-promotion) terdaftar tanpa error dan terbukti bisa dipanggil manual, tapi eksekusi otomatis terjadwalnya **belum pernah diobservasi langsung** (tidak ada akses untuk query tabel `cron.job` dari environment ini). Sama kelas masalahnya dengan P3-E di bawah — cek lagi setelah berjalan beberapa hari. | Needs Verification |
 
 ### P3 / Needs Security Review / Needs Verification
 
@@ -49,12 +87,12 @@ jauh ke instruktur lain dalam kondisi saat ini"**.
 ### Pertanyaan Bisnis Terbuka (bukan bug, butuh keputusan user)
 
 - Apakah Class registration via "cash" memang boleh self-confirm tanpa verifikasi instruktur sama sekali (beda dari "transfer" yang wajib upload bukti)?
-- Apakah revenue Membership seharusnya dihitung saat *assign* (sekarang) atau butuh gerbang verifikasi seperti Event/Class?
-- Opsi A vs Opsi B untuk Historical Data Retention (lihat P1-C) — keputusan arsitektur, bukan teknis.
+- ~~Apakah revenue Membership seharusnya dihitung saat *assign* atau butuh gerbang verifikasi seperti Event/Class?~~ — sebagian terjawab 2026-06-29: revenue tetap diakui saat assign (cash-basis, locked di `MEMBERSHIP_LIFECYCLE_ENGINE_DESIGN.md` §5), TAPI refund sekarang dipotong di periode refund terjadi, bukan periode pembelian. Gerbang `payment_status` penuh seperti Event/Class masih terbuka (lihat P3-H).
+- Opsi A vs Opsi B untuk Historical Data Retention (lihat P1-C) — keputusan arsitektur, bukan teknis. **Satu-satunya pertanyaan bisnis yang masih murni terbuka di dokumen ini.**
 
 ### Fitur yang Sudah Didesain Lengkap, Menunggu Go-Ahead (bukan bug)
 
-- **Class Reschedule V1** — `response_token`, halaman self-service cancel publik, notifikasi WA personal per peserta terdampak. Phase 1-4 fully locked, belum ada satu baris kode pun ditulis. Event Reschedule eksplisit di luar scope V1. (lihat audit Reschedule & Participant Impact)
+*(kosong — Class Reschedule V1, satu-satunya item di kategori ini, sudah closed, lihat di bawah)*
 
 ### Non-Blocker, Sengaja Ditunda (kebijakan eksplisit, bukan terlewat)
 
@@ -62,6 +100,7 @@ jauh ke instruktur lain dalam kondisi saat ini"**.
 - `EventEditForm.tsx` dan dead code lain — sudah teridentifikasi, sengaja belum dihapus
 - Date Handling Standardization (raw UTC vs WIB-correct date) — severity rendah, belum user-facing
 - Community import backend — sudah ada tapi belum official feature, tidak ada UI
+- P3-F, P3-G, P3-H (Membership upgrade/downgrade, revenue sharing, Sale payment_status gate) — lihat tabel P3 di atas
 
 ### Sudah CLOSED, tidak perlu tindakan (dicatat untuk kelengkapan)
 
@@ -69,6 +108,10 @@ jauh ke instruktur lain dalam kondisi saat ini"**.
 - Events P0 Revenue (early bird/capacity bypass) — fixed+committed, retested PASS
 - Registrations P1 (confirmed_at) — fixed+committed
 - Class module P1/P2/cheap-P3 (is_active toggle, delete warning, generate_sessions param) — remediated
+- **P1-A, P1-D, P2-D** (Dashboard Revenue, Capacity Class oversell, Duplicate Resubmit) — Sprint 1, fixed+verified live, lihat §8
+- **P1-B (Membership Lifecycle Engine)** — CLOSED 2026-06-29 lewat 2 sprint berurutan (Booking + Hardening), lihat §8a. Migrasi sudah diterapkan ke database live; **belum di-commit ke git** per kebijakan "no auto commit/push" — perlu satu langkah commit eksplisit sebelum dianggap benar-benar selesai end-to-end.
+- **Class Reschedule V1** — sudah diimplementasi (commit `9fce383`, `f371507`, `a132043`), termasuk 2 fix lanjutan pasca-launch (`0748395`, `674d8da`). Dokumen versi 2026-06-25 menulis ini sebagai "menunggu go-ahead" — itu sudah usang.
+- **Participant Management: cancellation workflow** — sudah diimplementasi (commit `2fa010a`) plus fix P0 ownership-check (`9c12f14`). Item roadmap produk 2026-06-22 ini selesai.
 
 ---
 
@@ -132,20 +175,24 @@ Class Reschedule V1 (fitur, bukan bug)
 
 ---
 
-## 5. Go-Live Blocker vs Non-Blocker
+## 5. Go-Live Blocker vs Non-Blocker (diperbarui 2026-06-29)
 
 | Kategori | Item |
 |---|---|
-| **Blocker untuk perluasan/promosi lebih lanjut** | P1-A (trust issue, terlihat tiap hari di layar utama), P1-D (capacity oversell, langsung berdampak ke instruktur dengan kuota kecil) |
-| **Blocker khusus untuk fitur Membership** (bukan blocker untuk funnel inti booking) | P1-B — Membership belum boleh dipromosikan/diandalkan sampai lifecycle engine ada, TAPI ini tidak menghalangi instruktur memakai Class/Event/Landing Page hari ini |
-| **Sebaiknya diputuskan sebelum scale lebih jauh, tidak harus sebelum instruktur baru pertama** | P1-C — risiko nyata tapi hanya terpicu aksi Delete eksplisit, sudah ada mitigasi sebagian (warning text diperbaiki untuk Class) |
-| **Non-blocker, aman jalan dengan known issues** | P2-A, P2-B, P2-C, P2-D, P2-E, P2-F, semua item P3, Type Safety Hardening, dead code cleanup, date handling |
+| **Blocker untuk perluasan/promosi lebih lanjut** | ~~P1-A, P1-D~~ — **CLOSED**, tidak lagi blocker. |
+| **Blocker khusus untuk fitur Membership** | ~~P1-B~~ — **CLOSED**. Membership sekarang boleh dipromosikan/diandalkan sebagai fitur utama. |
+| **Sebaiknya diputuskan sebelum scale lebih jauh, tidak harus sebelum instruktur baru pertama** | **P1-C — satu-satunya item di kategori ini sekarang**, dan satu-satunya P1 yang masih open di seluruh dokumen. Risiko nyata tapi hanya terpicu aksi Delete eksplisit, sudah ada mitigasi sebagian (warning text diperbaiki untuk Class). |
+| **Non-blocker, aman jalan dengan known issues** | P2-A, P2-B, P2-C, P2-E, P2-F, P3-F sampai P3-J, Type Safety Hardening, dead code cleanup, date handling. (P2-D sudah closed, dihapus dari daftar ini.) |
+
+**Ringkasan:** dari 4 P1 awal, **3 sudah closed**. P1-C adalah satu-satunya
+hal yang berdiri antara kondisi sekarang dan "tidak ada P1 terbuka sama
+sekali" di seluruh program audit ini.
 
 ---
 
-## 6. Rekomendasi Keputusan
+## 6. Rekomendasi Keputusan (diperbarui 2026-06-29)
 
-### **Ready for Production with Known Issues** — dengan 2 catatan wajib sebelum scale
+### **Ready for Production with Known Issues** — dengan 1 catatan wajib sebelum scale (sebelumnya 2)
 
 Funnel inti (Landing Page → Registrasi → WhatsApp → Revenue) sudah terbukti solid
 end-to-end secara live, tenant isolation terbukti kuat di setiap modul yang diuji
@@ -155,32 +202,23 @@ ini SUDAH dipakai oleh instruktur nyata (Nana) selama audit berjalan — pertany
 bukan "boleh dipakai atau tidak", tapi "boleh diperluas ke instruktur lain atau
 belum".
 
-**Dua hal ini saya sarankan diperbaiki SEBELUM mempromosikan ke instruktur baru
-secara lebih luas** (bukan karena sistem akan rusak, tapi karena dua-duanya
-murah untuk diperbaiki dan dampaknya besar kalau dibiarkan):
+~~Dua hal ini saya sarankan diperbaiki SEBELUM mempromosikan ke instruktur baru~~
+**P1-A dan P1-D sudah closed** (Sprint 1, lihat §8) — rekomendasi lama di sini
+sudah terpenuhi, tidak ada tindakan lagi yang dibutuhkan untuk keduanya.
 
-1. **P1-A (Dashboard/Laporan revenue mismatch)** — ini adalah hal PERTAMA yang
-   dilihat instruktur setiap hari. Membiarkan dua angka revenue berbeda di dua
-   halaman berbeda merusak kepercayaan terhadap produk lebih cepat daripada bug
-   teknis apa pun, terlepas dari berapa instruktur yang pakai.
-2. **P1-D (Capacity Class oversell)** — kuota kelas adalah promise inti produk
-   ("Daftar Kelas... 0 dari 1 kuota"). Kalau promise ini bisa dilanggar tanpa
-   kondisi langka, instruktur dengan kelas privat/kuota kecil akan langsung
-   merasakannya di kelas nyata, bukan cuma di laporan.
+**Membership (P1-B) juga sudah closed** (2026-06-29, lihat §8a) — fitur ini
+sekarang boleh dipromosikan/diandalkan sebagai fitur utama, termasuk booking
+mandiri via landing page dan refund yang terkoreksi benar di Laporan.
 
-**Membership (P1-B) tidak perlu menghalangi peluncuran lebih luas** selama fitur
-ini belum benar-benar dipromosikan/diandalkan sebagai fitur utama — datanya
-sendiri menunjukkan belum ada penggunaan nyata yang bergantung padanya. Tapi
-begitu ada instruktur yang mulai assign paket membership sungguhan, P1-B harus
-selesai sebelum itu, bukan sesudah ditemukan rusak di lapangan.
-
-**Historical Data Retention (P1-C)** adalah keputusan arsitektur yang sebaiknya
+**Historical Data Retention (P1-C) adalah satu-satunya hal yang tersisa di
+kategori ini.** Rekomendasi tidak berubah dari versi sebelumnya: sebaiknya
 dikunci tidak terlalu lama lagi — bukan karena akan meledak besok, tapi karena
 makin banyak instruktur makin besar konsekuensi kalau satu Delete yang tidak
-disengaja menghapus riwayat revenue secara permanen.
+disengaja menghapus riwayat revenue secara permanen. **Ini sekarang Sprint
+satu-satunya yang belum dimulai dari seluruh roadmap §7.**
 
-Sisanya (semua P2/P3, fitur Reschedule yang sudah didesain, tech debt) aman
-ditangani sesuai kecepatan tim tanpa menghalangi operasional hari ini.
+Sisanya (semua P2/P3, tech debt) aman ditangani sesuai kecepatan tim tanpa
+menghalangi operasional hari ini.
 
 ---
 
@@ -205,13 +243,18 @@ ditentukan oleh ROI nyata, bukan severity: Reschedule sudah jadi kebutuhan
 operasional GetFuel saat ini dan desainnya 100% selesai, sementara Membership
 belum dipakai intensif — belum ada pain yang benar-benar dirasakan pengguna.
 
-| Sprint | Isi | Alasan urutan |
-|---|---|---|
-| **Sprint 1** | P1-A (Dashboard Revenue) + P1-D (Capacity Class) + P2-D (Duplicate Resubmit, digabung karena area kode sama) | Trust issue harian + operasional inti yang sudah terbukti bisa dilanggar sekarang + sekali buka jalur insert registrasi, selesaikan dua masalah sekaligus |
-| **Wajib sebelum lanjut Sprint 2** | **Audit ulang Dashboard + Landing Page** (regresi check) | Memastikan perbaikan Sprint 1 tidak merusak dua area paling kritis yang baru diperbaiki |
-| **Sprint 2** | P1-C (keputusan Historical Data Retention + implementasi) | Cacat kebijakan data lintas sistem, makin ditunda makin besar dampaknya ke data produksi nyata |
-| **Sprint 3** | Class Reschedule V1 | Fully designed (Phase 1-4 locked), kebutuhan operasional nyata GetFuel saat ini, ROI lebih tinggi daripada Membership |
-| **Sprint 4** | P1-B (Membership Lifecycle Engine) | Belum mendesak — belum ada penggunaan membership aktif, belum ada pain nyata yang dirasakan pengguna |
+| Sprint | Isi | Alasan urutan | Status (2026-06-29) |
+|---|---|---|---|
+| **Sprint 1** | P1-A (Dashboard Revenue) + P1-D (Capacity Class) + P2-D (Duplicate Resubmit, digabung karena area kode sama) | Trust issue harian + operasional inti yang sudah terbukti bisa dilanggar sekarang + sekali buka jalur insert registrasi, selesaikan dua masalah sekaligus | **DONE** — lihat §8 |
+| **Wajib sebelum lanjut Sprint 2** | **Audit ulang Dashboard + Landing Page** (regresi check) | Memastikan perbaikan Sprint 1 tidak merusak dua area paling kritis yang baru diperbaiki | **DONE** — lihat §8 |
+| **Sprint 2** | P1-C (keputusan Historical Data Retention + implementasi) | Cacat kebijakan data lintas sistem, makin ditunda makin besar dampaknya ke data produksi nyata | **BELUM DIMULAI — satu-satunya sprint yang tersisa** |
+| **Sprint 3** | Class Reschedule V1 | Fully designed (Phase 1-4 locked), kebutuhan operasional nyata GetFuel saat ini, ROI lebih tinggi daripada Membership | **DONE** (commit `9fce383`, `f371507`, `a132043`, + fix `0748395`, `674d8da`) |
+| **Sprint 4** | P1-B (Membership Lifecycle Engine) | Belum mendesak — belum ada penggunaan membership aktif, belum ada pain nyata yang dirasakan pengguna | **DONE 2026-06-29** — lihat §8a. Dikerjakan lebih luas dari rencana asli (Sprint 4 cuma expired/promosi/deduksi; realisasinya juga menambah booking-via-membership di landing page + refund architecture) |
+
+**Path ke depan sekarang terukur dengan jelas: tinggal Sprint 2 (P1-C) yang
+belum dikerjakan dari seluruh 4 sprint di roadmap ini.** Setelah itu, satu-
+satunya pekerjaan terstruktur yang tersisa adalah backlog P2/P3 (dikerjakan
+opportunistic, lihat tabel di bawah, tidak butuh sprint khusus).
 
 **P2 lain TIDAK mendapat sprint khusus** — dikerjakan opportunistic saat
 menyentuh area terkait, bukan dikumpulkan jadi satu sprint tersendiri:
@@ -258,6 +301,65 @@ dibersihkan setelah setiap tes, diverifikasi nol sisa.
 
 **Belum dilakukan, perlu keputusan eksplisit sebelum lanjut:** belum
 di-commit ke git (sesuai kebijakan "no auto commit/push" — kode dan migrasi
-sudah siap, menunggu instruksi commit). Sprint 2 (Historical Data Retention
-Policy) belum dimulai — gate regresi sudah terpenuhi, tinggal menunggu
-keputusan Kak untuk lanjut.
+sudah siap, menunggu instruksi commit). *(Catatan susulan: ini sudah
+di-commit belakangan — `b4832e4` — dicek lewat `git log`. Sprint 2 di bawah
+masih akurat: belum dimulai.)*
+
+---
+
+## 8a. Sprint 4 (Membership Lifecycle Engine) — Status Implementasi (2026-06-29)
+
+**SELESAI, diterapkan ke database live, diverifikasi live (RPC langsung
+terhadap data Getfuel asli, data uji selalu dibersihkan setelah tiap tes).
+Dikerjakan dalam 2 sprint berurutan, lebih luas dari rencana Sprint 4 asli.**
+
+### Sprint Membership Booking — migrasi 058-061
+
+Gap yang ditutup: member yang sudah punya paket aktif tidak bisa memakainya
+saat daftar kelas sendiri lewat landing page (selalu diarahkan ke alur bayar).
+
+| Item | Implementasi |
+|---|---|
+| Pengenalan member by phone | `find_member_by_phone` (058) — pola dua-varian nomor (lokal/internasional) yang sudah dipakai `wa/incoming` route |
+| Eligibility check | `member_membership_eligible` (058/061) — membership aktif, class_type cocok, sisa sesi > 0 untuk session_pack |
+| RPC publik untuk live-check di form | `check_membership_eligibility` (058) |
+| `create_class_registration` diperluas | Member eligible → `member_id` ter-set, `payment_status='confirmed'`, `amount_paid=0`, tidak perlu bayar. Member match tapi tidak eligible → tetap ditandai member (untuk badge), tetap alur OTS |
+| **2 bug ditemukan+diperbaiki saat verifikasi live** | (1) Helper internal masih bisa dipanggil anon langsung (kebocoran data member) → di-revoke (060). (2) RPC utama error "ambiguous column" karena nama kolom return bentrok nama kolom tabel → dikualifikasi (061) |
+
+### Sprint Membership Hardening — migrasi 062-067
+
+Gap yang ditutup: hasil audit domain lifecycle (cancel tidak promosikan
+pending, expired tidak pernah terdeteksi, promosi tidak hormat `start_date`,
+cancel tidak koreksi revenue).
+
+| Item | Implementasi |
+|---|---|
+| Cancel auto-promote pending | `cancel_membership` RPC (063, fix bug di 066) |
+| Expired lifecycle engine | `nightly_membership_sweep()` + `pg_cron` baru, 00:30 WIB tiap hari (064) |
+| Promosi hormat `start_date` | Primitive `promote_next_eligible_pending`, dipakai bersama oleh cancel/exhaustion/sweep (063) |
+| Refund architecture | Kolom `refund_amount`/`refund_reason`/`refunded_at` + CHECK constraint (062), RPC `refund_membership` (063) — refund pada membership masih aktif/pending otomatis ikut cancel+promote |
+| Refund attribusi periode | Awalnya refund dikurangkan di periode PEMBELIAN (065) — dikoreksi user 2026-06-29 jadi periode REFUND terjadi (067), sesuai cara owner fitness mikir ("bulan ini keluar uang berapa") |
+| Friendly error duplicate active | `AssignPackageForm.tsx` tangkap kode `23505`, ganti pesan raw Postgres |
+| **1 bug ditemukan+diperbaiki saat verifikasi live** | `cancel_membership` awalnya pakai `RETURNING (status='active')` yang ternyata selalu evaluasi baris SETELAH update (selalu false) — promosi tidak pernah benar-benar terpanggil. Fix di 066: tangkap status lama via `SELECT ... FOR UPDATE` dulu. |
+
+**Temuan baru yang sengaja TIDAK ditutup di sprint ini** (lihat tabel P3-F
+s/d P3-J di §1): upgrade/downgrade, revenue sharing per-instruktur, gerbang
+`payment_status` untuk Membership Sale, validasi minor `AssignPackageForm`,
+dan verifikasi eksekusi otomatis `pg_cron` yang belum diobservasi langsung.
+
+**Belum dilakukan, sama seperti Sprint 1:** migrasi 058-067 sudah diterapkan
+ke database live (`supabase db push`) dan diverifikasi, **tapi belum
+di-commit ke git** — kode (komponen React, types) dan SQL (10 file migrasi)
+menunggu instruksi commit eksplisit, sesuai kebijakan yang sama dengan Sprint
+1 dulu.
+
+---
+
+## 9. Sprint 2 (Historical Data Retention) — belum dimulai
+
+Tidak ada perubahan dari rencana di §7 — dicatat di sini supaya jelas ini
+BUKAN diam-diam terlewat, hanya genuinely belum dikerjakan. Kalau ingin
+dilanjutkan, langkah pertamanya adalah keputusan Opsi A (block delete) vs
+Opsi B (snapshot+SET NULL) di P1-C — bukan langsung implementasi, karena
+4 entity (Member→membership, Class→registrations, Event→registrations,
+Member→attendance) butuh pendekatan yang sama, bukan ditambal satu-satu.

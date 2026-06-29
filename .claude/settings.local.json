@@ -5,7 +5,29 @@
       "PowerShell(npm install @supabase/supabase-js @supabase/ssr @tanstack/react-query zustand react-hook-form zod @hookform/resolvers date-fns clsx tailwind-merge lucide-react 2>&1)",
       "PowerShell(cd \"d:\\\\My Project\\\\NEW SIMETRI\\\\AI ASSISTANCE\"; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'd:\\\\My Project\\\\NEW SIMETRI\\\\AI ASSISTANCE'; npm run dev\" -WindowStyle Normal; Write-Host \"dev server started\")",
       "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\My Project\\\\NEW SIMETRI\\\\AI ASSISTANCE\\\\src\\\\app\\\\api\\\\notifications\\\\registration\")",
-      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\My Project\\\\NEW SIMETRI\\\\AI ASSISTANCE\\\\src\\\\app\\\\api\\\\wa\")"
+      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\My Project\\\\NEW SIMETRI\\\\AI ASSISTANCE\\\\src\\\\app\\\\api\\\\wa\")",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(ls .claude/skills)",
+      "Bash(grep -Hm1 '^description:' .claude/skills/*/SKILL.md)",
+      "Bash(curl -s \"http://localhost:3000/getfuel/daftar/kelas/505b195b-e6c1-49d9-80fc-2306d98be369\" -o /tmp/page.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s \"http://localhost:3003/getfuel/daftar/kelas/505b195b-e6c1-49d9-80fc-2306d98be369\" -o /tmp/page.html -w \"%{http_code}\\\\n\")",
+      "Bash(chromium-cli --help)",
+      "Bash(pkill -f \"next dev\")",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/getfuel)",
+      "Bash(xargs grep -l \"revenue\\\\|purchase_price\")",
+      "Bash(cat vercel.json)",
+      "Bash(find src/app/api -iname \"*cron*\" -o -ipath \"*cron*\")",
+      "Bash(grep -rn \"refresh_member_statuses\" --include=\"*.ts\" --include=\"*.tsx\" src/)",
+      "Bash(cat supabase/migrations/036_membership_hardening.sql)",
+      "Bash(cat supabase/migrations/055_membership_revenue_source_filter.sql)",
+      "Bash(python3 -c ' *)",
+      "Bash(cd \"d:/My Project/NEW SIMETRI/fitflow-coach\" && mv supabase/migrations/071_drop_member_status_cron_dependency.sql /tmp/071_drop_member_status_cron_dependency.sql.holdback && ls supabase/migrations | tail -5)",
+      "Bash(curl -s -o /tmp/laporan_resp.html -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/laporan)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

@@ -45,7 +45,7 @@ function getCachedBerandaData(userId: string, today: string, monthStart: string)
           .eq('user_id', userId)
           .order('start_time')),
 
-        timed('query:/beranda:atRisk', supabase.from('members')
+        timed('query:/beranda:atRisk', supabase.from('member_summary')
           .select('id, name, last_attended_at')
           .eq('user_id', userId)
           .eq('status', 'at_risk')),

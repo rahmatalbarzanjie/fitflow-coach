@@ -13,6 +13,19 @@ interface Props {
   classes: ClassOccupancy[]
 }
 
+// Cutoff terkunci (keputusan produk, Phase 2 Review): >=80% Diminati,
+// 50-79% Sehat, <50% Butuh Perhatian. Tetap murni klasifikasi tampilan -
+// tidak ada apa pun yang disimpan.
+const CLASSIFICATION = [
+  { min: 80, label: 'Diminati',         color: 'bg-green-50 text-green-600' },
+  { min: 50, label: 'Sehat',            color: 'bg-blue-50 text-blue-600' },
+  { min: 0,  label: 'Butuh Perhatian',  color: 'bg-orange-50 text-orange-600' },
+] as const
+
+function classify(pct: number) {
+  return CLASSIFICATION.find(c => pct >= c.min) ?? CLASSIFICATION[CLASSIFICATION.length - 1]
+}
+
 // Satu baris per kelas berisi SEMUA metrik (revenue, kehadiran, occupancy) -
 // sengaja DIGABUNG, bukan 3 list terpisah (occupancy / top revenue / top
 // kehadiran) seperti versi sebelumnya. Untuk studio kecil (cth. 3 kelas),
@@ -38,9 +51,16 @@ export function ClassOccupancyList({ classes }: Props) {
           <div key={c.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3 mb-1">
               <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
-              <span className="text-xs font-semibold text-gray-900 shrink-0">
-                {occupancyPct !== null ? `${occupancyPct}%` : '—'}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                {occupancyPct !== null && (
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${classify(occupancyPct).color}`}>
+                    {classify(occupancyPct).label}
+                  </span>
+                )}
+                <span className="text-xs font-semibold text-gray-900">
+                  {occupancyPct !== null ? `${occupancyPct}%` : '—'}
+                </span>
+              </div>
             </div>
             {occupancyPct !== null ? (
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">

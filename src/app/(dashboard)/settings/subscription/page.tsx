@@ -2,18 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionList } from '@/components/ui/SectionList'
 import { DetailRow } from '@/components/ui/DetailRow'
+import { getSubscriptionLabel } from '@/lib/subscription'
 import { Star, Calendar, BookOpen, MessageSquare } from 'lucide-react'
-
-function getSubscriptionLabel(status: string | null, expiresAt: string | null) {
-  if (status === 'active') return { label: 'Aktif', color: 'text-green-600', sub: 'Langganan aktif' }
-  if (status === 'trial') {
-    if (!expiresAt) return { label: 'Trial', color: 'text-yellow-600', sub: 'Periode trial' }
-    const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000)
-    if (days <= 0) return { label: 'Trial Berakhir', color: 'text-red-600', sub: 'Langganan diperlukan' }
-    return { label: 'Trial', color: 'text-yellow-600', sub: `Berakhir ${days} hari lagi` }
-  }
-  return { label: 'Tidak Aktif', color: 'text-red-600', sub: 'Hubungi admin' }
-}
 
 export default async function SettingsSubscriptionPage() {
   const supabase = await createClient()

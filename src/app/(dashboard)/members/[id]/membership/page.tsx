@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { SectionList } from '@/components/ui/SectionList'
 import { CancelMembershipButton } from '@/components/members/CancelMembershipButton'
+import { RefundMembershipButton } from '@/components/members/RefundMembershipButton'
 import { formatDateShort, formatRupiah } from '@/lib/utils'
 import { Plus, Package as PackageIcon } from 'lucide-react'
 
@@ -36,7 +37,7 @@ export default async function MemberMembershipPage({
     supabase.from('members').select('id, name').eq('id', id).eq('user_id', user!.id).single(),
     supabase
       .from('member_memberships')
-      .select('id, package_name, package_type, start_date, end_date, total_sessions, purchase_price, status, created_at, source')
+      .select('id, package_name, package_type, start_date, end_date, total_sessions, purchase_price, status, created_at, source, refund_amount, refund_reason, refunded_at')
       .eq('member_id', id)
       .order('created_at', { ascending: false }),
   ])
@@ -86,7 +87,10 @@ export default async function MemberMembershipPage({
               </div>
               <p className="text-xs text-gray-400 mt-0.5">{describePackage(active)}</p>
             </div>
-            <CancelMembershipButton membershipId={active.id} />
+            <div className="flex items-center gap-3">
+              <RefundMembershipButton membershipId={active.id} purchasePrice={Number(active.purchase_price) || 0} />
+              <CancelMembershipButton membershipId={active.id} />
+            </div>
           </div>
         ) : (
           <div className="p-6 text-center">
@@ -113,9 +117,12 @@ export default async function MemberMembershipPage({
                 <p className="text-sm font-semibold text-gray-900">{m.package_name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Mulai {formatDateShort(m.start_date)}</p>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLOR.pending}`}>
-                {STATUS_LABEL.pending}
-              </span>
+              <div className="flex items-center gap-3 shrink-0 ml-2">
+                <RefundMembershipButton membershipId={m.id} purchasePrice={Number(m.purchase_price) || 0} />
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLOR.pending}`}>
+                  {STATUS_LABEL.pending}
+                </span>
+              </div>
             </div>
           ))}
         </SectionList>
@@ -139,10 +146,21 @@ export default async function MemberMembershipPage({
                   {formatDateShort(m.start_date)}{m.end_date ? ` - ${formatDateShort(m.end_date)}` : ''}
                   {Number(m.purchase_price) > 0 ? ` · ${formatRupiah(Number(m.purchase_price))}` : ''}
                 </p>
+                {m.refunded_at && (
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    Refund {formatRupiah(Number(m.refund_amount))} · {formatDateShort(m.refunded_at)}
+                    {m.refund_reason ? ` · "${m.refund_reason}"` : ''}
+                  </p>
+                )}
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2 ${STATUS_COLOR[m.status] ?? 'bg-gray-100 text-gray-400'}`}>
-                {STATUS_LABEL[m.status] ?? m.status}
-              </span>
+              <div className="flex items-center gap-3 shrink-0 ml-2">
+                {!m.refunded_at && Number(m.purchase_price) > 0 && (
+                  <RefundMembershipButton membershipId={m.id} purchasePrice={Number(m.purchase_price) || 0} />
+                )}
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLOR[m.status] ?? 'bg-gray-100 text-gray-400'}`}>
+                  {STATUS_LABEL[m.status] ?? m.status}
+                </span>
+              </div>
             </div>
           ))
         )}

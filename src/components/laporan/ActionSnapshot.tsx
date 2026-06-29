@@ -1,47 +1,64 @@
-import { Clock, CheckCircle2 } from 'lucide-react'
-import { formatRupiah } from '@/lib/utils'
+import Link from 'next/link'
+import { CheckCircle2, ChevronRight, type LucideIcon } from 'lucide-react'
 
-interface Props {
-  pendingCount:  number
-  pendingAmount: number
+export interface ActionItem {
+  icon:     LucideIcon
+  iconBg:   string
+  iconColor: string
+  title:    string
+  subtitle?: string
+  href?:    string
 }
 
-// Pola sama seperti "Perlu Perhatian" di Beranda (kartu putih, icon bulat
-// berwarna, teks) - bukan section baru secara visual, cuma dipindah ke
-// Laporan dengan data dari RPC get_laporan_revenue yang sudah ada
-// (pending TIDAK difilter periode - "belum dikonfirmasi" adalah
-// pertanyaan hari ini, bukan pertanyaan "di bulan X").
-//
-// Tidak ada link - belum ada halaman yang mengonsolidasi pending payment
-// lintas kelas/event (tiap kelas/event punya halaman registrations
-// sendiri-sendiri). Daripada link ke rute yang tidak ada, kartu ini
-// murni informatif.
-//
-// Sengaja TIDAK disembunyikan kalau pendingCount=0 - tampilkan status
-// tenang "Tidak ada pembayaran tertunda" supaya section ini tetap
-// informatif, bukan kartu kosong tanpa konteks (lihat First-Run Audit:
-// akun GetFuel sekarang pendingCount=0).
-export function ActionSnapshot({ pendingCount, pendingAmount }: Props) {
-  if (pendingCount === 0) {
+interface Props {
+  items: ActionItem[]
+}
+
+// Digeneralisasi dari versi pending-only - sekarang menerima daftar
+// kondisi (pending payment, member at-risk, occupancy rendah, trial
+// mau habis), tapi cuma me-render yang BENAR-BENAR butuh perhatian.
+// Sengaja TIDAK 4 kartu permanen yang sering kosong - itu jadi noise,
+// bukan actionable (lihat KPI Trust Audit). Kalau items kosong,
+// tampilkan satu status tenang, bukan halaman kosong tanpa konteks.
+export function ActionSnapshot({ items }: Props) {
+  if (items.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-3">
         <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
           <CheckCircle2 className="w-4 h-4 text-green-500" />
         </div>
-        <p className="text-sm text-gray-500">Tidak ada pembayaran tertunda</p>
+        <p className="text-sm text-gray-500">Semua beres, tidak ada yang perlu ditindaklanjuti 🎉</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-        <Clock className="w-4 h-4 text-orange-500" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900">{pendingCount} pembayaran belum dikonfirmasi</p>
-        <p className="text-xs text-gray-400 truncate">{formatRupiah(pendingAmount)} menunggu</p>
-      </div>
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+      {items.map((item, i) => {
+        const Icon = item.icon
+        const body = (
+          <>
+            <div className={`w-8 h-8 rounded-xl ${item.iconBg} flex items-center justify-center shrink-0`}>
+              <Icon className={`w-4 h-4 ${item.iconColor}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+              {item.subtitle && <p className="text-xs text-gray-400 truncate">{item.subtitle}</p>}
+            </div>
+            {item.href && <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />}
+          </>
+        )
+
+        return item.href ? (
+          <Link key={i} href={item.href} className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors">
+            {body}
+          </Link>
+        ) : (
+          <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+            {body}
+          </div>
+        )
+      })}
     </div>
   )
 }

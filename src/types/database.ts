@@ -918,6 +918,9 @@ export type Database = {
           package_name: string
           package_type: string
           purchase_price: number | null
+          refund_amount: number | null
+          refund_reason: string | null
+          refunded_at: string | null
           source: string
           start_date: string
           status: string
@@ -933,6 +936,9 @@ export type Database = {
           package_name: string
           package_type: string
           purchase_price?: number | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           source?: string
           start_date: string
           status?: string
@@ -948,6 +954,9 @@ export type Database = {
           package_name?: string
           package_type?: string
           purchase_price?: number | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           source?: string
           start_date?: string
           status?: string
@@ -1967,12 +1976,15 @@ export type Database = {
       }
       member_summary: {
         Row: {
+          address: string | null
           attended_this_month: number | null
           created_at: string | null
           id: string | null
           last_attended_at: string | null
           name: string | null
+          notes: string | null
           phone: string | null
+          photo_url: string | null
           status: Database["public"]["Enums"]["member_status"] | null
           total_attended: number | null
           total_revenue: number | null
@@ -2008,6 +2020,10 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_membership: {
+        Args: { p_membership_id: string }
+        Returns: boolean
+      }
       cancel_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
@@ -2015,6 +2031,18 @@ export type Database = {
       confirm_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
+      }
+      check_membership_eligibility: {
+        Args: {
+          p_class_id: string
+          p_registrant_phone: string
+          p_session_date: string
+        }
+        Returns: boolean
+      }
+      compute_business_activity_status: {
+        Args: { p_created_at: string; p_last_attended_at: string }
+        Returns: Database["public"]["Enums"]["member_status"]
       }
       create_class_registration: {
         Args: {
@@ -2025,7 +2053,11 @@ export type Database = {
           p_registrant_phone: string
           p_session_date: string
         }
-        Returns: string
+        Returns: {
+          id: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          used_membership: boolean
+        }[]
       }
       create_event_registration: {
         Args: {
@@ -2047,9 +2079,21 @@ export type Database = {
         }
         Returns: string
       }
+      find_member_by_phone: {
+        Args: { p_phone: string; p_user_id: string }
+        Returns: string
+      }
       generate_sessions_for_class: {
         Args: { p_class_id: string; p_days_ahead?: number }
         Returns: number
+      }
+      get_broadcast_stats: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       get_class_occupancy: {
         Args: {
@@ -2071,11 +2115,52 @@ export type Database = {
         }
         Returns: Json
       }
+      get_member_health: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_prev_period_end: string
+          p_prev_period_start: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      get_upcoming_low_occupancy: {
+        Args: { p_threshold_pct?: number; p_user_id: string }
+        Returns: Json
+      }
       invite_registrant_to_join: {
         Args: { p_member_id?: string; p_registration_id: string }
         Returns: undefined
       }
-      refresh_member_statuses: { Args: { p_user_id?: string }; Returns: number }
+      member_membership_eligible: {
+        Args: {
+          p_class_type: Database["public"]["Enums"]["class_type"]
+          p_member_id: string
+          p_session_date: string
+        }
+        Returns: boolean
+      }
+      nightly_membership_sweep: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      promote_next_eligible_pending: {
+        Args: { p_member_id: string }
+        Returns: undefined
+      }
+      recompute_member_last_attended: {
+        Args: { p_member_id: string }
+        Returns: undefined
+      }
+      refund_membership: {
+        Args: {
+          p_membership_id: string
+          p_refund_amount: number
+          p_refund_reason?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       ai_request_type:

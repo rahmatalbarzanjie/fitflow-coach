@@ -12,7 +12,7 @@ export default async function MembersPage() {
   const user = session?.user
 
   console.time('query:/members:all')
-  const { data: members, error } = await timed<any>('query:/members:members', (supabase.from('members') as any)
+  const { data: members, error } = await timed<any>('query:/members:members', (supabase.from('member_summary') as any)
     .select('id, name, phone, status, last_attended_at, photo_url')
     .eq('user_id', user!.id)
     .order('name', { ascending: true }))

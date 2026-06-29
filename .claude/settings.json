@@ -84,7 +84,13 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/getfuel --max-time 10)",
       "Bash(curl -s http://localhost:3000/getfuel --max-time 15)",
       "Bash(curl -s http://localhost:3000/getfuel --max-time 15 -o /tmp/getfuel.html)",
-      "Bash(grep -c \"kelas rutin setiap minggu\\\\|id=\\\\\\\\\\\\\\\\\\\\\"trust\\\\\\\\\\\\\\\\\\\\\"\\\\|Instruktur BARRE\" /tmp/getfuel.html)"
+      "Bash(grep -c \"kelas rutin setiap minggu\\\\|id=\\\\\\\\\\\\\\\\\\\\\"trust\\\\\\\\\\\\\\\\\\\\\"\\\\|Instruktur BARRE\" /tmp/getfuel.html)",
+      "Bash(node ./_tmp_verify_payment_methods.mjs)",
+      "Bash(sed -n '/\\\\.insert\\({/,/}\\)/p' src/components/classes/NewClassForm.tsx)",
+      "Bash(sed -n '/\\\\.update\\({/,/}\\)/p' src/components/classes/ClassEditForm.tsx)",
+      "Bash(node ./_tmp_check_rescheduled.mjs)",
+      "Bash(npx tsx -e ' *)",
+      "Bash(awk -F: '{s+=$2} END {print \"total CREATE TABLE statements:\", s}')"
     ]
   }
 }

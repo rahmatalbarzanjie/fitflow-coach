@@ -138,7 +138,19 @@ export function AssignPackageForm({ memberId, userId, packages, activeMembership
       source,
     })
 
-    if (insertErr) { setError(insertErr.message); setSubmitting(false); return }
+    if (insertErr) {
+      // 23505 = unique_violation - jaring pengaman race condition (dua
+      // device assign bersamaan), bukan jalur yang biasa kena karena
+      // activeMembership di atas sudah mencegah kasus umum. Tampilkan
+      // pesan ramah, bukan raw error Postgres ke instruktur.
+      setError(
+        insertErr.code === '23505'
+          ? 'Member ini baru saja punya paket aktif lain (mungkin di-assign dari device/tab lain). Muat ulang halaman untuk lihat status terbaru.'
+          : insertErr.message
+      )
+      setSubmitting(false)
+      return
+    }
 
     invalidateDashboardCache()
     router.push(`/members/${memberId}/membership`)

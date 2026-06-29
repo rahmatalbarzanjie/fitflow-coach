@@ -699,9 +699,9 @@ CARA MENJAWAB:
     if (/berapa\s+member|member\s+aktif|member\s+at.?risk|jumlah\s+member/i.test(message)) {
       const [{ count: total }, { count: active }, { count: atRisk }, { count: inactive }] = await Promise.all([
         supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id),
-        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'active'),
-        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'at_risk'),
-        supabase.from('members').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'inactive'),
+        supabase.from('member_summary').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'active'),
+        supabase.from('member_summary').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'at_risk'),
+        supabase.from('member_summary').select('id', { count: 'exact', head: true }).eq('user_id', instructorProfile.id).eq('status', 'inactive'),
       ])
       return sendFastReply(
         `Halo Kak! 📋 Ringkasan member:\n\n` +

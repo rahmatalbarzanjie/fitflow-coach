@@ -23,12 +23,12 @@ export default async function AdminMembersPage({
     supa.from('profiles').select('id, name, business_name').neq('id', user.id).order('name'),
     instructor
       ? supa
-          .from('members')
+          .from('member_summary')
           .select('id, name, phone, status, created_at, user_id')
           .eq('user_id', instructor)
           .order('name')
       : supa
-          .from('members')
+          .from('member_summary')
           .select('id, name, phone, status, created_at, user_id')
           .neq('user_id', user.id)
           .order('name')

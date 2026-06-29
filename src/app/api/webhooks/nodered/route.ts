@@ -7,7 +7,7 @@ import { createServiceClient } from '@/lib/supabase/service'
  * Body:   { action: string, ...payload }
  *
  * Actions:
- *  refresh_statuses        – update semua status member (panggil tiap hari tengah malam)
+ *  refresh_statuses        – DEPRECATED, no-op (status member sekarang derived, lihat handler)
  *  get_pending_recipients  – ambil antrian broadcast yang belum terkirim
  *  mark_recipient          – tandai recipient sebagai sent/failed setelah WA dikirim
  *  get_stats               – ringkasan hari ini untuk satu instruktur
@@ -32,15 +32,16 @@ export async function POST(request: Request) {
   const supabase = createServiceClient()
   const { action } = body
 
-  // ── Action: refresh_statuses ───────────────────────────────────────────────
-  // Panggil setiap tengah malam via Node-RED cron.
-  // Payload opsional: { user_id?: string }   → null = refresh semua instruktur
+  // ── Action: refresh_statuses (DEPRECATED, no-op) ────────────────────────────
+  // Member Status Architecture Migration (2026-06-29): status member sekarang
+  // DERIVED (dihitung dari last_attended_at setiap dibaca lewat view
+  // member_summary), bukan disimpan+direfresh cron lagi -
+  // refresh_member_statuses() RPC sudah dihapus dari database. Action ini
+  // dibiarkan no-op (bukan dihapus total) supaya cron Node-RED lama yang
+  // masih memanggil tiap tengah malam tidak gagal keras/berisik, sampai
+  // flow-nya sendiri dinonaktifkan di sisi Node-RED.
   if (action === 'refresh_statuses') {
-    const { data, error } = await supabase.rpc('refresh_member_statuses', {
-      p_user_id: body.user_id ?? null,
-    })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true, updated: data })
+    return NextResponse.json({ ok: true, updated: 0, deprecated: true })
   }
 
   // ── Action: get_pending_recipients ────────────────────────────────────────
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
 
       // Member at risk
       supabase
-        .from('members')
+        .from('member_summary')
         .select('id, name')
         .eq('user_id', user_id)
         .eq('status', 'at_risk'),

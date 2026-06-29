@@ -62,7 +62,7 @@ export default async function AttendancePage({
   // ── Komunitas tidak dipakai sebagai sumber peserta ──
   const [membersRes, bookingsRes, attendanceRes] = await Promise.all([
     // Member aktif instruktur
-    (supabase.from('members') as any)
+    (supabase.from('member_summary') as any)
       .select('id, name, phone')
       .eq('user_id', user!.id)
       .eq('status', 'active')

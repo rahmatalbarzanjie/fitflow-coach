@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     // Member at risk saat ini
     supabase
-      .from('members')
+      .from('member_summary')
       .select('name')
       .eq('user_id', user_id)
       .eq('status', 'at_risk'),

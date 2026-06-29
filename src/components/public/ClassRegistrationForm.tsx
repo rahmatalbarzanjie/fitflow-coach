@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { invalidateDashboardCache } from '@/lib/invalidate-dashboard'
@@ -56,15 +56,39 @@ export function ClassRegistrationForm({
   const [error,      setError]      = useState<string | null>(null)
   const [success,    setSuccess]    = useState(false)
   const [proofFailed, setProofFailed] = useState(false)
+  // null = belum dicek / nomor belum cukup digit. Cuma dipakai untuk
+  // menentukan tampilan form (skip bagian bayar) - server selalu
+  // menghitung ulang sendiri saat submit, tidak pernah percaya nilai ini.
+  const [membershipEligible, setMembershipEligible] = useState<boolean | null>(null)
+  const [usedMembership, setUsedMembership] = useState(false)
 
   const supabase = createClient()
   const waNumber  = instructorPhone?.replace(/\D/g, '').replace(/^0/, '62')
+  const skipPayment = !isFree && membershipEligible === true
+
+  useEffect(() => {
+    if (isFree) return
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 9) { setMembershipEligible(null); return }
+
+    const timer = setTimeout(async () => {
+      const client = createClient()
+      const { data } = await client.rpc('check_membership_eligibility', {
+        p_class_id:         classId,
+        p_session_date:     targetDate,
+        p_registrant_phone: phone.trim(),
+      })
+      setMembershipEligible(data === true)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [phone, isFree, classId, targetDate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim())  { setError('Nama tidak boleh kosong.'); return }
     if (!phone.trim()) { setError('Nomor HP tidak boleh kosong.'); return }
-    if (!isFree && method === 'transfer' && !proofFile) {
+    if (!skipPayment && !isFree && method === 'transfer' && !proofFile) {
       setError('Bukti transfer wajib diupload sebelum mendaftar.')
       return
     }
@@ -75,7 +99,7 @@ export function ClassRegistrationForm({
     let proofUrl: string | null = null
     let uploadFailed = false
 
-    if (!isFree && method === 'transfer' && proofFile) {
+    if (!skipPayment && !isFree && method === 'transfer' && proofFile) {
       const ext      = proofFile.name.split('.').pop()
       const filePath = `class-${classId}/${Date.now()}.${ext}`
       const { data: uploadData, error: uploadErr } = await supabase.storage
@@ -96,13 +120,15 @@ export function ClassRegistrationForm({
     }
     setProofFailed(uploadFailed)
 
-    const paymentMethod = isFree ? null : method
+    const paymentMethod = isFree || skipPayment ? null : method
 
     // RPC adalah satu-satunya sumber kebenaran untuk kapasitas, duplikat,
-    // dan harga - server me-lock baris kelas, re-validasi kuota, dan
-    // menghitung amount_paid sendiri (bukan dari nilai client). Browser
-    // tidak lagi menentukan apa pun selain identitas pendaftar.
-    const { data: registrationId, error: regErr } = await supabase.rpc('create_class_registration', {
+    // harga, DAN status membership - server me-lock baris kelas,
+    // re-validasi kuota, mencocokkan nomor HP ke member, dan menghitung
+    // amount_paid sendiri (bukan dari nilai client). Browser tidak lagi
+    // menentukan apa pun selain identitas pendaftar - `skipPayment` di
+    // atas cuma untuk tampilan, server tetap menghitung ulang sendiri.
+    const { data: regRows, error: regErr } = await supabase.rpc('create_class_registration', {
       p_class_id:         classId,
       p_session_date:     targetDate,
       p_registrant_name:  name.trim(),
@@ -110,6 +136,8 @@ export function ClassRegistrationForm({
       p_payment_method:   paymentMethod ?? undefined,
       p_proof_url:        proofUrl ?? undefined,
     })
+    const registrationRow = regRows?.[0]
+    const registrationId  = registrationRow?.id
 
     if (regErr) {
       setError(
@@ -135,13 +163,14 @@ export function ClassRegistrationForm({
     // supaya cache Beranda instruktur yang benar bisa ditemukan & dibuang.
     invalidateDashboardCache({ classId })
 
+    setUsedMembership(registrationRow?.used_membership === true)
     setSuccess(true)
     setSubmitting(false)
   }
 
   // ── Success state ──────────────────────────────────────────────────────────
   if (success) {
-    const needsTransferInstructions = !isFree && method === 'transfer'
+    const needsTransferInstructions = !isFree && !usedMembership && method === 'transfer'
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -153,7 +182,13 @@ export function ClassRegistrationForm({
         </p>
         <p className="text-sm font-semibold text-violet-700 mb-4">{className}</p>
 
-        {needsTransferInstructions ? (
+        {usedMembership ? (
+          <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 text-left mb-4">
+            <p className="text-xs text-violet-700">
+              Terdaftar pakai paket membership kamu ✅. Sesi akan dipotong otomatis saat kamu hadir nanti. Tidak perlu bayar lagi. Sampai jumpa di kelas! 💪
+            </p>
+          </div>
+        ) : needsTransferInstructions ? (
           proofFailed ? (
             <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-left mb-4">
               <p className="text-xs font-semibold text-yellow-700 mb-1">⚠️ Bukti transfer gagal terupload otomatis:</p>
@@ -250,7 +285,13 @@ export function ClassRegistrationForm({
           <p className="text-xs text-gray-400">Untuk konfirmasi pendaftaran</p>
         </div>
 
-        {!isFree && showToggle && (
+        {skipPayment && (
+          <div className="p-3 rounded-xl bg-violet-50 border border-violet-100 text-xs text-violet-700">
+            Nomor ini terdaftar sebagai member dengan paket aktif - tidak perlu bayar, sesi akan dipotong dari paketmu saat hadir.
+          </div>
+        )}
+
+        {!isFree && !skipPayment && showToggle && (
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">Metode Pembayaran</label>
             <div className="grid grid-cols-2 gap-2">
@@ -282,18 +323,18 @@ export function ClassRegistrationForm({
           </div>
         )}
 
-        {!isFree && (
+        {!isFree && !skipPayment && (
           <div className="flex items-center justify-between p-3 rounded-xl bg-violet-50 border border-violet-100">
             <p className="text-sm text-gray-600">Total pembayaran</p>
             <span className="text-xl font-bold text-violet-700">{formatRupiah(classPrice)}</span>
           </div>
         )}
 
-        {!isFree && method === 'transfer' && (
+        {!isFree && !skipPayment && method === 'transfer' && (
           <PaymentMethodsDisplay methods={paymentMethods} />
         )}
 
-        {!isFree && method === 'transfer' && (
+        {!isFree && !skipPayment && method === 'transfer' && (
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
               Bukti Transfer <span className="text-red-500">*</span>
@@ -320,7 +361,7 @@ export function ClassRegistrationForm({
         >
           {submitting ? (
             <><Loader2 className="w-4 h-4 animate-spin" />Mendaftar...</>
-          ) : isFree ? (
+          ) : isFree || skipPayment ? (
             'Daftar Sekarang'
           ) : (
             `Daftar Sekarang · ${formatRupiah(classPrice)}`

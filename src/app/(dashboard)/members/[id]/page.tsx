@@ -36,7 +36,7 @@ export default async function MemberHubPage({
 
   // ── Fix #2: Satu query member, tidak duplikat ─────────────────────────────
   const [memberRes, profileRes, attendanceRes, activeMembershipRes] = await Promise.all([
-    (supabase.from('members') as any)
+    (supabase.from('member_summary') as any)
       .select('id, name, phone, notes, photo_url, status, last_attended_at')
       .eq('id', id)
       .eq('user_id', user!.id)

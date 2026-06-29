@@ -15,13 +15,15 @@ export function CancelMembershipButton({ membershipId }: { membershipId: string 
   async function cancel() {
     setLoading(true)
     setError(null)
-    const { error: err } = await supabase
-      .from('member_memberships')
-      .update({ status: 'cancelled' })
-      .eq('id', membershipId)
-      .eq('status', 'active')
+    // RPC (bukan update langsung) - cancel_membership juga otomatis
+    // mempromosikan membership 'pending' berikutnya kalau yang
+    // dibatalkan ini adalah yang 'active', dalam transaksi yang sama.
+    const { data: cancelled, error: err } = await supabase.rpc('cancel_membership', {
+      p_membership_id: membershipId,
+    })
 
     if (err) { setError(err.message); setLoading(false); return }
+    if (!cancelled) { setError('Membership ini sudah tidak aktif.'); setLoading(false); return }
     router.refresh()
     setLoading(false)
     setConfirming(false)
