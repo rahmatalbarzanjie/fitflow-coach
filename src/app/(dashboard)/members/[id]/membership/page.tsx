@@ -36,7 +36,7 @@ export default async function MemberMembershipPage({
     supabase.from('members').select('id, name').eq('id', id).eq('user_id', user!.id).single(),
     supabase
       .from('member_memberships')
-      .select('id, package_name, package_type, start_date, end_date, total_sessions, used_sessions, purchase_price, status, created_at')
+      .select('id, package_name, package_type, start_date, end_date, total_sessions, purchase_price, status, created_at, source')
       .eq('member_id', id)
       .order('created_at', { ascending: false }),
   ])
@@ -49,14 +49,28 @@ export default async function MemberMembershipPage({
   const pending  = all.filter(m => m.status === 'pending')
   const history  = all.filter(m => m.status !== 'active' && m.status !== 'pending')
 
+  // Sisa sesi SELALU dihitung dari ledger konsumsi, TIDAK PERNAH dari kolom
+  // tersimpan (kolom used_sessions sudah dihapus - lihat
+  // docs/MEMBERSHIP_LIFECYCLE_ENGINE_DESIGN.md §B). Cuma perlu dihitung
+  // untuk paket aktif yang session_pack - unlimited tidak ada konsep sisa.
+  let activeUsedSessions = 0
+  if (active && active.package_type === 'session_pack') {
+    const { count } = await supabase
+      .from('membership_consumptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('membership_id', active.id)
+      .is('reversed_at', null)
+    activeUsedSessions = count ?? 0
+  }
+
   function describePackage(m: any) {
     return m.package_type === 'unlimited'
       ? `Aktif sampai ${formatDateShort(m.end_date)}`
-      : `Sisa ${(m.total_sessions ?? 0) - (m.used_sessions ?? 0)} / ${m.total_sessions} sesi`
+      : `Sisa ${(m.total_sessions ?? 0) - activeUsedSessions} / ${m.total_sessions} sesi`
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref={`/members/${id}`} title="Membership" subtitle={member.name} />
 
       {/* Paket Aktif */}
@@ -64,7 +78,12 @@ export default async function MemberMembershipPage({
         {active ? (
           <div className="flex items-center justify-between p-4">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{active.package_name}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold text-gray-900">{active.package_name}</p>
+                {active.source === 'legacy' && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 shrink-0">Legacy</span>
+                )}
+              </div>
               <p className="text-xs text-gray-400 mt-0.5">{describePackage(active)}</p>
             </div>
             <CancelMembershipButton membershipId={active.id} />
@@ -110,7 +129,12 @@ export default async function MemberMembershipPage({
           history.map(m => (
             <div key={m.id} className="flex items-center justify-between p-4">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{m.package_name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-gray-900">{m.package_name}</p>
+                  {m.source === 'legacy' && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 shrink-0">Legacy</span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {formatDateShort(m.start_date)}{m.end_date ? ` - ${formatDateShort(m.end_date)}` : ''}
                   {Number(m.purchase_price) > 0 ? ` · ${formatRupiah(Number(m.purchase_price))}` : ''}

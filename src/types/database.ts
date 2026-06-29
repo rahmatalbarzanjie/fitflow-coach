@@ -918,10 +918,10 @@ export type Database = {
           package_name: string
           package_type: string
           purchase_price: number | null
+          source: string
           start_date: string
           status: string
           total_sessions: number | null
-          used_sessions: number
           user_id: string
         }
         Insert: {
@@ -933,10 +933,10 @@ export type Database = {
           package_name: string
           package_type: string
           purchase_price?: number | null
+          source?: string
           start_date: string
           status?: string
           total_sessions?: number | null
-          used_sessions?: number
           user_id: string
         }
         Update: {
@@ -948,10 +948,10 @@ export type Database = {
           package_name?: string
           package_type?: string
           purchase_price?: number | null
+          source?: string
           start_date?: string
           status?: string
           total_sessions?: number | null
-          used_sessions?: number
           user_id?: string
         }
         Relationships: [
@@ -1022,6 +1022,61 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      membership_consumptions: {
+        Row: {
+          attendance_id: string | null
+          created_at: string
+          id: string
+          membership_id: string
+          note: string | null
+          reversed_at: string | null
+          reversed_reason: string | null
+          user_id: string
+        }
+        Insert: {
+          attendance_id?: string | null
+          created_at?: string
+          id?: string
+          membership_id: string
+          note?: string | null
+          reversed_at?: string | null
+          reversed_reason?: string | null
+          user_id: string
+        }
+        Update: {
+          attendance_id?: string | null
+          created_at?: string
+          id?: string
+          membership_id?: string
+          note?: string | null
+          reversed_at?: string | null
+          reversed_reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_consumptions_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_consumptions_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_consumptions_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "member_memberships"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       membership_packages: {
         Row: {
@@ -1981,12 +2036,39 @@ export type Database = {
         }
         Returns: string
       }
+      create_legacy_membership: {
+        Args: {
+          p_member_id: string
+          p_package_id: string
+          p_purchase_price: number
+          p_start_date: string
+          p_total_sessions: number
+          p_used_sessions: number
+        }
+        Returns: string
+      }
       generate_sessions_for_class: {
         Args: { p_class_id: string; p_days_ahead?: number }
         Returns: number
       }
+      get_class_occupancy: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       get_dashboard_summary: {
         Args: { p_month_start: string; p_user_id: string }
+        Returns: Json
+      }
+      get_laporan_revenue: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_user_id: string
+        }
         Returns: Json
       }
       invite_registrant_to_join: {

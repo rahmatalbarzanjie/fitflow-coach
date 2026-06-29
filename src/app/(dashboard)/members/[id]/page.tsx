@@ -54,7 +54,7 @@ export default async function MemberHubPage({
 
     supabase
       .from('member_memberships')
-      .select('package_name, package_type, end_date, total_sessions, used_sessions')
+      .select('id, package_name, package_type, end_date, total_sessions')
       .eq('member_id', id)
       .eq('status', 'active')
       .maybeSingle(),
@@ -64,6 +64,19 @@ export default async function MemberHubPage({
   if (!member) notFound()
 
   const activeMembership = activeMembershipRes.data as any
+
+  // Sisa sesi SELALU dihitung dari ledger konsumsi, TIDAK PERNAH dari kolom
+  // tersimpan (used_sessions sudah dihapus - lihat
+  // docs/MEMBERSHIP_LIFECYCLE_ENGINE_DESIGN.md §B).
+  let activeUsedSessions = 0
+  if (activeMembership && activeMembership.package_type === 'session_pack') {
+    const { count } = await supabase
+      .from('membership_consumptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('membership_id', activeMembership.id)
+      .is('reversed_at', null)
+    activeUsedSessions = count ?? 0
+  }
 
   // Hitung statistik
   const allAttendance     = (attendanceRes.data ?? []) as any[]
@@ -95,7 +108,7 @@ export default async function MemberHubPage({
   const isNewMember = totalAttended === 0
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <PageHeader backHref="/members" title={member.name} />
 
       {/* Profil singkat */}
@@ -122,7 +135,7 @@ export default async function MemberHubPage({
             activeMembership
               ? activeMembership.package_type === 'unlimited'
                 ? `${activeMembership.package_name} · Aktif sampai ${formatDateShort(activeMembership.end_date)}`
-                : `${activeMembership.package_name} · Sisa ${(activeMembership.total_sessions ?? 0) - (activeMembership.used_sessions ?? 0)}/${activeMembership.total_sessions} sesi`
+                : `${activeMembership.package_name} · Sisa ${(activeMembership.total_sessions ?? 0) - activeUsedSessions}/${activeMembership.total_sessions} sesi`
               : 'Belum ada paket aktif'
           }
           href={`/members/${id}/membership`}
