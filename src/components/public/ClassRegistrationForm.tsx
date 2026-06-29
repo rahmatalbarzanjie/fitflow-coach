@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle, Upload, Loader2, Phone, Banknote, Landmark } from 'lucide-react'
+import { CheckCircle, Upload, Loader2, Phone, Banknote, Landmark, ArrowLeft } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { PaymentMethodsDisplay } from './PaymentMethodsDisplay'
 
@@ -16,6 +17,7 @@ interface PaymentMethod {
 }
 
 interface Props {
+  slug: string
   classId: string
   instructorPhone: string | null
   targetDate: string
@@ -28,6 +30,7 @@ interface Props {
 const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
 
 export function ClassRegistrationForm({
+  slug,
   classId,
   instructorPhone,
   targetDate,
@@ -179,12 +182,20 @@ export function ClassRegistrationForm({
             href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo, saya ${name} (${phone}) baru mendaftar untuk ${className}. Berikut bukti transfer saya.`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full h-11 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-colors"
+            className="flex items-center justify-center gap-2 w-full h-11 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-colors mb-2"
           >
             <Phone className="w-4 h-4" />
             Kirim Bukti Transfer via WhatsApp
           </a>
         )}
+
+        <Link
+          href={`/${slug}`}
+          className="flex items-center justify-center gap-1.5 w-full h-9 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Kembali ke Halaman Utama
+        </Link>
       </div>
     )
   }

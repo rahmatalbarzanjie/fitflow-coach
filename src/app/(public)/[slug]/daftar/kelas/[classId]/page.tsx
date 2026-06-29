@@ -137,6 +137,7 @@ export default async function ClassRegistrationPage({
         </div>
       ) : (
         <ClassRegistrationForm
+          slug={slug}
           classId={cls.id}
           instructorPhone={profile.phone}
           targetDate={targetDate}

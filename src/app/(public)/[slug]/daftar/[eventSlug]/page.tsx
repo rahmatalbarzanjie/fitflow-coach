@@ -199,6 +199,7 @@ export default async function PublicRegistrationPage({
         </div>
       ) : (
         <RegistrationForm
+          slug={slug}
           eventId={event.id}
           instructorPhone={profile.phone}
           earlyBirdAvailable={earlyBirdAvailable}

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle, Upload, Loader2, Phone } from 'lucide-react'
+import { CheckCircle, Upload, Loader2, Phone, ArrowLeft } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 import { resizeAndCompressImage, ImageValidationError } from '@/lib/image-utils'
 import { PaymentMethodsDisplay } from './PaymentMethodsDisplay'
@@ -17,6 +18,7 @@ interface PaymentMethod {
 }
 
 interface Props {
+  slug:               string
   eventId:            string
   instructorPhone:    string | null
   earlyBirdAvailable: boolean
@@ -31,6 +33,7 @@ interface Props {
 const inp = 'w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white'
 
 export function RegistrationForm({
+  slug,
   eventId,
   instructorPhone,
   earlyBirdAvailable,
@@ -189,12 +192,20 @@ export function RegistrationForm({
             href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo, saya ${name} baru mendaftar untuk ${eventTitle}. Ada yang ingin saya tanyakan.`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full h-11 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors"
+            className="flex items-center justify-center gap-2 w-full h-11 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors mb-2"
           >
             <Phone className="w-4 h-4" />
             Hubungi Instruktur via WhatsApp
           </a>
         )}
+
+        <Link
+          href={`/${slug}`}
+          className="flex items-center justify-center gap-1.5 w-full h-9 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Kembali ke Halaman Utama
+        </Link>
       </div>
     )
   }
