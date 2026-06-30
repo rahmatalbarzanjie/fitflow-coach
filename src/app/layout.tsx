@@ -6,8 +6,14 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'FitFlow Coach',
-  description: 'Digital assistant untuk instruktur fitness Indonesia',
+  title: 'FuelOS by Getfuel',
+  description: 'Platform manajemen kelas fitness Getfuel - Barre Intensity & Poundfit',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'FuelOS',
+  },
 }
 
 export default function RootLayout({
@@ -17,6 +23,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <meta name="theme-color" content="#1a1625" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>

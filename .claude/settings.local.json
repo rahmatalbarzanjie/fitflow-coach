@@ -24,7 +24,12 @@
       "Bash(cat supabase/migrations/055_membership_revenue_source_filter.sql)",
       "Bash(python3 -c ' *)",
       "Bash(cd \"d:/My Project/NEW SIMETRI/fitflow-coach\" && mv supabase/migrations/071_drop_member_status_cron_dependency.sql /tmp/071_drop_member_status_cron_dependency.sql.holdback && ls supabase/migrations | tail -5)",
-      "Bash(curl -s -o /tmp/laporan_resp.html -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/laporan)"
+      "Bash(curl -s -o /tmp/laporan_resp.html -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/laporan)",
+      "Bash(grep -il \"community_contacts\\\\|community\\\\|wa_group\\\\|group capture\\\\|contact capture\" nodered-flows.json \"nodered/fitflow-flows.json\")",
+      "Bash(grep -c \"community\" nodered-flows.json \"nodered/fitflow-flows.json\")",
+      "Bash(sort -t/ -k4 -n)",
+      "Bash(git fetch *)",
+      "Bash(xargs grep -l \"paket\\\\|membership.*booking\")"
     ],
     "additionalDirectories": [
       "\\tmp"
