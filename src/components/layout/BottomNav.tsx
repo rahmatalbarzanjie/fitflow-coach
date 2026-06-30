@@ -4,22 +4,23 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  Users, Calendar, Zap, PenSquare, Receipt, MoreHorizontal,
-  Users2, Package, Wallet, MessageSquare, Settings, X,
-  LayoutDashboard, UserCog,
+  LayoutDashboard, Users, Calendar, Zap, Receipt, MoreHorizontal,
+  Users2, Package, Wallet, MessageSquare, Settings, PenSquare, X,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 const instructorMainItems = [
-  { href: '/members',    icon: Users,    label: 'Member'  },
-  { href: '/classes',    icon: Calendar, label: 'Kelas'   },
-  { href: '/events',     icon: Zap,      label: 'Event'   },
-  { href: '/content',    icon: PenSquare, label: 'Konten' },
-  { href: '/laporan',    icon: Receipt,  label: 'Laporan' },
+  { href: '/',         icon: LayoutDashboard, label: 'Beranda' },
+  { href: '/members',  icon: Users,           label: 'Member'  },
+  { href: '/classes',  icon: Calendar,        label: 'Kelas'   },
+  { href: '/events',   icon: Zap,             label: 'Event'   },
+  { href: '/laporan',  icon: Receipt,         label: 'Laporan' },
 ]
 
 const instructorMoreItems = [
+  { href: '/content',          icon: PenSquare,     label: 'Buat Konten'       },
   { href: '/community',        icon: Users2,        label: 'Komunitas'         },
   { href: '/packages',         icon: Package,       label: 'Paket Membership'  },
   { href: '/payment-profiles', icon: Wallet,        label: 'Metode Pembayaran' },

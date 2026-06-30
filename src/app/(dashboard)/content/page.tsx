@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ContentPage } from './ContentPage'
 
-export const metadata = { title: 'Buat Konten - FitFlow Coach' }
+export const metadata = { title: 'Buat Konten - FuelOS' }
 
 export default async function ContentRoute() {
   const supabase = await createClient()

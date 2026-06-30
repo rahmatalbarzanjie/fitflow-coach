@@ -75,7 +75,7 @@ export default async function AdminPage() {
         <Shield className="w-5 h-5 text-gray-700" />
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
-          <p className="text-sm text-gray-400">Overview platform FitFlow Coach</p>
+          <p className="text-sm text-gray-400">Overview platform FuelOS</p>
         </div>
       </div>
 

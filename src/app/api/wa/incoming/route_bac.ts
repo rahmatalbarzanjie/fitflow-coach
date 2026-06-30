@@ -104,9 +104,9 @@ export async function POST(request: Request) {
   // instruktur manapun. Device ini dobel fungsi:
   //  1. Developer sendiri (nomor pribadinya) → laporan lintas-instruktur,
   //     read-only, deterministik, tidak lewat Claude.
-  //  2. Siapa pun yang lain (calon klien yang tertarik FitFlow Coach,
+  //  2. Siapa pun yang lain (calon klien yang tertarik FuelOS,
   //     biasanya nyasar dari landing page instruktur → /home) → asisten AI
-  //     yang jawab soal aplikasi FitFlow Coach itu sendiri (fitur, harga,
+  //     yang jawab soal aplikasi FuelOS itu sendiri (fitur, harga,
   //     trial, cara daftar) - BUKAN data instruktur mana pun.
   if (instructorProfile.is_platform_admin) {
     const adminPhoneKey = normalizePhone(cleanSender)
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
       }
 
       return sendAdminReply(
-        `Halo ${greet}! 👋 Aku asisten developer FitFlow Coach.\n\n` +
+        `Halo ${greet}! 👋 Aku asisten developer FuelOS.\n\n` +
         `Kamu bisa tanya:\n` +
         `- "list instruktur"\n` +
         `- "member terbanyak" / "kelas terbanyak"\n` +
@@ -189,7 +189,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // ── Bukan developer → calon klien yang tertarik FitFlow Coach ──────────
+    // ── Bukan developer → calon klien yang tertarik FuelOS ──────────
     const platformAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
     const { data: prospectHistoryRows } = await supabase
       .from('wa_conversations')
@@ -201,9 +201,9 @@ export async function POST(request: Request) {
     const prospectHistory = (prospectHistoryRows ?? []).reverse()
 
     const productSystemPrompt =
-      `Kamu adalah asisten WhatsApp resmi untuk *FitFlow Coach* - aplikasi SaaS untuk instruktur fitness Indonesia (kelola kelas, member, event, absensi digital, broadcast WhatsApp, AI bot WA otomatis, dan laporan pendapatan).
+      `Kamu adalah asisten WhatsApp resmi untuk *FuelOS* - aplikasi SaaS untuk instruktur fitness Indonesia (kelola kelas, member, event, absensi digital, broadcast WhatsApp, AI bot WA otomatis, dan laporan pendapatan).
 
-TENTANG FITFLOW COACH:
+TENTANG FuelOS:
 - Trial: 30 hari GRATIS, akses SEMUA fitur tanpa batas, tanpa kartu kredit
 - Cara mulai: isi form di ${platformAppUrl}/daftar - tim kami konfirmasi manual, biasanya cepat
 - Info & demo lengkap: ${platformAppUrl}/home
@@ -222,7 +222,7 @@ CARA MENJAWAB:
 - Jawaban ringkas, kalau ada beberapa topik pisah jadi paragraf baru (baris kosong) - jangan satu paragraf panjang
 - PENTING: WhatsApp cuma pakai SATU bintang untuk bold (*teks*) - JANGAN PERNAH dua bintang (**teks**)
 - Kalau orang tertarik daftar/coba, arahkan ke ${platformAppUrl}/daftar (trial 30 hari dulu, baru pilih paket)
-- Kalau pertanyaannya di luar soal FitFlow Coach (misal nanya soal kelas/jadwal instruktur tertentu), jelaskan ini bot khusus info aplikasi FitFlow Coach, sarankan hubungi instruktur terkait langsung
+- Kalau pertanyaannya di luar soal FuelOS (misal nanya soal kelas/jadwal instruktur tertentu), jelaskan ini bot khusus info aplikasi FuelOS, sarankan hubungi instruktur terkait langsung
 - JANGAN mengarang fitur/harga yang tidak ada di atas
 - Mulai jawaban langsung tanpa sapaan panjang`
 

@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     const message = [
       `Halo ${req.name}! 🎉`,
       ``,
-      `Pendaftaran FitFlow Coach kamu telah *dikonfirmasi*.`,
+      `Pendaftaran FuelOS kamu telah *dikonfirmasi*.`,
       ``,
       `Info login kamu:`,
       `🔗 *Link:* ${appUrl}/login`,

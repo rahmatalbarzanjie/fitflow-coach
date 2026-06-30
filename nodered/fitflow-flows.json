@@ -2,7 +2,7 @@
   {
     "id": "ff-tab",
     "type": "tab",
-    "label": "FitFlow Coach",
+    "label": "FuelOS",
     "disabled": false,
     "info": ""
   },
@@ -11,7 +11,7 @@
     "id": "ff-cmt-hdr",
     "type": "comment",
     "z": "ff-tab",
-    "name": "╔══ FitFlow Coach - Otomatisasi Node-RED (IMPORT FILE INI SAJA) ══╗",
+    "name": "╔══ FuelOS - Otomatisasi Node-RED (IMPORT FILE INI SAJA) ══╗",
     "info": "CARA SETUP (hanya 1 langkah):\n\n1. Import file ini ke Node-RED\n2. Buka node '⚙️ SET CONFIG' - isi 6 nilai\n3. Klik Deploy\n4. Klik ▶ pada node '⚙️ SET CONFIG' satu kali\n\nTidak ada env vars global yang diubah → AMAN untuk Node-RED multi-app.\nSemua nilai disimpan di flow context (hanya berlaku di tab ini saja).\n\nFILE LAIN YANG BISA DIABAIKAN (tidak perlu diimport):\n- nodered-flows.json (root project)    ← versi lama pakai env vars global\n- nodered/fitflow-test-suite.json       ← opsional, untuk testing\n- nodered/fitflow-wabot-flow.json      ← opsional, untuk monitoring bot\n\nALUR DI FILE INI:\n1. ⚙️  Config         - set semua nilai sekali (simpan di flow context)\n2. 🔌 Health Check    - test koneksi ke FitFlow app\n3. 🌙 Refresh Status  - update status member tiap 00:00\n4. ☀️  Rekap Pagi     - WA statistik ke instruktur tiap 06:30\n5. 📢 Broadcast       - kirim antrian WA ke member (tiap 2 menit)\n6. 🎉 Notif Registrasi - WA ke instruktur saat ada pendaftar baru\n7. 🤖 WA Bot Relay    - teruskan pesan WA masuk ke AI bot",
     "x": 310,
     "y": 40,

@@ -42,7 +42,7 @@ export default async function HomePage() {
   const isEnabled = enabledFlag !== 'false'
   // Tombol "Tanya dulu via WhatsApp" di pricing diarahkan ke nomor BOT
   // developer (bukan nomor pribadi admin_wa) - supaya calon klien yang
-  // chat langsung dilayani asisten AI seputar FitFlow Coach, bukan ke
+  // chat langsung dilayani asisten AI seputar FuelOS, bukan ke
   // chat pribadi yang belum tentu langsung dibalas.
   const adminWA = (await getSystemConfig('platform_bot_phone')) || (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
 
@@ -57,7 +57,7 @@ export default async function HomePage() {
             <div className="w-6 h-6 bg-violet-600 rounded-lg flex items-center justify-center">
               <Activity className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-sm font-bold text-gray-900">FitFlow Coach</span>
+            <span className="text-sm font-bold text-gray-900">FuelOS</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">Sedang Dalam Tahap Pengembangan</h1>
           <p className="text-sm text-gray-500 mb-6">
@@ -83,7 +83,7 @@ export default async function HomePage() {
             <div className="w-7 h-7 bg-violet-600 rounded-lg flex items-center justify-center">
               <Activity className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">FitFlow Coach</span>
+            <span className="font-bold text-gray-900 text-sm">FuelOS</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="#pricing" className="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition-colors">
@@ -200,9 +200,9 @@ export default async function HomePage() {
             <div className="w-6 h-6 bg-violet-500 rounded-md flex items-center justify-center">
               <Activity className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-sm font-semibold text-white">FitFlow Coach</span>
+            <span className="text-sm font-semibold text-white">FuelOS</span>
           </div>
-          <p className="text-xs text-gray-500">© 2026 FitFlow Coach. Dibuat untuk instruktur fitness Indonesia.</p>
+          <p className="text-xs text-gray-500">© 2026 FuelOS. Dibuat untuk instruktur fitness Indonesia.</p>
           <Link href="/login" className="text-xs text-gray-400 hover:text-white transition-colors">
             Login Instruktur
           </Link>

@@ -9,7 +9,7 @@ export default async function ExpiredPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const adminWA  = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
-  const adminMsg = encodeURIComponent(`Halo! Masa trial FitFlow Coach saya sudah habis. Mohon perpanjangan untuk akun ${user?.email ?? ''}`)
+  const adminMsg = encodeURIComponent(`Halo! Masa trial FuelOS saya sudah habis. Mohon perpanjangan untuk akun ${user?.email ?? ''}`)
   const waLink   = adminWA ? `https://wa.me/${adminWA.replace(/\D/g, '')}?text=${adminMsg}` : null
 
   return (
@@ -23,7 +23,7 @@ export default async function ExpiredPage() {
           <div className="w-6 h-6 bg-violet-600 rounded-lg flex items-center justify-center">
             <Activity className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="text-sm font-bold text-gray-900">FitFlow Coach</span>
+          <span className="text-sm font-bold text-gray-900">FuelOS</span>
         </div>
 
         <h1 className="text-xl font-bold text-gray-900 mb-2">Masa Trial Telah Berakhir</h1>

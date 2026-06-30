@@ -68,7 +68,7 @@ export default function DaftarPage() {
             <div className="inline-flex items-center justify-center w-12 h-12 bg-violet-600 rounded-2xl mb-3 shadow-lg shadow-violet-200">
               <Activity className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">FitFlow Coach</h1>
+            <h1 className="text-2xl font-bold text-gray-900">FuelOS</h1>
           </Link>
           <p className="text-sm text-gray-500 mt-1">Daftar sebagai instruktur - trial 30 hari gratis</p>
         </div>
@@ -155,7 +155,7 @@ export default function DaftarPage() {
             <div className="p-3 rounded-xl bg-violet-50 border border-violet-100">
               <p className="text-xs font-semibold text-violet-700 mb-1">✨ Trial 30 Hari Gratis</p>
               <p className="text-xs text-violet-600">
-                Setelah pendaftaran dikonfirmasi, kamu langsung bisa pakai semua fitur FitFlow Coach selama 30 hari tanpa biaya.
+                Setelah pendaftaran dikonfirmasi, kamu langsung bisa pakai semua fitur FuelOS selama 30 hari tanpa biaya.
               </p>
             </div>
 

@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFlow Coach - Initial Schema
+-- FuelOS - Initial Schema
 -- Jalankan file ini di Supabase SQL Editor (sekali jalan)
 -- Aman di-run ulang: semua DROP IF EXISTS ada di awal
 -- ============================================================

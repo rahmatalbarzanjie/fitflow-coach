@@ -56,7 +56,7 @@ export default async function SettingsPage({
 
       {welcome === '1' && (
         <div className="mb-5 p-4 bg-violet-50 border border-violet-100 rounded-2xl">
-          <p className="text-sm font-semibold text-violet-800">👋 Selamat datang di FitFlow Coach!</p>
+          <p className="text-sm font-semibold text-violet-800">👋 Selamat datang di FuelOS!</p>
           <p className="text-xs text-violet-600 mt-1">
             Lengkapi profil kamu agar peserta bisa menemukan halaman publikmu.
           </p>

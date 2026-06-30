@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFlow Coach - Migration 002: tambah kolom baru
+-- FuelOS - Migration 002: tambah kolom baru
 -- Jalankan di Supabase SQL Editor
 -- Aman diulang (IF NOT EXISTS)
 -- ============================================================

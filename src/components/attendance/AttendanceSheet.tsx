@@ -25,16 +25,16 @@ import { formatDateShort, formatTime } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Source      = 'member' | 'booking' | 'walkin'
+type Source = 'member' | 'booking' | 'walkin'
 type AttendState = 'hadir' | 'none'
 
 interface Participant {
-  key:         string
-  source:      Source
-  memberId?:   string
-  name:        string
-  phone:       string
-  state:       AttendState
+  key: string
+  source: Source
+  memberId?: string
+  name: string
+  phone: string
+  state: AttendState
   attendanceId?: string // kalau sudah ada di DB
 }
 
@@ -48,8 +48,8 @@ interface Props {
     id: string; session_date: string
     start_time: string; end_time: string
   }
-  members:            { id: string; name: string; phone: string }[]
-  bookings:           { id: string; registrant_name: string; registrant_phone: string; member_id: string | null }[]
+  members: { id: string; name: string; phone: string }[]
+  bookings: { id: string; registrant_name: string; registrant_phone: string; member_id: string | null }[]
   existingAttendance: {
     id: string; member_id: string | null; source: string
     registrant_name: string | null; registrant_phone: string | null
@@ -62,10 +62,10 @@ function WalkinSheet({
   onAdd,
   onClose,
 }: {
-  onAdd:    (name: string, phone: string) => void
-  onClose:  () => void
+  onAdd: (name: string, phone: string) => void
+  onClose: () => void
 }) {
-  const [name,  setName ] = useState('')
+  const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [error, setError] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
@@ -151,31 +151,29 @@ function WalkinSheet({
 function ParticipantRow({
   name, phone, source, state, onTap,
 }: {
-  name:    string
-  phone:   string
-  source:  Source
-  state:   AttendState
-  onTap:   () => void
+  name: string
+  phone: string
+  source: Source
+  state: AttendState
+  onTap: () => void
 }) {
   const hadir = state === 'hadir'
 
   const sourceBadge: Record<Source, { label: string; color: string }> = {
-    member:  { label: 'Member',  color: 'bg-violet-100 text-violet-700' },
-    booking: { label: 'Booking', color: 'bg-blue-100 text-blue-700'    },
-    walkin:  { label: 'Walk-in', color: 'bg-orange-100 text-orange-700'},
+    member: { label: 'Member', color: 'bg-violet-100 text-violet-700' },
+    booking: { label: 'Booking', color: 'bg-blue-100 text-blue-700' },
+    walkin: { label: 'Walk-in', color: 'bg-orange-100 text-orange-700' },
   }
 
   return (
     <button
       onClick={onTap}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors text-left ${
-        hadir ? 'bg-green-50' : 'hover:bg-gray-50'
-      }`}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors text-left ${hadir ? 'bg-green-50' : 'hover:bg-gray-50'
+        }`}
     >
       {/* Centang */}
-      <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-        hadir ? 'text-green-500' : 'text-gray-300'
-      }`}>
+      <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${hadir ? 'text-green-500' : 'text-gray-300'
+        }`}>
         {hadir
           ? <CheckCircle2 className="w-6 h-6" />
           : <Circle className="w-6 h-6" />
@@ -205,7 +203,7 @@ function ParticipantRow({
 export function AttendanceSheet({
   cls, session, members, bookings, existingAttendance,
 }: Props) {
-  const router   = useRouter()
+  const router = useRouter()
   const supabase = createClient()
 
   // Bangun daftar peserta awal dari 2 sumber (member + booking)
@@ -217,12 +215,12 @@ export function AttendanceSheet({
     for (const m of members) {
       const existing = existingAttendance.find(a => a.member_id === m.id)
       list.push({
-        key:         `member-${m.id}`,
-        source:      'member',
-        memberId:    m.id,
-        name:        m.name,
-        phone:       m.phone ?? '',
-        state:       existing ? 'hadir' : 'none',
+        key: `member-${m.id}`,
+        source: 'member',
+        memberId: m.id,
+        name: m.name,
+        phone: m.phone ?? '',
+        state: existing ? 'hadir' : 'none',
         attendanceId: existing?.id,
       })
       addedMemberIds.add(m.id)
@@ -235,12 +233,12 @@ export function AttendanceSheet({
         b.member_id ? a.member_id === b.member_id : false
       )
       list.push({
-        key:         `booking-${b.id}`,
-        source:      'booking',
-        memberId:    b.member_id ?? undefined,
-        name:        b.registrant_name,
-        phone:       b.registrant_phone ?? '',
-        state:       existing ? 'hadir' : 'none',
+        key: `booking-${b.id}`,
+        source: 'booking',
+        memberId: b.member_id ?? undefined,
+        name: b.registrant_name,
+        phone: b.registrant_phone ?? '',
+        state: existing ? 'hadir' : 'none',
         attendanceId: existing?.id,
       })
     }
@@ -249,11 +247,11 @@ export function AttendanceSheet({
     for (const a of existingAttendance) {
       if (a.source !== 'walkin') continue
       list.push({
-        key:         `walkin-${a.id}`,
-        source:      'walkin',
-        name:        a.registrant_name ?? 'Peserta',
-        phone:       a.registrant_phone ?? '',
-        state:       'hadir',
+        key: `walkin-${a.id}`,
+        source: 'walkin',
+        name: a.registrant_name ?? 'Peserta',
+        phone: a.registrant_phone ?? '',
+        state: 'hadir',
         attendanceId: a.id,
       })
     }
@@ -262,9 +260,9 @@ export function AttendanceSheet({
   })
 
   const [showSheet, setShowSheet] = useState(false)
-  const [saving,    setSaving   ] = useState(false)
-  const [toast,     setToast    ] = useState<string | null>(null)
-  const [error,     setError    ] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const hadirCount = useMemo(
     () => participants.filter(p => p.state === 'hadir').length,
@@ -291,7 +289,7 @@ export function AttendanceSheet({
     setError(null)
     try {
       const hadirList = participants.filter(p => p.state === 'hadir')
-      const noneList  = participants.filter(p => p.state === 'none')
+      const noneList = participants.filter(p => p.state === 'none')
 
       // Hapus attendance yang di-uncheck
       const toDelete = noneList
@@ -305,13 +303,13 @@ export function AttendanceSheet({
       const toInsert = hadirList
         .filter(p => !p.attendanceId)
         .map(p => ({
-          session_id:       session.id,
-          user_id:          undefined as any, // di-set via RLS/trigger
-          member_id:        p.source === 'member'  ? p.memberId ?? null : null,
-          source:           p.source,
-          payment_mode:     cls.payment_mode ?? 'drop_in',
-          amount_paid:      cls.class_price ?? 0,
-          registrant_name:  p.source !== 'member' ? p.name  : null,
+          session_id: session.id,
+          user_id: undefined as any, // di-set via RLS/trigger
+          member_id: p.source === 'member' ? p.memberId ?? null : null,
+          source: p.source,
+          payment_mode: cls.payment_mode ?? 'drop_in',
+          amount_paid: cls.class_price ?? 0,
+          registrant_name: p.source !== 'member' ? p.name : null,
           registrant_phone: p.source !== 'member' ? p.phone : null,
         }))
 
@@ -333,68 +331,68 @@ export function AttendanceSheet({
       // Absensi sukses — tampilkan toast dulu
       setToast(`✓ ${hadirCount} orang hadir tersimpan`)
 
-      // ── Generate invitation candidates (best-effort, tidak blok UI) ──────────
-      // Dijalankan setelah absensi sukses tersimpan.
-      // Kalau gagal: tidak error ke user, cukup silent.
-      ;(async () => {
-        try {
-          const { data: { user: currentUser } } = await supabase.auth.getUser()
-          const userId = currentUser?.id
-          if (!userId) return
+        // ── Generate invitation candidates (best-effort, tidak blok UI) ──────────
+        // Dijalankan setelah absensi sukses tersimpan.
+        // Kalau gagal: tidak error ke user, cukup silent.
+        ; (async () => {
+          try {
+            const { data: { user: currentUser } } = await supabase.auth.getUser()
+            const userId = currentUser?.id
+            if (!userId) return
 
-          const eligibleForInvite = hadirList.filter(p =>
-            p.phone.trim() &&
-            p.source !== 'member'
-          )
-          if (!eligibleForInvite.length) return
+            const eligibleForInvite = hadirList.filter(p =>
+              p.phone.trim() &&
+              p.source !== 'member'
+            )
+            if (!eligibleForInvite.length) return
 
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-          // Cek yang sudah diundang dalam 30 hari — jangan override invited → pending
-          const { data: recentInvites } = await (supabase
-            .from('community_invitation_candidates') as any)
-            .select('phone, class_type, status')
-            .eq('user_id', userId)
-            .eq('class_type', cls.type)
-            .gte('invited_at', thirtyDaysAgo)
+            // Cek yang sudah diundang dalam 30 hari — jangan override invited → pending
+            const { data: recentInvites } = await (supabase
+              .from('community_invitation_candidates') as any)
+              .select('phone, class_type, status')
+              .eq('user_id', userId)
+              .eq('class_type', cls.type)
+              .gte('invited_at', thirtyDaysAgo)
 
-          // Key untuk skip: sudah invited dalam 30 hari
-          const skipKeys = new Set(
-            ((recentInvites ?? []) as any[])
-              .filter((r: any) => r.status === 'invited')
-              .map((r: any) => `${r.phone}-${r.class_type}`)
-          )
+            // Key untuk skip: sudah invited dalam 30 hari
+            const skipKeys = new Set(
+              ((recentInvites ?? []) as any[])
+                .filter((r: any) => r.status === 'invited')
+                .map((r: any) => `${r.phone}-${r.class_type}`)
+            )
 
-          // Key yang sudah ada (pending/dismissed) — boleh di-upsert
-          const existingKeys = new Set(
-            ((recentInvites ?? []) as any[])
-              .map((r: any) => `${r.phone}-${r.class_type}`)
-          )
+            // Key yang sudah ada (pending/dismissed) — boleh di-upsert
+            const existingKeys = new Set(
+              ((recentInvites ?? []) as any[])
+                .map((r: any) => `${r.phone}-${r.class_type}`)
+            )
 
-          const candidates = eligibleForInvite
-            .filter(p => !skipKeys.has(`${p.phone}-${cls.type}`))
-            .map(p => ({
-              user_id:         userId,
-              name:            p.name,
-              phone:           p.phone,
-              class_type:      cls.type,
-              source_type:     'class_attendance',
-              source_id:       session.id,
-              attendance_date: session.session_date,
-              status:          'pending',
-            }))
+            const candidates = eligibleForInvite
+              .filter(p => !skipKeys.has(`${p.phone}-${cls.type}`))
+              .map(p => ({
+                user_id: userId,
+                name: p.name,
+                phone: p.phone,
+                class_type: cls.type,
+                source_type: 'class_attendance',
+                source_id: session.id,
+                attendance_date: session.session_date,
+                status: 'pending',
+              }))
 
-          if (candidates.length > 0) {
-            await (supabase.from('community_invitation_candidates') as any)
-              .upsert(candidates, {
-                onConflict:       'user_id,phone,class_type',
-                ignoreDuplicates: false,  // reset dismissed → pending
-              })
+            if (candidates.length > 0) {
+              await (supabase.from('community_invitation_candidates') as any)
+                .upsert(candidates, {
+                  onConflict: 'user_id,phone,class_type',
+                  ignoreDuplicates: false,  // reset dismissed → pending
+                })
+            }
+          } catch {
+            // Silent fail — absensi sudah berhasil, kandidat bisa di-generate ulang absensi berikutnya
           }
-        } catch {
-          // Silent fail — absensi sudah berhasil, kandidat bisa di-generate ulang absensi berikutnya
-        }
-      })()
+        })()
       // ─────────────────────────────────────────────────────────────────────────
 
       setTimeout(() => {
@@ -409,9 +407,9 @@ export function AttendanceSheet({
   }
 
   // Split list
-  const memberList  = participants.filter(p => p.source === 'member')
+  const memberList = participants.filter(p => p.source === 'member')
   const bookingList = participants.filter(p => p.source === 'booking')
-  const walkinList  = participants.filter(p => p.source === 'walkin')
+  const walkinList = participants.filter(p => p.source === 'walkin')
   const totalPeserta = memberList.length + bookingList.length
 
   return (
@@ -488,17 +486,17 @@ export function AttendanceSheet({
       </div>
 
       {/* ── STICKY FOOTER ── */}
-      <div className="fixed bottom-0 left-0 right-0 md:left-60 z-20 bg-white border-t border-gray-100 px-4 py-3 pb-safe">
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-60 z-20 bg-white border-t border-gray-100 px-4 py-3 pb-safe md:pb-3 flex justify-center">
         <button
           onClick={handleSave}
           disabled={saving || !!toast}
-          className="w-full h-13 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-2xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm py-3.5"
+          className="w-full md:w-auto md:min-w-[280px] h-13 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-2xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm py-3.5 px-6"
         >
           {saving
             ? <><Loader2 className="w-5 h-5 animate-spin" /> Menyimpan...</>
             : toast
-            ? <><span className="text-base">✓</span> {toast}</>
-            : `Simpan Absensi · ${hadirCount} hadir`
+              ? <><span className="text-base">✓</span> {toast}</>
+              : `Simpan Absensi · ${hadirCount} hadir`
           }
         </button>
       </div>

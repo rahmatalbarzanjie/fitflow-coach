@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const message = [
       `Halo ${req.name},`,
       ``,
-      `Terima kasih sudah mendaftar FitFlow Coach.`,
+      `Terima kasih sudah mendaftar FuelOS.`,
       ``,
       `Mohon maaf, saat ini kami belum bisa menerima pendaftaran kamu.`,
       `Jika ada pertanyaan, hubungi kami langsung melalui WhatsApp ini.`,

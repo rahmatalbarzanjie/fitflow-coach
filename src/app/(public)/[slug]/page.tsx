@@ -948,7 +948,7 @@ export default async function InstructorLandingPage({
             <p className="text-on-surface/25 text-xs">
               Website oleh{' '}
               <Link href="/home" className="underline hover:text-on-surface/50 transition-colors">
-                FitFlow Coach
+                FuelOS
               </Link>
             </p>
           </div>

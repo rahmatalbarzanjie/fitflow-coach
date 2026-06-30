@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-violet-600 rounded-2xl mb-4 shadow-lg shadow-violet-200">
             <Activity className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">FitFlow Coach</h1>
+          <h1 className="text-2xl font-bold text-gray-900">FuelOS</h1>
           <p className="text-sm text-gray-500 mt-1">Reset password lewat WhatsApp</p>
         </div>
 

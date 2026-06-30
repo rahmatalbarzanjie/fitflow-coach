@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { ExtraClassForm } from './ExtraClassForm'
 
-export const metadata = { title: 'Kelas Ekstra - FitFlow Coach' }
+export const metadata = { title: 'Kelas Ekstra - FuelOS' }
 
 export default async function ExtraClassPage() {
   const supabase = await createClient()

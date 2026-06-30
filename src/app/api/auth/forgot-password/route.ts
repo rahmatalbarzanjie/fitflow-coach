@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   })
 
   const message = [
-    `Kode OTP reset password FitFlow Coach kamu:`,
+    `Kode OTP reset password FuelOS kamu:`,
     ``,
     `*${otpCode}*`,
     ``,

@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFlow Coach - Migration 003: Feature Additions
+-- FuelOS - Migration 003: Feature Additions
 -- Jalankan di Supabase SQL Editor (aman diulang - IF NOT EXISTS)
 -- ============================================================
 

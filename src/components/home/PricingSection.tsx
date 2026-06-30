@@ -87,7 +87,7 @@ export function PricingSection({ adminWA }: { adminWA: string }) {
           {PLANS.map(plan => {
             const price = calcPrice(plan.monthly, months)
             const hasDiscount = price.total < price.normalTotal
-            const waMsg = encodeURIComponent(`Halo! Saya tertarik paket ${plan.name} (${months} bulan) FitFlow Coach. Boleh tanya-tanya dulu?`)
+            const waMsg = encodeURIComponent(`Halo! Saya tertarik paket ${plan.name} (${months} bulan) FuelOS. Boleh tanya-tanya dulu?`)
             const waLink = adminWA ? `https://wa.me/${adminWA.replace(/\D/g, '')}?text=${waMsg}` : null
 
             return (

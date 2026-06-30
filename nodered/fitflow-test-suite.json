@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "FitFlow - Test Suite",
     "disabled": false,
-    "info": "Semua test membaca config dari flow context (global.get('fitflow')).\nPastikan tab 'FitFlow Coach' sudah di-deploy dan config sudah diisi & dijalankan sebelum test ini."
+    "info": "Semua test membaca config dari flow context (global.get('fitflow')).\nPastikan tab 'FuelOS' sudah di-deploy dan config sudah diisi & dijalankan sebelum test ini."
   },
 
   {
@@ -12,7 +12,7 @@
     "type": "comment",
     "z": "test-tab",
     "name": "╔══ FitFlow Test Suite - jalankan berurutan dari atas ke bawah ══╗",
-    "info": "SYARAT SEBELUM TEST:\n1. Tab 'FitFlow Coach' sudah di-deploy\n2. Node '⚙️ SET CONFIG' sudah diklik (config aktif)\n3. Klik tombol inject (▶) di kiri setiap baris untuk jalankan test\n4. Lihat hasil di panel Debug (kanan)",
+    "info": "SYARAT SEBELUM TEST:\n1. Tab 'FuelOS' sudah di-deploy\n2. Node '⚙️ SET CONFIG' sudah diklik (config aktif)\n3. Klik tombol inject (▶) di kiri setiap baris untuk jalankan test\n4. Lihat hasil di panel Debug (kanan)",
     "x": 290,
     "y": 40,
     "wires": []
@@ -50,7 +50,7 @@
     "type": "function",
     "z": "test-tab",
     "name": "Tampilkan Config",
-    "func": "const cfg = global.get('fitflow');\n\nif (!cfg) {\n  node.status({ fill: 'red', shape: 'dot', text: '❌ Config belum diset!' });\n  msg.payload = '❌ Config belum ada!\\n\\nBuka tab FitFlow Coach → klik node SET CONFIG → klik ▶';\n  return msg;\n}\n\nconst fields = ['base_url','secret','fonnte_token','fonnte_key','user_id','instr_phone'];\nconst missing = fields.filter(f => !cfg[f] || cfg[f].startsWith('GANTI'));\n\nif (missing.length > 0) {\n  node.status({ fill: 'yellow', shape: 'dot', text: '⚠️ ' + missing.length + ' field belum diisi' });\n  msg.payload = '⚠️ Field ini belum diisi:\\n' + missing.map(f => '  - ' + f).join('\\n') +\n    '\\n\\nBuka node SET CONFIG dan isi nilai yang kosong.';\n} else {\n  node.status({ fill: 'green', shape: 'dot', text: '✅ Semua config lengkap' });\n  msg.payload = '✅ Config lengkap:\\n' +\n    '  base_url:     ' + cfg.base_url + '\\n' +\n    '  secret:       ' + cfg.secret.slice(0,8) + '...\\n' +\n    '  fonnte_token: ' + cfg.fonnte_token.slice(0,8) + '...\\n' +\n    '  fonnte_key:   ' + cfg.fonnte_key + '\\n' +\n    '  user_id:      ' + cfg.user_id.slice(0,8) + '...\\n' +\n    '  instr_phone:  ' + cfg.instr_phone;\n}\n\nreturn msg;",
+    "func": "const cfg = global.get('fitflow');\n\nif (!cfg) {\n  node.status({ fill: 'red', shape: 'dot', text: '❌ Config belum diset!' });\n  msg.payload = '❌ Config belum ada!\\n\\nBuka tab FuelOS → klik node SET CONFIG → klik ▶';\n  return msg;\n}\n\nconst fields = ['base_url','secret','fonnte_token','fonnte_key','user_id','instr_phone'];\nconst missing = fields.filter(f => !cfg[f] || cfg[f].startsWith('GANTI'));\n\nif (missing.length > 0) {\n  node.status({ fill: 'yellow', shape: 'dot', text: '⚠️ ' + missing.length + ' field belum diisi' });\n  msg.payload = '⚠️ Field ini belum diisi:\\n' + missing.map(f => '  - ' + f).join('\\n') +\n    '\\n\\nBuka node SET CONFIG dan isi nilai yang kosong.';\n} else {\n  node.status({ fill: 'green', shape: 'dot', text: '✅ Semua config lengkap' });\n  msg.payload = '✅ Config lengkap:\\n' +\n    '  base_url:     ' + cfg.base_url + '\\n' +\n    '  secret:       ' + cfg.secret.slice(0,8) + '...\\n' +\n    '  fonnte_token: ' + cfg.fonnte_token.slice(0,8) + '...\\n' +\n    '  fonnte_key:   ' + cfg.fonnte_key + '\\n' +\n    '  user_id:      ' + cfg.user_id.slice(0,8) + '...\\n' +\n    '  instr_phone:  ' + cfg.instr_phone;\n}\n\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",

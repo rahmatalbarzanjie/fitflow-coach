@@ -14,6 +14,6 @@ ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
 INSERT INTO system_config (key, value, description) VALUES
   ('fonnte_token', '', 'Token API Fonnte untuk kirim WhatsApp. Dapatkan di fonnte.com'),
   ('admin_wa',     '', 'Nomor WhatsApp admin untuk support (format: 628xxx)'),
-  ('app_name',     'FitFlow Coach', 'Nama aplikasi yang ditampilkan ke pengguna'),
+  ('app_name',     'FuelOS', 'Nama aplikasi yang ditampilkan ke pengguna'),
   ('app_url',      '', 'URL publik aplikasi (misal: https://fitflow.id)')
 ON CONFLICT (key) DO NOTHING;

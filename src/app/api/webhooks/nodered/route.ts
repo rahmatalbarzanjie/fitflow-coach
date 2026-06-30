@@ -149,5 +149,5 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const secret = request.headers.get('x-webhook-secret')
   if (secret !== process.env.NODERED_WEBHOOK_SECRET) return unauthorized()
-  return NextResponse.json({ ok: true, service: 'FitFlow Coach Webhook', ts: new Date().toISOString() })
+  return NextResponse.json({ ok: true, service: 'FuelOS Webhook', ts: new Date().toISOString() })
 }
