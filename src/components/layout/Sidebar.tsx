@@ -5,33 +5,34 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Users, Users2, UserCog, Calendar, Zap, PenSquare, MessageSquare,
-  Activity, Settings, Shield, Package, Wallet, Receipt,
+  Settings, Shield, Package, Wallet, Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 
 const instructorItems = [
-  { href: '/',                 icon: LayoutDashboard, label: 'Beranda'          },
-  { href: '/members',          icon: Users,           label: 'Member'           },
-  { href: '/packages',         icon: Package,         label: 'Paket Membership' },
-  { href: '/payment-profiles', icon: Wallet,          label: 'Metode Pembayaran' },
-  { href: '/laporan',          icon: Receipt,         label: 'Laporan'          },
-  { href: '/community',        icon: Users2,          label: 'Komunitas'        },
-  { href: '/classes',    icon: Calendar,        label: 'Kelas'        },
-  { href: '/events',     icon: Zap,             label: 'Events'       },
-  { href: '/content',    icon: PenSquare,       label: 'Buat Konten'  },
-  { href: '/broadcasts', icon: MessageSquare,   label: 'Broadcast'    },
+  { href: '/', icon: LayoutDashboard, label: 'Beranda' },
+  { href: '/members', icon: Users, label: 'Member' },
+  { href: '/packages', icon: Package, label: 'Paket Membership' },
+  { href: '/payment-profiles', icon: Wallet, label: 'Metode Pembayaran' },
+  { href: '/laporan', icon: Receipt, label: 'Laporan' },
+  { href: '/community', icon: Users2, label: 'Komunitas' },
+  { href: '/classes', icon: Calendar, label: 'Kelas' },
+  { href: '/events', icon: Zap, label: 'Events' },
+  { href: '/content', icon: PenSquare, label: 'Buat Konten' },
+  { href: '/broadcasts', icon: MessageSquare, label: 'Broadcast' },
 ]
 
 const adminItems = [
-  { href: '/admin',             icon: LayoutDashboard, label: 'Overview'        },
-  { href: '/admin/instructors', icon: UserCog,         label: 'Instruktur'      },
-  { href: '/admin/members',     icon: Users,           label: 'Semua Member'    },
-  { href: '/admin/community',   icon: Users2,          label: 'Semua Komunitas' },
-  { href: '/admin/classes',     icon: Calendar,        label: 'Semua Kelas'     },
-  { href: '/admin/events',      icon: Zap,             label: 'Semua Event'     },
-  { href: '/admin/broadcasts',  icon: MessageSquare,   label: 'Semua Broadcast' },
-  { href: '/admin/config',      icon: Settings,        label: 'Konfigurasi'     },
+  { href: '/admin', icon: LayoutDashboard, label: 'Overview' },
+  { href: '/admin/instructors', icon: UserCog, label: 'Instruktur' },
+  { href: '/admin/members', icon: Users, label: 'Semua Member' },
+  { href: '/admin/community', icon: Users2, label: 'Semua Komunitas' },
+  { href: '/admin/classes', icon: Calendar, label: 'Semua Kelas' },
+  { href: '/admin/events', icon: Zap, label: 'Semua Event' },
+  { href: '/admin/broadcasts', icon: MessageSquare, label: 'Semua Broadcast' },
+  { href: '/admin/config', icon: Settings, label: 'Konfigurasi' },
 ]
 
 interface Props {
@@ -40,7 +41,7 @@ interface Props {
 }
 
 export function Sidebar({ open, onClose }: Props) {
-  const pathname  = usePathname()
+  const pathname = usePathname()
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -81,14 +82,14 @@ export function Sidebar({ open, onClose }: Props) {
       )}>
         {/* Brand */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className={cn(
-            'w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
-            isAdmin ? 'bg-gray-900' : 'bg-violet-600'
-          )}>
-            {isAdmin ? <Shield className="w-4 h-4 text-white" /> : <Activity className="w-4 h-4 text-white" />}
+          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
+            {isAdmin
+              ? <Shield className="w-4 h-4 text-white" />
+              : <Image src="/icons/icon-192x192.png" alt="FuelOS" width={32} height={32} className="rounded-xl" />
+            }
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900 leading-none">FitFlow Coach</p>
+            <p className="text-sm font-semibold text-gray-900 leading-none">FuelOS</p>
             <p className="text-[10px] text-gray-400 mt-0.5">
               {isAdmin ? 'Admin Panel' : 'Dashboard Instruktur'}
             </p>

@@ -4,14 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Activity } from 'lucide-react'
+import Image from 'next/image'
 
 export default function LoginPage() {
-  const [email, setEmail]       = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
-  const router   = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
   const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -40,10 +40,10 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-violet-600 rounded-2xl mb-4 shadow-lg shadow-violet-200">
-            <Activity className="w-7 h-7 text-white" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden shadow-lg shadow-violet-200">
+            <Image src="/icons/icon-192x192.png" alt="FuelOS" width={56} height={56} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">FitFlow Coach</h1>
+          <h1 className="text-2xl font-bold text-gray-900">FuelOS</h1>
           <p className="text-sm text-gray-500 mt-1">Masuk ke dashboard instruktur</p>
         </div>
 
@@ -121,7 +121,7 @@ export default function LoginPage() {
         </p>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          FitFlow Coach - Khusus untuk instruktur
+          FuelOS - Khusus untuk instruktur
         </p>
       </div>
     </div>
