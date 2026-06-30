@@ -121,7 +121,7 @@ export default function LoginPage() {
         </p>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          FuelOS - Khusus untuk instruktur
+          FuelOS - by Getfuel
         </p>
       </div>
     </div>
