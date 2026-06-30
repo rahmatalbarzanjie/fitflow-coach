@@ -229,8 +229,14 @@ export function AttendanceSheet({
     // 2. Booking yang dikonfirmasi (skip kalau sudah masuk via member)
     for (const b of bookings) {
       if (b.member_id && addedMemberIds.has(b.member_id)) continue
+      // Booking tanpa member_id (mayoritas kasus) dicocokkan via nama+telepon
+      // registrant - sebelumnya selalu dianggap "belum ada" untuk kasus ini,
+      // jadi attendanceId tidak pernah ke-set dan absensi yang sudah tersimpan
+      // tidak pernah terdeteksi, menyebabkan duplikat tiap kali disimpan ulang.
       const existing = existingAttendance.find(a =>
-        b.member_id ? a.member_id === b.member_id : false
+        b.member_id
+          ? a.member_id === b.member_id
+          : a.registrant_phone === b.registrant_phone && a.registrant_name === b.registrant_name
       )
       list.push({
         key: `booking-${b.id}`,
@@ -318,10 +324,22 @@ export function AttendanceSheet({
         }))
 
       if (toInsert.length > 0) {
-        const { error: insertErr } = await supabase
-          .from('attendance')
-          .insert(toInsert)
-        if (insertErr) throw new Error(insertErr.message)
+        const memberRows = toInsert.filter(r => r.member_id)
+        const registrantRows = toInsert.filter(r => !r.member_id)
+
+        if (memberRows.length > 0) {
+          const { error } = await supabase.from('attendance').insert(memberRows)
+          if (error) throw new Error(error.message)
+        }
+        // Upsert + ignoreDuplicates (bukan insert biasa) sebagai jaring
+        // pengaman - kalau attendanceId di state client sempat tidak akurat,
+        // DB diam-diam skip baris yang sudah ada alih-alih menggandakan.
+        if (registrantRows.length > 0) {
+          const { error } = await supabase
+            .from('attendance')
+            .upsert(registrantRows, { onConflict: 'session_id,registrant_phone,registrant_name', ignoreDuplicates: true })
+          if (error) throw new Error(error.message)
+        }
       }
 
       // Update session status
