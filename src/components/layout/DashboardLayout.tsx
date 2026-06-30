@@ -26,10 +26,11 @@ export function DashboardLayout({ children, title }: Props) {
       </div>
 
       <div className={`transition-all duration-200 ${open ? 'md:ml-60' : ''}`}>
-        <header className="sticky top-0 z-10 h-12 bg-white/90 backdrop-blur-sm border-b border-gray-100 flex items-center px-4">
+        {/* Sticky top bar - desktop only */}
+        <header className="hidden md:flex sticky top-0 z-10 h-12 bg-white/90 backdrop-blur-sm border-b border-gray-100 items-center px-4">
           <button
             onClick={() => setOpen(!open)}
-            className="hidden md:flex p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+            className="flex p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
             aria-label="Buka/tutup menu"
           >
             <Menu className="w-5 h-5" />
