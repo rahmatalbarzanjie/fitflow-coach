@@ -422,6 +422,7 @@ export type Database = {
           payment_profile_id: string | null
           revenue_share_pct: number
           show_registrations: boolean
+          slug: string
           start_time: string
           type: Database["public"]["Enums"]["class_type"]
           updated_at: string | null
@@ -447,6 +448,7 @@ export type Database = {
           payment_profile_id?: string | null
           revenue_share_pct?: number
           show_registrations?: boolean
+          slug?: string
           start_time: string
           type?: Database["public"]["Enums"]["class_type"]
           updated_at?: string | null
@@ -472,6 +474,7 @@ export type Database = {
           payment_profile_id?: string | null
           revenue_share_pct?: number
           show_registrations?: boolean
+          slug?: string
           start_time?: string
           type?: Database["public"]["Enums"]["class_type"]
           updated_at?: string | null

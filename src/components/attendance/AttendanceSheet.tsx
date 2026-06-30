@@ -288,6 +288,10 @@ export function AttendanceSheet({
     setSaving(true)
     setError(null)
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      const userId = currentUser?.id
+      if (!userId) throw new Error('Sesi tidak valid, silakan login ulang')
+
       const hadirList = participants.filter(p => p.state === 'hadir')
       const noneList = participants.filter(p => p.state === 'none')
 
@@ -304,7 +308,7 @@ export function AttendanceSheet({
         .filter(p => !p.attendanceId)
         .map(p => ({
           session_id: session.id,
-          user_id: undefined as any, // di-set via RLS/trigger
+          user_id: userId,
           member_id: p.source === 'member' ? p.memberId ?? null : null,
           source: p.source,
           payment_mode: cls.payment_mode ?? 'drop_in',
@@ -336,10 +340,6 @@ export function AttendanceSheet({
         // Kalau gagal: tidak error ke user, cukup silent.
         ; (async () => {
           try {
-            const { data: { user: currentUser } } = await supabase.auth.getUser()
-            const userId = currentUser?.id
-            if (!userId) return
-
             const eligibleForInvite = hadirList.filter(p =>
               p.phone.trim() &&
               p.source !== 'member'

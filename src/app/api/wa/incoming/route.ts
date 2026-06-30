@@ -490,7 +490,7 @@ CARA MENJAWAB:
   const [{ data: classes }, { data: events }] = await Promise.all([
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price')
+      .select('id, slug, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price')
       .eq('user_id', instructorProfile.id)
       .order('day_of_week')
       .order('start_time'),
@@ -605,7 +605,7 @@ CARA MENJAWAB:
 
   function formatClassLine(c: any) {
     const price = Number(c.class_price) > 0 ? formatRupiah(Number(c.class_price)) : 'Gratis'
-    const regLink = slug ? `${appUrl}/${slug}/daftar/kelas/${c.id}` : '(link belum tersedia)'
+    const regLink = slug ? `${appUrl}/${slug}/daftar/kelas/${c.slug ?? c.id}` : '(link belum tersedia)'
     return `- *${c.name}* (${c.type}): ${DAY_NAMES[c.day_of_week]}, ${formatTime(c.start_time)}–${formatTime(c.end_time)}` +
       `${c.location ? ` di ${c.location}` : ''}` +
       `${c.capacity ? ` (maks ${c.capacity} orang)` : ''}\n` +
@@ -838,7 +838,9 @@ CARA MENJAWAB:
 - Kalau tidak jelas kelas/event mana yang dimaksud (nama disebut umum, atau ada beberapa kandidat yang cocok), tanya dulu mau yang mana sebelum kasih link apa pun - jangan menebak
 - Kalau cuma tanya-tanya info tanpa niat daftar, jawab informatif saja tanpa otomatis menyodorkan link
 - Kalau orang bilang mau "gabung komunitas"/"join grup" - ini BUKAN niat daftar kelas/event, jangan cocokkan ke kelas manapun dan jangan kasih link registrasi. Cukup jawab ramah dan arahkan sesuai instruksi kontak di bawah
-- Jika pertanyaan tidak bisa dijawab dari data di atas${hasDistinctPersonalPhone ? `, atau orang minta ngobrol langsung dengan manusia` : ''} → ${hasDistinctPersonalPhone ? `sarankan hubungi ${instructorProfile.name} langsung di ${instructorProfile.phone} (nomor pribadi, beda dari nomor chat ini)` : `sarankan hubungi ${instructorProfile.name} langsung`}
+- Kalau ditanya soal sisa slot/kuota/apakah masih ada tempat kosong untuk kelas atau event TERTENTU - jumlah peserta real-time TIDAK ada di data di atas (bisa berubah tiap saat, jadi sengaja tidak ditulis di sini), TAPI selalu bisa dilihat langsung di link "Daftar" kelas/event itu (halamannya menampilkan sisa kuota secara real-time). Arahkan ke link itu - JANGAN bilang tidak tahu, dan JANGAN langsung suruh hubungi instruktur untuk hal ini
+- Jika pertanyaan lain tidak bisa dijawab dari data di atas, tapi kemungkinan infonya ada di halaman publik (jadwal lengkap, harga, lokasi, cara daftar, dll) → arahkan ke ${appUrl}/${slug} dulu
+- Hanya kalau pertanyaan benar-benar tidak ada infonya sama sekali (baik di data di atas maupun halaman publik)${hasDistinctPersonalPhone ? `, atau orang minta ngobrol langsung dengan manusia` : ''} → ${hasDistinctPersonalPhone ? `sarankan hubungi ${instructorProfile.name} langsung di ${instructorProfile.phone} (nomor pribadi, beda dari nomor chat ini)` : `sarankan hubungi ${instructorProfile.name} langsung`}
 - JANGAN membuat info, harga, atau jadwal yang tidak ada di data di atas
 - Mulai jawaban langsung tanpa sapaan panjang`
 

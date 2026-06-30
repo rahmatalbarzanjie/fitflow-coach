@@ -33,10 +33,14 @@ export default async function ClassRegistrationPage({
     .single()
   if (!profile) notFound()
 
+  // classId di URL sekarang berupa slug (mis. "barre-rabu-sore") untuk link
+  // baru, tapi link UUID lama yang sudah pernah dibagikan harus tetap jalan.
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cls } = await (supabase.from('classes') as any)
     .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, class_price, is_active, payment_profile_id, payment_methods_enabled')
-    .eq('id', classId)
+    .eq(isUuid ? 'id' : 'slug', classId)
     .eq('user_id', profile.id)
     .eq('is_active', true)
     .single()

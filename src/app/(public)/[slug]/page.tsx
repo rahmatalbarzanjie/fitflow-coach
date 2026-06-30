@@ -117,7 +117,7 @@ export default async function InstructorLandingPage({
   const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes] = await Promise.all([
     supabase
       .from('classes')
-      .select('id, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, description, cover_image_url, class_price, show_registrations')
+      .select('id, slug, name, type, day_of_week, start_time, end_time, location, google_maps_url, capacity, description, cover_image_url, class_price, show_registrations')
       .eq('user_id', profile.id)
       .eq('is_active', true)
       .order('day_of_week').order('start_time'),
@@ -583,7 +583,7 @@ export default async function InstructorLandingPage({
                           )}
 
                           <Link
-                            href={`/${slug}/daftar/kelas/${cls.id}`}
+                            href={`/${slug}/daftar/kelas/${cls.slug ?? cls.id}`}
                             className={`mt-3 w-full flex items-center justify-center gap-1.5 ${cfg.accentBg} ${cfg.accentText} font-bold py-2.5 rounded-xl text-sm hover:opacity-80 transition-opacity`}
                           >
                             Daftar Kelas
