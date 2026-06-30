@@ -40,8 +40,8 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden shadow-lg shadow-violet-200">
-            <Image src="/icons/icon-192x192.png" alt="FuelOS" width={56} height={56} />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden bg-white border border-gray-100 shadow-lg shadow-violet-200">
+            <Image src="/icons/icon-192x192.png" alt="FuelOS" width={40} height={40} className="rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">FuelOS</h1>
           <p className="text-sm text-gray-500 mt-1">Masuk ke dashboard instruktur</p>
