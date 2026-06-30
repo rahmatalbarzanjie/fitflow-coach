@@ -12,16 +12,16 @@ import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
 const instructorItems = [
-  { href: '/', icon: LayoutDashboard, label: 'Beranda' },
-  { href: '/members', icon: Users, label: 'Member' },
-  { href: '/packages', icon: Package, label: 'Paket Membership' },
-  { href: '/payment-profiles', icon: Wallet, label: 'Metode Pembayaran' },
-  { href: '/laporan', icon: Receipt, label: 'Laporan' },
-  { href: '/community', icon: Users2, label: 'Komunitas' },
-  { href: '/classes', icon: Calendar, label: 'Kelas' },
-  { href: '/events', icon: Zap, label: 'Events' },
-  { href: '/content', icon: PenSquare, label: 'Buat Konten' },
-  { href: '/broadcasts', icon: MessageSquare, label: 'Broadcast' },
+  { href: '/',                 icon: LayoutDashboard, label: 'Beranda'          },
+  { href: '/classes',          icon: Calendar,        label: 'Kelas'            },
+  { href: '/members',          icon: Users,           label: 'Member'           },
+  { href: '/events',           icon: Zap,             label: 'Events'           },
+  { href: '/community',        icon: Users2,          label: 'Komunitas'        },
+  { href: '/broadcasts',       icon: MessageSquare,   label: 'Broadcast'        },
+  { href: '/content',          icon: PenSquare,       label: 'Buat Konten'      },
+  { href: '/laporan',          icon: Receipt,         label: 'Laporan'          },
+  { href: '/packages',         icon: Package,         label: 'Paket Membership' },
+  { href: '/payment-profiles', icon: Wallet,          label: 'Metode Pembayaran' },
 ]
 
 const adminItems = [
