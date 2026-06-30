@@ -82,12 +82,22 @@ export function Sidebar({ open, onClose }: Props) {
       )}>
         {/* Brand */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0 bg-white border border-gray-100 flex items-center justify-center">
-            {isAdmin
-              ? <Shield className="w-4 h-4 text-gray-900" />
-              : <Image src="/icons/icon-192x192.png" alt="FuelOS" width={24} height={24} className="rounded-md" />
-            }
-          </div>
+          {isAdmin
+            ? (
+              <div className="w-8 h-8 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0">
+                <Shield className="w-4 h-4 text-gray-900" />
+              </div>
+            )
+            : (
+              <Image
+                src="/icons/icon-192x192.png"
+                alt="FuelOS"
+                width={32}
+                height={32}
+                className="shrink-0 rounded-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]"
+              />
+            )
+          }
           <div>
             <p className="text-sm font-semibold text-gray-900 leading-none">FuelOS</p>
             <p className="text-[10px] text-gray-400 mt-0.5">
