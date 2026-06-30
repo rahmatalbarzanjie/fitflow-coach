@@ -40,4 +40,8 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

@@ -36,7 +36,10 @@ const adminMainItems = [
 ]
 
 const adminMoreItems = [
-  { href: '/admin/config', icon: Settings, label: 'Config' },
+  { href: '/admin/community',   icon: Users2,        label: 'Semua Komunitas' },
+  { href: '/admin/events',      icon: Zap,           label: 'Semua Event'     },
+  { href: '/admin/broadcasts',  icon: MessageSquare, label: 'Semua Broadcast' },
+  { href: '/admin/config',      icon: Settings,      label: 'Config'          },
 ]
 
 export function BottomNav() {
