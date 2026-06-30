@@ -62,6 +62,8 @@ interface ClassOccupancy {
   session_count: number
   attendance_count: number
   revenue: number
+  revenue_share_pct: number
+  net_revenue: number
 }
 
 interface MemberHealth {
@@ -200,6 +202,12 @@ export default async function LaporanPage({
   // T2.1: untuk studio kecil, 3 list itu cuma menampilkan kelas yang sama
   // berulang-ulang, nol insight baru).
   const classesSorted = [...classes].sort((a, b) => b.revenue - a.revenue)
+  // Bagian instruktur dari revenue Kelas+Walk-in (revenue_share_pct per
+  // kelas, lihat migrasi 010/084) - cuma ditampilkan kalau ada kelas yang
+  // split-nya bukan 100%, supaya instruktur yang ambil semua bagiannya
+  // sendiri tidak melihat baris yang percuma (selalu sama dengan total).
+  const hasRevenueSplit = classes.some(c => c.revenue_share_pct < 100)
+  const instructorClassShare = classes.reduce((sum, c) => sum + Number(c.net_revenue), 0)
   const occupancyPcts = classes
     .filter(c => c.session_count > 0 && c.capacity !== null && c.capacity > 0)
     .map(c => (c.attendance_count / (c.capacity! * c.session_count)) * 100)
@@ -296,7 +304,13 @@ export default async function LaporanPage({
       {/* Keuangan (Financial Intelligence) */}
       <SectionList
         label="Keuangan"
-        footer={totalRevenue === 0 ? `Belum ada revenue tercatat untuk ${month === currentMonth ? 'bulan ini' : 'periode ini'}.` : undefined}
+        footer={
+          totalRevenue === 0
+            ? `Belum ada revenue tercatat untuk ${month === currentMonth ? 'bulan ini' : 'periode ini'}.`
+            : hasRevenueSplit
+              ? 'Bagian Kamu = revenue Kelas + Walk-in dikali persentase bagi hasil tiap kelas (diatur di pengaturan kelas).'
+              : undefined
+        }
       >
         <div className="flex items-center justify-between px-4 py-3 bg-violet-50">
           <span className="text-sm font-semibold text-gray-700">Net Revenue</span>
@@ -328,6 +342,12 @@ export default async function LaporanPage({
             <span className="text-sm font-semibold text-gray-900">{formatRupiah(value)}</span>
           </div>
         ))}
+        {hasRevenueSplit && (
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+            <span className="text-sm text-gray-700">↳ Bagian Kamu (Kelas + Walk-in)</span>
+            <span className="text-sm font-semibold text-violet-700">{formatRupiah(instructorClassShare)}</span>
+          </div>
+        )}
       </SectionList>
 
       {/* Revenue Mix - Prepaid vs Pay-per-Visit */}

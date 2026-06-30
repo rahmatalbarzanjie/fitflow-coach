@@ -1,12 +1,14 @@
 import { formatRupiah } from '@/lib/utils'
 
 interface ClassOccupancy {
-  id:               string
-  name:             string
-  capacity:         number | null
-  session_count:    number
-  attendance_count: number
-  revenue:          number
+  id:                 string
+  name:               string
+  capacity:           number | null
+  session_count:      number
+  attendance_count:   number
+  revenue:            number
+  revenue_share_pct:  number
+  net_revenue:        number
 }
 
 interface Props {
@@ -76,9 +78,18 @@ export function ClassOccupancyList({ classes }: Props) {
                   : 'Tanpa batas kapasitas'}
               </p>
             )}
-            <p className="text-xs text-gray-400">
-              {formatRupiah(c.revenue)} revenue · {c.attendance_count} kehadiran
-            </p>
+            {c.revenue_share_pct < 100 ? (
+              <>
+                <p className="text-xs text-gray-700">
+                  <span className="font-semibold text-violet-700">{formatRupiah(c.net_revenue)}</span> bagian kamu ({c.revenue_share_pct}%) · {c.attendance_count} kehadiran
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">dari total {formatRupiah(c.revenue)}</p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-400">
+                {formatRupiah(c.revenue)} revenue · {c.attendance_count} kehadiran
+              </p>
+            )}
           </div>
         )
       })}
