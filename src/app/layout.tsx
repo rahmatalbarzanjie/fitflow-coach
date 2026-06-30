@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
@@ -16,6 +16,14 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#1a1625',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -25,7 +33,6 @@ export default function RootLayout({
     <html lang="id">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <meta name="theme-color" content="#1a1625" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={inter.className}>
