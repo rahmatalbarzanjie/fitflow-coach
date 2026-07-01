@@ -1,15 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 
 /**
  * POST /api/community/invite
- * Body: { candidateIds: string[] } — bisa 1 atau banyak
+ * Body: { candidateIds: string[] }
  *
- * Flow:
- * 1. Fetch kandidat + wa_invite_link dari class_type_benefits
- * 2. Kirim WA via Fonnte per kandidat
- * 3. Update status → 'invited', set invited_at
+ * Enqueue pesan undangan komunitas WA ke wa_outbox.
+ * Worker process-queue yang mengirim ke Fonnte dengan delay antar pesan.
  */
 
 export async function POST(req: NextRequest) {
@@ -22,7 +21,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'candidateIds wajib diisi' }, { status: 400 })
   }
 
-  // Fetch profil instruktur (untuk token Fonnte dan nama)
   const { data: profile } = await (supabase.from('profiles') as any)
     .select('name, business_name, fonnte_token, bot_phone')
     .eq('id', user.id)
@@ -32,20 +30,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'WhatsApp belum terhubung. Hubungkan WA di Pengaturan terlebih dahulu.' }, { status: 400 })
   }
 
-  // Fetch kandidat
   const { data: candidates, error: candErr } = await (supabase
     .from('community_invitation_candidates') as any)
     .select('id, name, phone, class_type, status')
     .in('id', candidateIds)
     .eq('user_id', user.id)
-    .neq('status', 'invited')  // skip yang sudah diundang
+    .neq('status', 'invited')
 
   if (candErr || !candidates?.length) {
     return NextResponse.json({ error: 'Kandidat tidak ditemukan' }, { status: 404 })
   }
 
-  // Fetch wa_invite_link per class_type yang dibutuhkan
-  const classTypes   = [...new Set((candidates as any[]).map((c: any) => c.class_type))]
+  const classTypes = [...new Set((candidates as any[]).map((c: any) => c.class_type))]
   const { data: benefits } = await (supabase.from('class_type_benefits') as any)
     .select('type, wa_invite_link')
     .eq('user_id', user.id)
@@ -55,10 +51,15 @@ export async function POST(req: NextRequest) {
     ((benefits ?? []) as any[]).map((b: any) => [b.type, b.wa_invite_link])
   )
 
-  // Kirim WA via Fonnte + update status
   const results: { id: string; success: boolean; error?: string }[] = []
-  const now = new Date().toISOString()
+  const now            = new Date().toISOString()
   const instructorName = profile.business_name ?? profile.name ?? 'Instruktur'
+  const botPhone       = profile.bot_phone ?? null
+
+  const CLASS_TYPE_LABEL: Record<string, string> = {
+    barre: 'Barre', poundfit: 'Poundfit', yoga: 'Yoga',
+    pilates: 'Pilates', zumba: 'Zumba', aerobic: 'Aerobic', other: 'Kelas',
+  }
 
   for (const candidate of candidates as any[]) {
     const inviteLink = linkMap[candidate.class_type]
@@ -68,12 +69,7 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    const CLASS_TYPE_LABEL: Record<string, string> = {
-      barre: 'Barre', poundfit: 'Poundfit', yoga: 'Yoga',
-      pilates: 'Pilates', zumba: 'Zumba', aerobic: 'Aerobic', other: 'Kelas',
-    }
     const classLabel = CLASS_TYPE_LABEL[candidate.class_type] ?? candidate.class_type
-
     const message =
 `Halo ${candidate.name} 👋
 
@@ -85,41 +81,29 @@ ${inviteLink}
 
 Sampai jumpa di kelas berikutnya 💜`
 
-    // Kirim via Fonnte
-    const phoneFormatted = candidate.phone.replace(/\D/g, '').replace(/^0/, '62')
-    try {
-      const fonnteRes = await fetch('https://api.fonnte.com/send', {
-        method:  'POST',
-        headers: {
-          'Authorization': profile.fonnte_token,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({
-          target:  phoneFormatted,
-          message,
-          delay:   0,
-          countryCode: '62',
-        }),
-      })
-      const fonnteData = await fonnteRes.json()
+    const outboxId = await enqueueWhatsApp({
+      supabase,
+      userId:      user.id,
+      phone:       candidate.phone,
+      message,
+      fonnteToken: profile.fonnte_token,
+      messageType: 'community',
+      contactName: candidate.name,
+      sourceRoute: '/api/community/invite',
+      botPhone,
+    })
 
-      if (fonnteData.status) {
-        // Sukses — update status
-        await (supabase.from('community_invitation_candidates') as any)
-          .update({ status: 'invited', invited_at: now })
-          .eq('id', candidate.id)
-        results.push({ id: candidate.id, success: true })
-      } else {
-        results.push({ id: candidate.id, success: false, error: fonnteData.reason ?? 'Gagal kirim WA' })
-      }
-    } catch (e: any) {
-      results.push({ id: candidate.id, success: false, error: e.message })
+    if (outboxId) {
+      await (supabase.from('community_invitation_candidates') as any)
+        .update({ status: 'invited', invited_at: now })
+        .eq('id', candidate.id)
+      results.push({ id: candidate.id, success: true })
+    } else {
+      results.push({ id: candidate.id, success: false, error: 'Gagal masuk antrian WA' })
     }
   }
 
   const successCount = results.filter(r => r.success).length
-  // Status 'invited' mengurangi invitationsPending di cache Beranda -
-  // satu kali setelah loop selesai, bukan per-kandidat.
   if (successCount > 0) revalidateTag(`beranda-${user.id}`)
   return NextResponse.json({ results, successCount })
 }

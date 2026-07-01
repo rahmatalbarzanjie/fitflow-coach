@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsApp } from '@/lib/whatsapp'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!event) return NextResponse.json({ error: 'Event tidak ditemukan' }, { status: 404 })
 
   const [{ data: profile }, { data: registrants }, { data: existingInvites }] = await Promise.all([
-    supabase.from('profiles').select('slug, business_name, name, fonnte_token').eq('id', user.id).single(),
+    supabase.from('profiles').select('slug, business_name, name, fonnte_token, bot_phone').eq('id', user.id).single(),
     supabase
       .from('registrations')
       .select('id, registrant_name, registrant_phone')
@@ -30,15 +30,20 @@ export async function POST(request: Request) {
   ])
 
   const slug            = (profile as any)?.slug
-  const studio           = (profile as any)?.business_name ?? (profile as any)?.name ?? 'kami'
-  const instructorToken  = (profile as any)?.fonnte_token ?? null
-  const appUrl           = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
-  const alreadyInvited   = new Set(((existingInvites ?? []) as any[]).map(i => i.registration_id))
+  const studio          = (profile as any)?.business_name ?? (profile as any)?.name ?? 'kami'
+  const instructorToken = (profile as any)?.fonnte_token ?? null
+  const botPhone        = (profile as any)?.bot_phone    ?? null
+  const appUrl          = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+  const alreadyInvited  = new Set(((existingInvites ?? []) as any[]).map(i => i.registration_id))
+
+  if (!instructorToken) {
+    return NextResponse.json({ ok: true, queued: 0, skipped: (registrants?.length ?? 0) })
+  }
 
   const newRegistrants = ((registrants ?? []) as any[]).filter(r => !alreadyInvited.has(r.id))
-  const skipped = ((registrants ?? []).length) - newRegistrants.length
+  const skipped        = ((registrants ?? []).length) - newRegistrants.length
+  let queued = 0
 
-  let sent = 0
   for (const r of newRegistrants) {
     const { data: invite } = await supabase
       .from('feedback_invites')
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
 
     if (!invite) continue
 
-    const link = `${appUrl}/${slug}/feedback/${invite.id}`
+    const link    = `${appUrl}/${slug}/feedback/${invite.id}`
     const message = [
       `Halo ${r.registrant_name}! 🙏`,
       ``,
@@ -58,9 +63,20 @@ export async function POST(request: Request) {
       link,
     ].join('\n')
 
-    const ok = await sendWhatsApp(r.registrant_phone, message, instructorToken)
-    if (ok) sent++
+    const outboxId = await enqueueWhatsApp({
+      supabase,
+      userId:      user.id,
+      phone:       r.registrant_phone,
+      message,
+      fonnteToken: instructorToken,
+      messageType: 'feedback',
+      contactName: r.registrant_name,
+      sourceRoute: '/api/feedback/request-event',
+      botPhone,
+    })
+
+    if (outboxId) queued++
   }
 
-  return NextResponse.json({ ok: true, sent, skipped })
+  return NextResponse.json({ ok: true, queued, skipped })
 }

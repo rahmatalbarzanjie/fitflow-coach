@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendWhatsApp } from '@/lib/whatsapp'
 import { formatDate, formatTime } from '@/lib/utils'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 
 /*
  * POST /api/notifications/class-registration
  * Dipanggil dari ClassRegistrationForm (publik, tanpa login) tepat setelah
- * insert sukses - kasih kabar ke peserta bahwa pendaftarannya sudah diterima,
- * lengkap dengan detail kelas, dan ke instruktur dengan link langsung ke
- * halaman validasi (tinggal klik, tidak perlu buka browser & navigasi manual).
+ * insert sukses - enqueue notifikasi ke peserta dan ke instruktur (tanpa URL).
  * Body: { registrationId: string }
  */
 export async function POST(request: Request) {
@@ -30,15 +28,20 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('phone, fonnte_token')
+    .select('phone, fonnte_token, bot_phone')
     .eq('id', reg.user_id)
     .single()
-  const instructorToken = (profile as { phone: string | null; fonnte_token: string | null } | null)?.fonnte_token ?? null
-  const instructorPhone = (profile as { phone: string | null; fonnte_token: string | null } | null)?.phone ?? null
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const name = reg.registrant_name
-  const cls = reg.classes as any
+  const instructorToken = (profile as any)?.fonnte_token ?? null
+  const instructorPhone = (profile as any)?.phone         ?? null
+  const botPhone        = (profile as any)?.bot_phone     ?? null
+
+  if (!instructorToken) {
+    return NextResponse.json({ ok: true, queued: false, reason: 'token tidak ada' })
+  }
+
+  const name      = reg.registrant_name
+  const cls       = reg.classes as any
   const className = cls?.name ?? 'kelas'
 
   const detailLines =
@@ -46,31 +49,58 @@ export async function POST(request: Request) {
     `⏰ ${formatTime(cls?.start_time ?? '')} – ${formatTime(cls?.end_time ?? '')}` +
     (cls?.location ? `\n📍 ${cls.location}` : '')
 
-  let message = `Halo *${name}*! 🎉\n\nPendaftaranmu untuk *${className}* sudah kami terima ✅\n\n${detailLines}\n\n`
+  let participantMsg = `Halo *${name}*! 🎉\n\nPendaftaranmu untuk *${className}* sudah kami terima ✅\n\n${detailLines}\n\n`
   if (reg.payment_method === 'transfer') {
-    message += `Kami akan konfirmasi pembayaranmu setelah cek bukti transfer ya. Mohon ditunggu 🙏`
+    participantMsg += `Kami akan konfirmasi pembayaranmu setelah cek bukti transfer ya. Mohon ditunggu 🙏`
   } else if (reg.payment_method === 'cash') {
-    message += `Jangan lupa bayar di tempat saat kelas ya. Sampai jumpa di kelas! 💪`
+    participantMsg += `Jangan lupa bayar di tempat saat kelas ya. Sampai jumpa di kelas! 💪`
   } else {
-    message += `Sampai jumpa di kelas! 💪`
+    participantMsg += `Sampai jumpa di kelas! 💪`
   }
 
-  const sent = await sendWhatsApp(reg.registrant_phone, message, instructorToken)
+  const methodLabel = reg.payment_method === 'transfer' ? 'Transfer (menunggu konfirmasi)'
+    : reg.payment_method === 'cash' ? 'OTS (sudah confirmed)'
+      : 'Gratis'
 
-  // Kabari instruktur juga - supaya tidak perlu cek manual ke web tiap saat
+  const instructorMsg =
+    `📥 *Pendaftaran Baru*\n\n` +
+    `*${className}*\n\n` +
+    `Peserta: ${name}\n` +
+    `${formatDate(reg.session_date)}\n` +
+    `Metode: ${methodLabel}`
+
+  const commonArgs = {
+    supabase,
+    userId:      reg.user_id,
+    fonnteToken: instructorToken,
+    sourceRoute: '/api/notifications/class-registration',
+    botPhone,
+  } as const
+
+  // Dua pesan dienqueue terpisah; worker akan terapkan delay di antara keduanya.
+  // Kegagalan enqueue tidak membatalkan response (registrasi sudah di-commit di DB),
+  // tapi dicatat di wa_message_log secara internal oleh enqueueWhatsApp().
+  const participantId = await enqueueWhatsApp({
+    ...commonArgs,
+    phone:       reg.registrant_phone,
+    message:     participantMsg,
+    messageType: 'registration',
+    contactName: name,
+  })
+
+  let instructorId: string | null = null
   if (instructorPhone) {
-    const methodLabel = reg.payment_method === 'transfer' ? 'Transfer (menunggu konfirmasi)'
-      : reg.payment_method === 'cash' ? 'OTS (sudah confirmed)'
-        : 'Gratis'
-    const validateLink = appUrl ? `${appUrl}/classes/${reg.class_id}/registrations` : null
-    const instructorMsg =
-      `🔔 *Pendaftaran Baru*\n\n` +
-      `${name} (${reg.registrant_phone ?? '-'}) baru daftar *${className}*\n` +
-      `${formatDate(reg.session_date)}\n` +
-      `Metode: ${methodLabel}` +
-      (validateLink ? `\n\n👉 Lihat & validasi:\n${validateLink}` : '')
-    await sendWhatsApp(instructorPhone, instructorMsg, instructorToken)
+    instructorId = await enqueueWhatsApp({
+      ...commonArgs,
+      phone:       instructorPhone,
+      message:     instructorMsg,
+      messageType: 'registration',
+      contactName: name,
+    })
   }
 
-  return NextResponse.json({ ok: true, sent })
+  return NextResponse.json({
+    ok:     true,
+    queued: { participant: !!participantId, instructor: !!instructorId },
+  })
 }

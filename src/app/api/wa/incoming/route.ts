@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendWhatsApp, normalizePhone } from '@/lib/whatsapp'
+import { logWhatsAppDirect } from '@/lib/wa-queue'
 import { DAY_NAMES, formatTime, formatRupiah, formatDate } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
 
@@ -204,7 +205,7 @@ export async function POST(request: Request) {
   if (instructor_id) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, name, business_name, phone, slug, fonnte_token, is_platform_admin')
+      .select('id, name, business_name, phone, slug, fonnte_token, bot_phone, is_platform_admin')
       .eq('id', instructor_id)
       .single()
     instructorProfile = data ?? null
@@ -220,7 +221,7 @@ export async function POST(request: Request) {
     for (const phone of deviceVariants) {
       const { data } = await supabase
         .from('profiles')
-        .select('id, name, business_name, phone, slug, fonnte_token, is_platform_admin')
+        .select('id, name, business_name, phone, slug, fonnte_token, bot_phone, is_platform_admin')
         .ilike('bot_phone', `%${phone!.slice(-9)}%`)
         .single()
       if (data) { instructorProfile = data; break }
@@ -251,7 +252,18 @@ export async function POST(request: Request) {
         { user_id: instructorProfile.id, phone: adminPhoneKey, role: 'assistant', message: text },
       ])
       const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
-      await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
+      const sendOk = await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
+      logWhatsAppDirect({
+        userId:         instructorProfile.id,
+        contactPhone:   senderPhone,
+        contactName:    String(senderName ?? '').trim() || undefined,
+        direction:      'outbound',
+        messageType:    'chatbot',
+        messageContent: text,
+        sourceRoute:    '/api/wa/incoming',
+        success:        sendOk,
+        botPhone:       instructorProfile.bot_phone ?? undefined,
+      }).catch(() => {})
       return NextResponse.json({ ok: true, adminPath: true })
     }
 
@@ -426,6 +438,21 @@ CARA MENJAWAB:
       await supabase.from('wa_message_buffer').delete().in('id', pending.map(p => p.id))
     }
   }
+
+  // Log pesan masuk - non-blocking, tidak boleh menghambat alur balasan
+  logWhatsAppDirect({
+    userId:            instructorProfile.id,
+    contactPhone:      senderPhoneKey,
+    contactName:       String(senderName ?? '').trim() || undefined,
+    direction:         'inbound',
+    messageType:       'chatbot',
+    messageContent:    message,
+    sourceRoute:       '/api/wa/incoming',
+    success:           true,
+    receivedAt:        new Date(),
+    botPhone:          instructorProfile.bot_phone ?? undefined,
+    providerMessageId: fonnteMessageId ? String(fonnteMessageId) : undefined,
+  }).catch(() => {})
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -635,7 +662,18 @@ CARA MENJAWAB:
       { user_id: instructorProfile.id, phone: senderPhoneKey, role: 'assistant', message: text, sender_kind: senderKind, sender_ref_id: senderRefId, class_type: senderClassType },
     ])
     const senderPhone = cleanSender.startsWith('62') ? '0' + cleanSender.slice(2) : cleanSender
-    await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
+    const sendOk = await sendWhatsApp(senderPhone, text, instructorProfile.fonnte_token ?? null)
+    logWhatsAppDirect({
+      userId:         instructorProfile.id,
+      contactPhone:   senderPhone,
+      contactName:    String(senderName ?? '').trim() || undefined,
+      direction:      'outbound',
+      messageType:    'chatbot',
+      messageContent: text,
+      sourceRoute:    '/api/wa/incoming',
+      success:        sendOk,
+      botPhone:       instructorProfile.bot_phone ?? undefined,
+    }).catch(() => {})
     return NextResponse.json({ ok: true, fastPath: true })
   }
 
@@ -799,7 +837,17 @@ CARA MENJAWAB:
         `🔔 *Perlu perhatian Anda*\n\n` +
         `Dari: ${senderName ? `${senderName} (${cleanSender})` : cleanSender}\n` +
         `Pesan: "${message}"`
-      await sendWhatsApp(instructorProfile.phone, notifyText, instructorProfile.fonnte_token ?? null)
+      const handoverOk = await sendWhatsApp(instructorProfile.phone, notifyText, instructorProfile.fonnte_token ?? null)
+      logWhatsAppDirect({
+        userId:         instructorProfile.id,
+        contactPhone:   instructorProfile.phone,
+        direction:      'outbound',
+        messageType:    'chatbot',
+        messageContent: notifyText,
+        sourceRoute:    '/api/wa/incoming',
+        success:        handoverOk,
+        botPhone:       instructorProfile.bot_phone ?? undefined,
+      }).catch(() => {})
     }
     return sendFastReply(`Baik ${greetName}, aku teruskan ke ${instructorProfile.name} ya 🙏`)
   }
@@ -881,7 +929,18 @@ CARA MENJAWAB:
     const senderPhone = cleanSender.startsWith('62')
       ? '0' + cleanSender.slice(2)
       : cleanSender
-    await sendWhatsApp(senderPhone, reply, instructorProfile.fonnte_token ?? null)
+    const replyOk = await sendWhatsApp(senderPhone, reply, instructorProfile.fonnte_token ?? null)
+    logWhatsAppDirect({
+      userId:         instructorProfile.id,
+      contactPhone:   senderPhone,
+      contactName:    String(senderName ?? '').trim() || undefined,
+      direction:      'outbound',
+      messageType:    'chatbot',
+      messageContent: reply,
+      sourceRoute:    '/api/wa/incoming',
+      success:        replyOk,
+      botPhone:       instructorProfile.bot_phone ?? undefined,
+    }).catch(() => {})
   }
 
   return NextResponse.json({ ok: true })

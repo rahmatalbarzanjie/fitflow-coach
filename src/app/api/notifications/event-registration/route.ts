@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendWhatsApp } from '@/lib/whatsapp'
 import { formatRupiah, formatDate, formatTime } from '@/lib/utils'
 import { REGISTRATION_TIER } from '@/lib/constants'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 
 /*
  * POST /api/notifications/event-registration
  * Dipanggil dari RegistrationForm (publik, tanpa login) tepat setelah
- * insert sukses - kasih kabar ke peserta (lengkap detail & info penting
- * event) + instruktur (dengan link langsung ke halaman validasi, tinggal
- * klik tidak perlu buka browser & navigasi manual).
+ * insert sukses - enqueue notifikasi ke peserta dan ke instruktur (tanpa URL).
  * Body: { registrationId: string }
  */
 export async function POST(request: Request) {
@@ -31,13 +29,18 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('phone, fonnte_token')
+    .select('phone, fonnte_token, bot_phone')
     .eq('id', reg.user_id)
     .single()
-  const instructorToken = (profile as { phone: string | null; fonnte_token: string | null } | null)?.fonnte_token ?? null
-  const instructorPhone = (profile as { phone: string | null; fonnte_token: string | null } | null)?.phone ?? null
 
-  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const instructorToken = (profile as any)?.fonnte_token ?? null
+  const instructorPhone = (profile as any)?.phone         ?? null
+  const botPhone        = (profile as any)?.bot_phone     ?? null
+
+  if (!instructorToken) {
+    return NextResponse.json({ ok: true, queued: false, reason: 'token tidak ada' })
+  }
+
   const name       = reg.registrant_name
   const ev         = reg.events as any
   const eventTitle = ev?.title ?? 'event'
@@ -54,19 +57,43 @@ export async function POST(request: Request) {
     `${detailLines}\n\n` +
     `Kami akan konfirmasi pembayaranmu setelah cek bukti transfer ya. Mohon ditunggu 🙏`
 
-  const sent = await sendWhatsApp(reg.registrant_phone, participantMsg, instructorToken)
+  const tierLabel = REGISTRATION_TIER[reg.tier as keyof typeof REGISTRATION_TIER]?.label ?? reg.tier
 
-  // Kabari instruktur juga - supaya tidak perlu cek manual ke web tiap saat
+  const instructorMsg =
+    `📥 *Pendaftaran Baru*\n\n` +
+    `*${eventTitle}*\n\n` +
+    `Peserta: ${name}\n` +
+    `${tierLabel} · ${formatRupiah(Number(reg.amount_paid))}`
+
+  const commonArgs = {
+    supabase,
+    userId:      reg.user_id,
+    fonnteToken: instructorToken,
+    sourceRoute: '/api/notifications/event-registration',
+    botPhone,
+  } as const
+
+  const participantId = await enqueueWhatsApp({
+    ...commonArgs,
+    phone:       reg.registrant_phone,
+    message:     participantMsg,
+    messageType: 'event',
+    contactName: name,
+  })
+
+  let instructorId: string | null = null
   if (instructorPhone) {
-    const tierLabel = REGISTRATION_TIER[reg.tier as keyof typeof REGISTRATION_TIER]?.label ?? reg.tier
-    const validateLink = appUrl ? `${appUrl}/events/${reg.event_id}/registrations` : null
-    const instructorMsg =
-      `🔔 *Pendaftaran Baru*\n\n` +
-      `${name} (${reg.registrant_phone}) baru daftar *${eventTitle}*\n` +
-      `${tierLabel} · ${formatRupiah(Number(reg.amount_paid))}` +
-      (validateLink ? `\n\n👉 Lihat & validasi:\n${validateLink}` : '\n\nCek bukti transfer & konfirmasi di halaman Kelola Peserta ya 🙏')
-    await sendWhatsApp(instructorPhone, instructorMsg, instructorToken)
+    instructorId = await enqueueWhatsApp({
+      ...commonArgs,
+      phone:       instructorPhone,
+      message:     instructorMsg,
+      messageType: 'event',
+      contactName: name,
+    })
   }
 
-  return NextResponse.json({ ok: true, sent })
+  return NextResponse.json({
+    ok:     true,
+    queued: { participant: !!participantId, instructor: !!instructorId },
+  })
 }

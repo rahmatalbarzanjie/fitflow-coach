@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsApp } from '@/lib/whatsapp'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 
 /*
  * POST /api/notifications/registration
@@ -17,7 +17,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Param tidak lengkap' }, { status: 400 })
   }
 
-  // Ambil data registrasi + judul event/kelas (pastikan milik instruktur ini)
   const [{ data: reg }, { data: profile }] = await Promise.all([
     supabase
       .from('registrations')
@@ -25,11 +24,17 @@ export async function POST(request: Request) {
       .eq('id', registrationId)
       .eq('user_id', user.id)
       .single(),
-    supabase.from('profiles').select('fonnte_token').eq('id', user.id).single(),
+    supabase.from('profiles').select('fonnte_token, bot_phone').eq('id', user.id).single(),
   ])
 
   if (!reg) return NextResponse.json({ error: 'Registrasi tidak ditemukan' }, { status: 404 })
-  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+
+  const instructorToken = (profile as any)?.fonnte_token ?? null
+  const botPhone        = (profile as any)?.bot_phone    ?? null
+
+  if (!instructorToken) {
+    return NextResponse.json({ ok: true, queued: false, reason: 'token tidak ada' })
+  }
 
   const name      = reg.registrant_name
   const phone     = reg.registrant_phone
@@ -61,6 +66,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'type tidak valid' }, { status: 400 })
   }
 
-  const sent = await sendWhatsApp(phone, message, instructorToken)
-  return NextResponse.json({ ok: true, sent })
+  const outboxId = await enqueueWhatsApp({
+    supabase,
+    userId:      user.id,
+    phone,
+    message,
+    fonnteToken: instructorToken,
+    messageType: 'registration',
+    contactName: name,
+    sourceRoute: '/api/notifications/registration',
+    botPhone,
+  })
+
+  // This route is triggered by an instructor action (confirm/reject/cancel/invite).
+  // The instructor is actively waiting on the outcome. Surface enqueue failures
+  // explicitly so the caller can show an error in the UI.
+  if (!outboxId) {
+    return NextResponse.json(
+      { ok: false, queued: false, error: 'Notifikasi WA gagal masuk antrian. Coba kirim ulang.' },
+      { status: 500 },
+    )
+  }
+
+  return NextResponse.json({ ok: true, queued: true })
 }
