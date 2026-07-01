@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { WaActivityStats } from '@/components/wa-activity/WaActivityStats'
 import { WaActivityFilters, type Filters } from '@/components/wa-activity/WaActivityFilters'
 import { WaActivityList } from '@/components/wa-activity/WaActivityList'
 import { WaActivityDetail } from '@/components/wa-activity/WaActivityDetail'
 import { WaQueueHealth } from '@/components/wa-activity/WaQueueHealth'
-import { Download, Trash2, AlertTriangle, X } from 'lucide-react'
+import { Download, Trash2, AlertTriangle, X, CheckCircle, AlertCircle } from 'lucide-react'
 
 const DEFAULT_FILTERS: Filters = {
   date_preset:  '7d',
@@ -33,6 +33,8 @@ function buildQuery(f: Filters, page: number, pageSize: number): string {
   return p.toString()
 }
 
+interface Toast { type: 'success' | 'error'; message: string }
+
 export default function WaMessagesPage() {
   const [filters,       setFilters      ] = useState<Filters>(DEFAULT_FILTERS)
   const [rows,          setRows         ] = useState<Record<string, any>[]>([])
@@ -42,11 +44,19 @@ export default function WaMessagesPage() {
   const [selected,      setSelected     ] = useState<Record<string, any> | null>(null)
   const [deleting,      setDeleting     ] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [toast,         setToast        ] = useState<Toast | null>(null)
+  const toastTimer                        = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [stats, setStats] = useState({
     total: 0, sent: 0, failed: 0, inbound: 0, outbound: 0, with_url: 0,
   })
 
   const PAGE_SIZE = 50
+
+  function showToast(t: Toast) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast(t)
+    toastTimer.current = setTimeout(() => setToast(null), 4000)
+  }
 
   const load = useCallback(async (f: Filters, p: number) => {
     setLoading(true)
@@ -92,6 +102,7 @@ export default function WaMessagesPage() {
     setDeleting(true)
     setDeleteConfirm(false)
     try {
+      // Build body dari filter aktif
       const body: Record<string, string> = {}
       if (filters.date_preset && filters.date_preset !== 'custom') body.date_preset = filters.date_preset
       if (filters.date_preset === 'custom' && filters.date_from) body.date_from = filters.date_from
@@ -100,13 +111,32 @@ export default function WaMessagesPage() {
       if (filters.message_type) body.message_type = filters.message_type
       if (filters.status)       body.status       = filters.status
       if (filters.contact)      body.contact      = filters.contact
-      await fetch('/api/wa/activity/delete', {
+
+      // Kirim PATCH dan baca response
+      const res  = await fetch('/api/wa/activity/delete', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(body),
       })
-      await load(filters, 1)
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast({ type: 'error', message: data.error ?? 'Gagal menghapus data. Coba lagi.' })
+        return
+      }
+
+      const deleted = data.deleted ?? 0
+      if (deleted === 0) {
+        showToast({ type: 'error', message: 'Tidak ada data yang cocok dengan filter untuk dihapus.' })
+        return
+      }
+
+      // Delete berhasil — reload list dan stats
+      showToast({ type: 'success', message: `${deleted} pesan berhasil dihapus.` })
       setPage(1)
+      await load(filters, 1)
+    } catch {
+      showToast({ type: 'error', message: 'Koneksi gagal. Periksa jaringan dan coba lagi.' })
     } finally {
       setDeleting(false)
     }
@@ -133,13 +163,32 @@ export default function WaMessagesPage() {
               className="flex items-center gap-1 h-8 px-2.5 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Hapus</span>
+              <span className="hidden sm:inline">{deleting ? 'Menghapus...' : 'Hapus'}</span>
             </button>
           </div>
         }
       />
 
-      {/* Delete confirmation bar - muncul di bawah header, bukan di dalam */}
+      {/* Toast feedback — sukses & error */}
+      {toast && (
+        <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-4 border ${
+          toast.type === 'success'
+            ? 'bg-green-50 border-green-100 text-green-700'
+            : 'bg-red-50 border-red-100 text-red-700'
+        }`}>
+          <span className="flex items-center gap-1.5 text-xs">
+            {toast.type === 'success'
+              ? <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+              : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
+            {toast.message}
+          </span>
+          <button onClick={() => setToast(null)} className="ml-3 shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Delete confirmation bar */}
       {deleteConfirm && (
         <div className="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4">
           <p className="flex items-center gap-1.5 text-xs text-red-700">
