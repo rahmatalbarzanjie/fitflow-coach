@@ -292,7 +292,7 @@ export function RegistrationActions({
 
       {/* Inline cancel confirm - peringatan kalau registrasi ini sudah
           confirmed dan ada uang masuk, supaya instruktur tidak lupa
-          urusan dana sebelum membatalkan (FitFlow tidak ada payment
+          urusan dana sebelum membatalkan (FuelOS tidak ada payment
           gateway, refund selalu manual). */}
       {confirmingCancel && (
         <div className="flex flex-col items-end gap-1.5 mt-1">

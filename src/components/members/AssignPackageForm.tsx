@@ -196,7 +196,7 @@ export function AssignPackageForm({ memberId, userId, packages, activeMembership
         </div>
         {isLegacy && (
           <p className="text-xs text-gray-400">
-            Untuk member yang sudah punya paket ini SEBELUM pakai FitFlow (uang sudah diterima di luar sistem) - nominal di bawah TIDAK akan dihitung sebagai revenue FitFlow.
+            Untuk member yang sudah punya paket ini SEBELUM pakai FuelOS (uang sudah diterima di luar sistem) - nominal di bawah TIDAK akan dihitung sebagai revenue FuelOS.
           </p>
         )}
       </div>
@@ -254,7 +254,7 @@ export function AssignPackageForm({ memberId, userId, packages, activeMembership
         />
         <p className="text-xs text-gray-400">
           {isLegacy
-            ? 'Dicatat untuk histori pembelian member - TIDAK masuk revenue FitFlow.'
+            ? 'Dicatat untuk histori pembelian member - TIDAK masuk revenue FuelOS.'
             : `Harga katalog: ${formatRupiah(selectedPackage?.price ?? 0)} - bisa diubah kalau ada diskon`}
         </p>
       </div>
