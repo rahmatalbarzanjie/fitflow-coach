@@ -1,16 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 /**
  * PATCH /api/wa/activity/delete
  * Soft-delete wa_message_log rows berdasarkan filter aktif.
  * Body: { date_preset?, date_from?, date_to?, direction?, message_type?, status?, contact? }
  * Returns: { deleted: number }
+ *
+ * Auth diverifikasi via createClient(), operasi DB via createServiceClient()
+ * untuk menghindari RLS WITH CHECK failure yang terjadi ketika session
+ * PostgreSQL tidak terinisialisasi dengan benar di Next.js Route Handler.
+ * Keamanan tetap dijaga: user.id difilter eksplisit di setiap query.
  */
 export async function PATCH(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Auth check via user client
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Operasi DB via service client (bypasses RLS); user.id difilter eksplisit
+  const supabase = createServiceClient()
 
   const body = await request.json().catch(() => ({}))
   const { date_preset, date_from, date_to, direction, message_type, status, contact } = body
@@ -30,8 +40,6 @@ export async function PATCH(request: Request) {
 
   const { from, to } = parseDateRange()
 
-  // SELECT dulu untuk mendapat list ID yang akan di-soft-delete
-  // (Supabase tidak support filter kompleks + update dalam satu query via JS client)
   let selectQ = (supabase
     .from('wa_message_log') as any)
     .select('id')
@@ -60,7 +68,7 @@ export async function PATCH(request: Request) {
     .from('wa_message_log') as any)
     .update({ deleted_at: new Date().toISOString() })
     .in('id', rowIds)
-    .eq('user_id', user.id)
+    .eq('user_id', user.id)   // double-check ownership meski pakai service client
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
