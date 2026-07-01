@@ -22,12 +22,17 @@ export interface EnqueueParams {
   messageType:   WaMessageType
   contactName?:  string
   sourceRoute:   string
-  // Kalau diisi, worker pakai nilai ini sebagai jeda sebelum kirim pesan ini.
-  // Kalau null/undefined, worker pakai random 3-8 detik.
   delaySeconds?: number
-  // Untuk scheduling masa depan (reminder). Default: sekarang (langsung antri).
   scheduledAt?:  Date
   botPhone?:     string
+}
+
+// Shared helper - also used by process-queue/route.ts
+export function envInt(key: string, fallback: number): number {
+  const v = process.env[key]
+  if (!v) return fallback
+  const n = parseInt(v, 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
 function detectUrls(text: string): { contains: boolean; count: number } {
@@ -38,15 +43,15 @@ function detectUrls(text: string): { contains: boolean; count: number } {
 
 /**
  * Masukkan pesan ke wa_outbox untuk dikirim oleh worker process-queue.
- * Business routes memanggil ini sebagai pengganti sendWhatsApp().
- * Tidak ada network call ke Fonnte di sini - hanya INSERT ke database.
+ *
+ * Smart scheduling: kalau jumlah pesan queued/processing untuk user_id ini
+ * sudah >= WA_QUEUE_MAX_BURST, scheduled_at digeser ke setelah pesan
+ * terakhir yang sudah terjadwal + WA_QUEUE_BURST_DELAY_MS. Ini mencegah
+ * burst (misalnya broadcast 100 member sekaligus) menjadi 100 request Fonnte
+ * dalam satu batch - pesan otomatis tersebar dengan jeda yang aman.
  *
  * Returns: id baris outbox yang dibuat, atau null jika INSERT gagal.
- *
- * Saat gagal: error SELALU dicatat ke wa_message_log via service client
- * sehingga support dapat menginvestigasi tanpa bergantung pada caller
- * melakukan penanganan null. Caller tetap harus memeriksa null untuk
- * memutuskan apakah perlu melaporkan kegagalan ke pengguna.
+ * Kegagalan selalu dicatat ke wa_message_log via service client.
  */
 export async function enqueueWhatsApp(params: EnqueueParams): Promise<string | null> {
   const {
@@ -58,6 +63,11 @@ export async function enqueueWhatsApp(params: EnqueueParams): Promise<string | n
     console.warn('[wa-queue] enqueueWhatsApp dipanggil tanpa phone maupun groupId')
     return null
   }
+
+  // Smart scheduling: deteksi burst dan offset scheduled_at jika perlu
+  const resolvedScheduledAt = scheduledAt
+    ? scheduledAt
+    : await resolveScheduledAt(supabase, userId)
 
   const { data, error } = await (supabase
     .from('wa_outbox') as any)
@@ -71,7 +81,7 @@ export async function enqueueWhatsApp(params: EnqueueParams): Promise<string | n
       contact_name:    contactName ?? null,
       source_route:    sourceRoute,
       delay_seconds:   delaySeconds ?? null,
-      scheduled_at:    (scheduledAt ?? new Date()).toISOString(),
+      scheduled_at:    resolvedScheduledAt.toISOString(),
       bot_phone:       botPhone ?? null,
     })
     .select('id')
@@ -80,30 +90,58 @@ export async function enqueueWhatsApp(params: EnqueueParams): Promise<string | n
   if (error) {
     const errMsg = `Gagal INSERT ke wa_outbox: ${error.message}`
     console.error(`[wa-queue] ${errMsg}`)
-
-    // Log the failure to wa_message_log so it is observable by support
-    // even if the caller does not handle the null return.
-    // This uses the service client directly to ensure the write succeeds
-    // regardless of the caller's auth context.
     logEnqueueFailure({
       userId,
-      phone:       phone ?? groupId ?? 'unknown',
-      contactName: contactName ?? null,
+      phone:        phone ?? groupId ?? 'unknown',
+      contactName:  contactName ?? null,
       message,
       messageType,
       sourceRoute,
-      botPhone:    botPhone ?? null,
+      botPhone:     botPhone ?? null,
       errorMessage: errMsg,
     }).catch(() => {})
-
     return null
   }
 
   return (data as any).id as string
 }
 
-// Internal helper — not exported. Writes a failed-enqueue record to
-// wa_message_log so support can always see that a send was attempted.
+/**
+ * Hitung scheduled_at yang tepat untuk pesan baru.
+ * Kalau jumlah pesan queued/processing untuk user ini >= WA_QUEUE_MAX_BURST,
+ * pesan baru dijadwalkan setelah pesan terjadwal terakhir + WA_QUEUE_BURST_DELAY_MS.
+ * Kalau tidak burst, dijadwalkan sekarang.
+ */
+async function resolveScheduledAt(supabase: SupabaseClient, userId: string): Promise<Date> {
+  const maxBurst   = envInt('WA_QUEUE_MAX_BURST',      3)
+  const burstDelay = envInt('WA_QUEUE_BURST_DELAY_MS', 12_000)
+
+  const { count } = await (supabase
+    .from('wa_outbox') as any)
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('status', ['queued', 'processing'])
+
+  if ((count ?? 0) < maxBurst) {
+    return new Date()
+  }
+
+  // Burst terdeteksi - ambil scheduled_at terbesar untuk user ini dan offset
+  const { data: latest } = await (supabase
+    .from('wa_outbox') as any)
+    .select('scheduled_at')
+    .eq('user_id', userId)
+    .in('status', ['queued', 'processing'])
+    .order('scheduled_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (latest?.scheduled_at) {
+    return new Date(new Date(latest.scheduled_at).getTime() + burstDelay)
+  }
+  return new Date()
+}
+
 async function logEnqueueFailure(params: {
   userId:       string
   phone:        string
@@ -131,7 +169,6 @@ async function logEnqueueFailure(params: {
     success:         false,
     error_message:   params.errorMessage,
     bot_phone:       params.botPhone,
-    // outbox_id is null: no outbox row was created
   })
 }
 
@@ -155,10 +192,8 @@ export interface LogDirectParams {
 
 /**
  * Log satu pesan langsung ke wa_message_log (tanpa lewat outbox).
- * Dipakai oleh wa/incoming untuk chatbot replies (direct-send, latency-sensitive)
- * dan untuk pesan inbound dari peserta.
- * Non-blocking: panggil dengan .catch(() => {}) dari caller kalau tidak mau
- * gagalnya mempengaruhi response utama.
+ * Dipakai oleh wa/incoming untuk chatbot replies dan pesan inbound.
+ * Non-blocking: panggil dengan .catch(() => {}) dari caller.
  */
 export async function logWhatsAppDirect(params: LogDirectParams): Promise<void> {
   const service = createServiceClient()

@@ -11,7 +11,7 @@ type State = 'idle' | 'confirming' | 'sending' | 'done' | 'error'
 
 export function BroadcastSendButton({ broadcastId }: Props) {
   const [state,  setState ] = useState<State>('idle')
-  const [result, setResult] = useState<{ sent: number; failed: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{ queued: number; failed: number; skipped: number } | null>(null)
   const [error,  setError ] = useState('')
 
   async function send() {
@@ -24,7 +24,7 @@ export function BroadcastSendButton({ broadcastId }: Props) {
         setError(data.error ?? 'Gagal mengirim')
         setState('error')
       } else {
-        setResult({ sent: data.sent ?? 0, failed: data.failed ?? 0, skipped: data.skipped ?? 0 })
+        setResult({ queued: data.queued ?? 0, failed: data.failed ?? 0, skipped: data.skipped ?? 0 })
         setState('done')
       }
     } catch {
@@ -37,11 +37,12 @@ export function BroadcastSendButton({ broadcastId }: Props) {
     <span className="flex flex-col items-end text-xs text-green-600 font-medium">
       <span className="flex items-center gap-1">
         <Check className="w-3.5 h-3.5" />
-        {result?.sent ?? 0} terkirim{(result?.failed ?? 0) > 0 ? `, ${result?.failed} gagal` : ''}
+        {result?.queued ?? 0} masuk antrian{(result?.failed ?? 0) > 0 ? `, ${result?.failed} gagal` : ''}
       </span>
       {(result?.skipped ?? 0) > 0 && (
         <span className="text-gray-400 font-normal">{result?.skipped} sudah terkirim sebelumnya, dilewati</span>
       )}
+      <span className="text-gray-400 font-normal mt-0.5">Pesan dikirim bertahap via antrian WA</span>
     </span>
   )
 
@@ -73,7 +74,7 @@ export function BroadcastSendButton({ broadcastId }: Props) {
         className="flex items-center gap-1 h-7 px-3 text-xs font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 transition-colors"
       >
         {state === 'sending'
-          ? <><Loader2 className="w-3 h-3 animate-spin" /> Mengirim...</>
+          ? <><Loader2 className="w-3 h-3 animate-spin" /> Menjadwalkan...</>
           : <><Send className="w-3 h-3" /> Kirim WA</>}
       </button>
       {state === 'error' && (

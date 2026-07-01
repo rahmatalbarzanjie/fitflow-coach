@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { normalizePhone } from '@/lib/whatsapp'
+import { envInt } from '@/lib/wa-queue'
 
 // ── Runtime configuration (environment variables) ─────────────────────────────
 //
@@ -8,39 +9,19 @@ import { normalizePhone } from '@/lib/whatsapp'
 // an external adapter - Vercel Cron, Linux crontab, PM2, Railway, Coolify, or
 // any service that can call an authenticated HTTP endpoint on a schedule.
 //
-// These env vars let operators tune the worker per deployment without changing
-// application code:
-//
-//   WA_QUEUE_BUDGET_MS
-//     How long (ms) one invocation may run before stopping gracefully.
-//     The worker tracks elapsed time internally and stops before this budget
-//     expires, so unprocessed rows remain safely in 'processing' status until
-//     the recovery sweep picks them up on the next invocation.
-//     Default: 55000 (55 seconds) - safe across Vercel Pro, Railway, VPS.
-//     Tune up (e.g. 270000) on platforms with long function timeouts.
-//
-//   WA_QUEUE_BATCH_SIZE
-//     Maximum rows claimed per invocation. The budget check may stop the
-//     loop earlier than this limit.
-//     Default: 10
-//
-//   WA_QUEUE_RECOVERY_MINUTES
-//     Rows stuck in 'processing' beyond this threshold are assumed orphaned
-//     from a prior crashed or timed-out invocation and are reset to 'queued'.
-//     Must be meaningfully larger than WA_QUEUE_BUDGET_MS to avoid recovering
-//     rows from a currently-running parallel invocation.
-//     Default: 10 (minutes)
+//   WA_QUEUE_BUDGET_MS              Default: 55000 (55s)
+//   WA_QUEUE_BATCH_SIZE             Default: 10
+//   WA_QUEUE_RECOVERY_MINUTES       Default: 10
+//   WA_CIRCUIT_BREAKER_THRESHOLD    Default: 3
+//     Berapa consecutive Fonnte failure sebelum worker berhenti lebih awal.
+//     Saat circuit terbuka, sisa baris di batch tetap 'processing' dan
+//     di-recover oleh Phase 1 pada invocation berikutnya (setelah RECOVERY_MINUTES).
+//     Ini memberikan jeda alami sebelum retry ke Fonnte yang sedang bermasalah.
 
-function envInt(key: string, fallback: number): number {
-  const v = process.env[key]
-  if (!v) return fallback
-  const n = parseInt(v, 10)
-  return Number.isFinite(n) && n > 0 ? n : fallback
-}
-
-const BUDGET_MS                 = envInt('WA_QUEUE_BUDGET_MS',              55_000)
-const BATCH_SIZE                = envInt('WA_QUEUE_BATCH_SIZE',             10)
+const BUDGET_MS                  = envInt('WA_QUEUE_BUDGET_MS',             55_000)
+const BATCH_SIZE                 = envInt('WA_QUEUE_BATCH_SIZE',            10)
 const RECOVERY_THRESHOLD_MINUTES = envInt('WA_QUEUE_RECOVERY_MINUTES',      10)
+const CIRCUIT_THRESHOLD          = envInt('WA_CIRCUIT_BREAKER_THRESHOLD',   3)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -169,10 +150,12 @@ export async function POST(request: Request) {
     .in('id', batchIds)
 
   // ── Phase 3: Process batch ───────────────────────────────────────────────
-  let sent        = 0
-  let failed      = 0
-  let retrying    = 0
-  let stoppedEarly = false
+  let sent               = 0
+  let failed             = 0
+  let retrying           = 0
+  let stoppedEarly       = false
+  let circuitOpen        = false
+  let consecutiveFailures = 0
 
   for (let i = 0; i < batch.length; i++) {
     const row = batch[i]
@@ -239,8 +222,22 @@ export async function POST(request: Request) {
           }),
       ])
 
+      consecutiveFailures = 0  // Fonnte berhasil - reset circuit
       sent++
     } else {
+      consecutiveFailures++
+
+      // Circuit breaker: berhenti lebih awal jika Fonnte berturut-turut error.
+      // Sisa baris tetap 'processing' dan di-recover oleh Phase 1 setelah
+      // RECOVERY_THRESHOLD_MINUTES. Ini memberikan jeda alami sebelum retry
+      // dan mencegah burst request ke Fonnte yang sedang 429/502/503.
+      if (consecutiveFailures >= CIRCUIT_THRESHOLD) {
+        circuitOpen = true
+        stoppedEarly = true
+        console.warn(`[process-queue] Circuit breaker terbuka: ${consecutiveFailures} kegagalan Fonnte berturut-turut. Batch dihentikan lebih awal, sisa pesan di-recover setelah ${RECOVERY_THRESHOLD_MINUTES} menit.`)
+        // Proses failure untuk baris ini dulu sebelum break
+      }
+
       const canRetry      = newAttempts < (row.max_attempts as number)
       const isMaxAttempts = !canRetry
       const nextScheduledAt = canRetry
@@ -286,6 +283,8 @@ export async function POST(request: Request) {
 
       if (canRetry) retrying++
       else failed++
+
+      if (circuitOpen) break
     }
   }
 
@@ -295,6 +294,7 @@ export async function POST(request: Request) {
     sent,
     failed,
     retrying,
+    circuit_open: circuitOpen,
     recovered:    recoveredCount,
     stopped_early: stoppedEarly,
     elapsed_ms:   Date.now() - invocationStart,

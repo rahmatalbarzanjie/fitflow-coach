@@ -94,6 +94,22 @@ export default async function SettingsWhatsAppPage() {
         </div>
       )}
 
+      {/* Riwayat Pesan - selalu tampil */}
+      <SectionList label="Riwayat &amp; Monitoring" className="mb-4">
+        <Link
+          href="/settings/whatsapp/messages"
+          className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+        >
+          <div>
+            <p className="text-sm font-medium text-gray-900">Riwayat Pesan WA</p>
+            <p className="text-xs text-gray-400 mt-0.5">Lihat semua pesan masuk &amp; keluar, status antrian</p>
+          </div>
+          <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </SectionList>
+
       {/* Aksi */}
       <SectionList label={isConnected ? 'Koneksi' : 'Hubungkan'}>
         {isConnected ? (

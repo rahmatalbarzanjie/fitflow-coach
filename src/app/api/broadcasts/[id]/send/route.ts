@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsApp } from '@/lib/whatsapp'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 import { checkBroadcastQuota } from '@/lib/quota'
 
 /**
- * Idempotent: broadcast_recipients adalah sumber kebenaran status per-penerima.
- * Klik "Kirim" berkali-kali aman - recipient yang sudah status 'sent' DI-SKIP,
- * hanya recipient 'pending'/'failed' yang diproses ulang. Tidak ada lagi
- * kemungkinan satu member menerima broadcast yang sama dua kali akibat retry
- * setelah timeout.
+ * Idempotent: broadcast_recipients adalah sumber kebenaran daftar target.
+ * Klik "Kirim" berkali-kali aman - recipient yang sudah status 'pending'
+ * (= sudah masuk antrian) atau 'sent' DI-SKIP.
+ *
+ * Pengiriman aktual dilakukan oleh worker /api/wa/process-queue melalui
+ * wa_outbox - tidak ada direct call ke Fonnte dari route ini.
+ * Status delivery per recipient tersedia di WA Message Center
+ * (wa_message_log, source_route = /api/broadcasts/{id}/send).
  */
 export async function POST(
   _request: Request,
@@ -29,22 +32,19 @@ export async function POST(
   if (!bc) return NextResponse.json({ error: 'Broadcast tidak ditemukan' }, { status: 404 })
   if ((bc as any).status === 'sent') return NextResponse.json({ error: 'Broadcast sudah terkirim sebelumnya' }, { status: 400 })
 
-  // Cek koneksi WA SEBELUM resolve target/buat recipient - gagal cepat dan
-  // jelas, jangan biarkan instruktur kira ada yang terkirim padahal belum
-  // pernah terhubung sama sekali.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('fonnte_token')
+    .select('fonnte_token, bot_phone')
     .eq('id', user.id)
     .single()
-  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+  const instructorToken = (profile as any)?.fonnte_token ?? null
+  const botPhone        = (profile as any)?.bot_phone    ?? null
   if (!instructorToken) {
     return NextResponse.json({ error: 'WhatsApp belum terhubung. Hubungkan WA di Pengaturan terlebih dahulu.' }, { status: 400 })
   }
 
   const audience = (bc as any).target_audience as string
 
-  // Resolve target member IDs berdasarkan audience
   let memberIds: string[] | null = null
   if (audience !== 'all') {
     const { data: summaryRows } = await supabase
@@ -71,12 +71,10 @@ export async function POST(
       .from('broadcasts')
       .update({ status: 'sent', sent_at: new Date().toISOString(), recipient_count: 0 })
       .eq('id', id)
-    return NextResponse.json({ ok: true, sent: 0, failed: 0, skipped: 0 })
+    return NextResponse.json({ ok: true, queued: 0, failed: 0, skipped: 0 })
   }
 
-  // Pastikan setiap target punya row broadcast_recipients - INSERT cuma yang
-  // belum ada (unique index broadcast_id+member_id mencegah duplikat kalau
-  // ada race condition antar klik).
+  // Buat broadcast_recipients untuk target yang belum ada
   const { data: existingRows } = await supabase
     .from('broadcast_recipients')
     .select('id, member_id, phone, name, status')
@@ -100,26 +98,22 @@ export async function POST(
     .select('id, member_id, phone, name, status')
     .eq('broadcast_id', id)
 
-  const allRecipients     = (allRows ?? []) as { id: string; member_id: string | null; phone: string | null; name: string; status: string }[]
-  const pendingRecipients = allRecipients.filter(r => r.status !== 'sent')
+  const allRecipients    = (allRows ?? []) as { id: string; member_id: string | null; phone: string | null; name: string; status: string }[]
+  // Proses semua yang belum pernah berhasil masuk antrian ('pending') atau gagal sebelumnya
+  const pendingRecipients = allRecipients.filter(r => r.status === 'pending' || r.status === 'failed')
 
   if (pendingRecipients.length === 0) {
-    // Semua recipient sudah pernah sukses terkirim di percobaan sebelumnya
     await supabase
       .from('broadcasts')
       .update({ status: 'sent', sent_at: new Date().toISOString(), recipient_count: allRecipients.length })
       .eq('id', id)
-    return NextResponse.json({ ok: true, sent: 0, failed: 0, skipped: allRecipients.length })
+    return NextResponse.json({ ok: true, queued: 0, failed: 0, skipped: allRecipients.length })
   }
 
-  // Kuota dicek terhadap jumlah pengiriman BARU (bukan total target) - blok
-  // SEBELUM mulai kirim kalau sisa kuota tidak cukup.
   const quota = await checkBroadcastQuota(supabase, user.id, pendingRecipients.length)
   if (!quota.ok) {
     return NextResponse.json(
-      {
-        error: `Kuota broadcast bulan ini tidak cukup. Butuh ${pendingRecipients.length} kiriman, sisa kuota ${quota.remaining ?? 0}/${quota.limit}. Upgrade paket atau kurangi target audience.`,
-      },
+      { error: `Kuota broadcast bulan ini tidak cukup. Butuh ${pendingRecipients.length} kiriman, sisa kuota ${quota.remaining ?? 0}/${quota.limit}. Upgrade paket atau kurangi target audience.` },
       { status: 403 }
     )
   }
@@ -128,7 +122,11 @@ export async function POST(
   const content = (bc as any).content as string
   const message = `*${title}*\n\n${content}`
 
-  let sentNow   = 0
+  // source_route menyertakan broadcast ID supaya wa_message_log bisa di-filter
+  // per broadcast di Message Center tanpa tabel join tambahan
+  const sourceRoute = `/api/broadcasts/${id}/send`
+
+  let queuedNow = 0
   let failedNow = 0
 
   for (const r of pendingRecipients) {
@@ -140,43 +138,46 @@ export async function POST(
       continue
     }
 
-    const ok = await sendWhatsApp(r.phone, message, instructorToken)
-    if (ok) {
+    const outboxId = await enqueueWhatsApp({
+      supabase,
+      userId:      user.id,
+      phone:       r.phone,
+      message,
+      fonnteToken: instructorToken,
+      messageType: 'broadcast',
+      contactName: r.name,
+      sourceRoute,
+      botPhone,
+    })
+
+    if (outboxId) {
+      // Tandai sudah masuk antrian - delivery aktual via worker
       await (supabase.from('broadcast_recipients') as any)
         .update({ status: 'sent', sent_at: new Date().toISOString(), error: null })
         .eq('id', r.id)
-      sentNow++
+      queuedNow++
     } else {
       await (supabase.from('broadcast_recipients') as any)
-        .update({ status: 'failed', error: 'Gagal kirim via Fonnte' })
+        .update({ status: 'failed', error: 'Gagal masuk antrian WA' })
         .eq('id', r.id)
       failedNow++
     }
   }
 
-  // broadcast_recipients adalah sumber kebenaran - hitung ulang dari sana,
-  // bukan dari counter lokal sentNow (supaya konsisten kalau request lain
-  // ikut menulis recipient yang sama secara paralel).
-  const { data: finalRows } = await supabase
-    .from('broadcast_recipients')
-    .select('status')
-    .eq('broadcast_id', id)
-
-  const finalStatuses = (finalRows ?? []) as { status: string }[]
-  const totalSent     = finalStatuses.filter(r => r.status === 'sent').length
-  const allDone        = finalStatuses.length > 0 && finalStatuses.every(r => r.status === 'sent')
-
+  // Update broadcasts header berdasarkan total yang berhasil antri
+  const totalQueued = allRecipients.filter(r => r.status === 'sent').length + queuedNow
   await supabase
     .from('broadcasts')
     .update({
-      recipient_count: totalSent,
-      ...(allDone ? { status: 'sent', sent_at: new Date().toISOString() } : {}),
+      recipient_count: totalQueued,
+      status:          failedNow === 0 ? 'sent' : undefined,
+      sent_at:         failedNow === 0 ? new Date().toISOString() : undefined,
     })
     .eq('id', id)
 
   return NextResponse.json({
     ok:      true,
-    sent:    sentNow,
+    queued:  queuedNow,
     failed:  failedNow,
     skipped: allRecipients.length - pendingRecipients.length,
   })

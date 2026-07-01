@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsAppToGroup } from '@/lib/whatsapp'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 import { checkBroadcastQuota } from '@/lib/quota'
 
 export async function POST(
@@ -12,8 +12,6 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Kirim ke grup WA dihitung sebagai 1 unit kuota (bukan per-anggota grup -
-  // kita tidak punya visibilitas jumlah anggota grup dari Fonnte).
   const quota = await checkBroadcastQuota(supabase, user.id, 1)
   if (!quota.ok) {
     return NextResponse.json(
@@ -41,15 +39,16 @@ export async function POST(
 
   const [{ data: cls }, { data: profile }] = await Promise.all([
     supabase.from('classes').select('wa_group_id, wa_group_name').eq('id', targetClassId).eq('user_id', user.id).single(),
-    supabase.from('profiles').select('fonnte_token').eq('id', user.id).single(),
+    supabase.from('profiles').select('fonnte_token, bot_phone').eq('id', user.id).single(),
   ])
 
-  const groupId = (cls as { wa_group_id: string | null } | null)?.wa_group_id ?? null
+  const groupId      = (cls as any)?.wa_group_id ?? null
   if (!groupId) {
     return NextResponse.json({ error: 'Kelas ini belum terhubung ke grup WA' }, { status: 400 })
   }
 
-  const instructorToken = (profile as { fonnte_token: string | null } | null)?.fonnte_token ?? null
+  const instructorToken = (profile as any)?.fonnte_token ?? null
+  const botPhone        = (profile as any)?.bot_phone    ?? null
   if (!instructorToken) {
     return NextResponse.json({ error: 'WhatsApp belum terhubung. Hubungkan WA di Pengaturan terlebih dahulu.' }, { status: 400 })
   }
@@ -58,8 +57,19 @@ export async function POST(
   const content = (bc as any).content as string
   const message = `*${title}*\n\n${content}`
 
-  const ok = await sendWhatsAppToGroup(groupId, message, instructorToken)
-  if (!ok) return NextResponse.json({ error: 'Gagal kirim ke grup WA' }, { status: 500 })
+  const outboxId = await enqueueWhatsApp({
+    supabase,
+    userId:      user.id,
+    groupId,
+    message,
+    fonnteToken: instructorToken,
+    messageType: 'broadcast',
+    contactName: (cls as any)?.wa_group_name ?? groupId,
+    sourceRoute: `/api/broadcasts/${id}/send-group`,
+    botPhone,
+  })
+
+  if (!outboxId) return NextResponse.json({ error: 'Gagal masuk antrian WA' }, { status: 500 })
 
   await supabase
     .from('broadcasts')
