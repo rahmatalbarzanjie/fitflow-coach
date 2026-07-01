@@ -10,6 +10,7 @@ import {
 import { formatTime, formatRupiah } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
 import { timed } from '@/lib/perf'
+import { SubscriptionRenewalBanner } from '@/components/dashboard/SubscriptionRenewalBanner'
 
 /**
  * Data dashboard yang TIDAK perlu real-time - profil, daftar kelas/event,
@@ -119,7 +120,7 @@ export default async function BerandaPage() {
     : 'Selamat malam'
 
   console.time('query:/beranda:all')
-  const [cached, todaySessionsRes] = await Promise.all([
+  const [cached, todaySessionsRes, profileSubRes] = await Promise.all([
     // Bundel yang di-cache 45s per user - lihat getCachedBerandaData di atas
     timed('query:/beranda:cached-bundle', getCachedBerandaData(user!.id, today, monthStart)),
 
@@ -129,6 +130,12 @@ export default async function BerandaPage() {
       .select('id, class_id, override_location, attendance(id)')
       .eq('user_id', user!.id)
       .eq('session_date', today)),
+
+    // Subscription — fresh, tidak di-cache (harus akurat untuk banner renewal)
+    supabase.from('profiles')
+      .select('trial_expires_at, plan_name, subscription_status')
+      .eq('id', user!.id)
+      .single(),
   ])
   console.timeEnd('query:/beranda:all')
 
@@ -151,10 +158,27 @@ export default async function BerandaPage() {
 
   const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0 || pendingClasses.length > 0 || invitationsPending > 0
 
+  // Renewal banner — hanya muncul kalau <=7 hari tersisa sebelum trial_expires_at
+  const subProfile = profileSubRes.data
+  const renewalDate = subProfile?.trial_expires_at ? new Date(subProfile.trial_expires_at) : null
+  const renewalDaysLeft = renewalDate
+    ? Math.ceil((renewalDate.getTime() - Date.now()) / 86_400_000)
+    : null
+  const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7
+
   console.timeEnd('page:/beranda')
 
   return (
     <div className="w-full max-w-2xl mx-auto">
+
+      {/* ── Renewal Banner ── */}
+      {showRenewalBanner && (
+        <SubscriptionRenewalBanner
+          daysLeft={renewalDaysLeft!}
+          renewalDate={renewalDate!}
+          planName={subProfile?.plan_name ?? 'Trial'}
+        />
+      )}
 
       {/* ── Salam ── */}
       <div className="mb-5">
