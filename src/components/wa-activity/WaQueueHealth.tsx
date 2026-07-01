@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react'
+import { AlertTriangle, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface Health {
   queued:                  number
@@ -14,15 +14,24 @@ interface Health {
 }
 
 export function WaQueueHealth() {
-  const [health, setHealth]   = useState<Health | null>(null)
+  const [health,  setHealth ] = useState<Health | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error,   setError  ] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
+    setError(null)
     try {
-      const res  = await fetch('/api/wa/queue-health')
+      // cache: no-store mencegah browser mengembalikan respons lama saat Perbarui diklik
+      const res  = await fetch('/api/wa/queue-health', { cache: 'no-store' })
       const data = await res.json()
-      if (res.ok) setHealth(data)
+      if (res.ok) {
+        setHealth(data)
+      } else {
+        setError(data.error ?? `Error ${res.status}`)
+      }
+    } catch {
+      setError('Gagal terhubung ke server')
     } finally {
       setLoading(false)
     }
@@ -30,32 +39,11 @@ export function WaQueueHealth() {
 
   useEffect(() => { load() }, [])
 
-  // Saat loading: tetap tampilkan seksi dengan spinner, jangan return null
-  // (return null membuat seluruh seksi menghilang saat refresh, terlihat seperti tidak ada respons)
-  if (loading) return (
-    <div className="mt-8 border-t border-gray-100 pt-6">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-700">Kesehatan Antrian WA</h2>
-        <span className="flex items-center gap-1 text-[10px] text-gray-400">
-          <RefreshCw className="w-3 h-3 animate-spin" /> Memperbarui...
-        </span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {['Dalam Antrian','Sedang Diproses','Gagal','Menunggu Retry'].map(l => (
-          <div key={l} className="bg-gray-50 rounded-xl p-3 animate-pulse">
-            <p className="text-[10px] uppercase tracking-wide font-medium text-gray-300">{l}</p>
-            <p className="text-2xl font-bold text-gray-200 mt-0.5">-</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-
   const hasWarning = (health?.failed ?? 0) > 0 ||
     (health?.max_attempts_reached ?? 0) > 0 ||
     (health?.recovered_from_timeout ?? 0) > 0
 
-  const allClear = !hasWarning && (health?.queued ?? 0) === 0
+  const allClear = health !== null && !hasWarning && (health.queued ?? 0) === 0
 
   return (
     <div className="mt-8 border-t border-gray-100 pt-6">
@@ -63,26 +51,36 @@ export function WaQueueHealth() {
         <h2 className="text-sm font-semibold text-gray-700">Kesehatan Antrian WA</h2>
         <button
           onClick={load}
-          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+          disabled={loading}
+          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className="w-3 h-3" /> Perbarui
+          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Memperbarui...' : 'Perbarui'}
         </button>
       </div>
 
-      {/* Status counts */}
+      {/* Error state */}
+      {error && !loading && (
+        <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 rounded-xl p-3 mb-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Gagal memuat data antrian: {error}
+        </div>
+      )}
+
+      {/* Status counts - tampil selalu, pakai nilai lama saat loading */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-        <HealthCard label="Dalam Antrian" value={health?.queued ?? 0} color="indigo" />
-        <HealthCard label="Sedang Diproses" value={health?.processing ?? 0} color="amber" />
-        <HealthCard label="Gagal" value={health?.failed ?? 0} color="red" />
-        <HealthCard label="Menunggu Retry" value={health?.retrying ?? 0} color="orange" />
+        <HealthCard label="Dalam Antrian"   value={health?.queued      ?? 0} color="indigo" loading={loading} />
+        <HealthCard label="Sedang Diproses" value={health?.processing  ?? 0} color="amber"  loading={loading} />
+        <HealthCard label="Gagal"           value={health?.failed      ?? 0} color="red"    loading={loading} />
+        <HealthCard label="Menunggu Retry"  value={health?.retrying    ?? 0} color="orange" loading={loading} />
       </div>
 
       {/* Warnings */}
-      {hasWarning && (
+      {!loading && !error && hasWarning && (
         <div className="space-y-2 mb-4">
           {(health?.failed ?? 0) > 0 && (
             <Warning>
-              {health?.failed} pesan gagal dikirim. Cek <span className="font-medium">Status: Gagal</span> di atas untuk detail.
+              {health?.failed} pesan gagal dikirim dan tidak akan dicoba ulang.
             </Warning>
           )}
           {(health?.max_attempts_reached ?? 0) > 0 && (
@@ -92,15 +90,14 @@ export function WaQueueHealth() {
           )}
           {(health?.recovered_from_timeout ?? 0) > 0 && (
             <Warning>
-              {health?.recovered_from_timeout} pesan sempat terjebak di antrian dan di-recover otomatis (7 hari terakhir).
-              Ini normal jika terjadi sesekali.
+              {health?.recovered_from_timeout} pesan sempat terjebak di antrian dan di-recover otomatis (7 hari terakhir). Ini normal jika terjadi sesekali.
             </Warning>
           )}
         </div>
       )}
 
       {/* All clear */}
-      {allClear && (
+      {!loading && !error && allClear && (
         <div className="flex items-center gap-2 text-green-600 text-xs bg-green-50 rounded-xl p-3">
           <CheckCircle className="w-4 h-4 shrink-0" />
           Antrian WA bersih. Tidak ada pesan yang gagal atau tertahan.
@@ -108,7 +105,7 @@ export function WaQueueHealth() {
       )}
 
       {/* Top URL messages */}
-      {(health?.top_url_messages?.length ?? 0) > 0 && (
+      {!loading && (health?.top_url_messages?.length ?? 0) > 0 && (
         <div className="mt-4">
           <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-2">
             Pesan URL Terbanyak (7 hari)
@@ -129,7 +126,14 @@ export function WaQueueHealth() {
   )
 }
 
-function HealthCard({ label, value, color }: { label: string; value: number; color: 'indigo' | 'amber' | 'red' | 'orange' }) {
+function HealthCard({
+  label, value, color, loading,
+}: {
+  label: string
+  value: number
+  color: 'indigo' | 'amber' | 'red' | 'orange'
+  loading: boolean
+}) {
   const colors = {
     indigo: 'bg-indigo-50 text-indigo-700',
     amber:  'bg-amber-50  text-amber-700',
@@ -137,7 +141,7 @@ function HealthCard({ label, value, color }: { label: string; value: number; col
     orange: value > 0 ? 'bg-orange-50 text-orange-700' : 'bg-gray-50 text-gray-400',
   }
   return (
-    <div className={`rounded-xl p-3 ${colors[color]}`}>
+    <div className={`rounded-xl p-3 transition-opacity ${colors[color]} ${loading ? 'opacity-50' : ''}`}>
       <p className="text-[10px] uppercase tracking-wide font-medium opacity-70">{label}</p>
       <p className="text-2xl font-bold mt-0.5">{value}</p>
     </div>
