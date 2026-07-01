@@ -126,7 +126,11 @@ function getNowWIB() {
     sevenDaysOut: in7.toISOString().split('T')[0],
     hour:         wib.getUTCHours(),
     monthStart:   wib.toISOString().substring(0, 7) + '-01',
-    dateLabel:    wib.toLocaleDateString('id-ID', {
+    // dateLabel pakai Date() tanpa manual offset supaya toLocaleDateString
+    // bisa konversi UTC→Jakarta sendiri tanpa double-offset (+14 jam).
+    // Field lain (today, hour, dll) tetap pakai wib.getUTCXxx() karena
+    // mereka perlu raw UTC yang sudah di-shift untuk .toISOString() parsing.
+    dateLabel:    new Date().toLocaleDateString('id-ID', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       timeZone: 'Asia/Jakarta',
     }),
