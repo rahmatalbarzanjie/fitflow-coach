@@ -2,35 +2,60 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { normalizePhone } from '@/lib/whatsapp'
 
-// Vercel Pro serverless function limit. Requires Vercel Pro plan.
-// Hobby plan caps at 10s — incompatible with this worker.
-export const maxDuration = 300
+// ── Runtime configuration (environment variables) ─────────────────────────────
+//
+// This worker is a plain HTTP POST handler. Scheduling is handled entirely by
+// an external adapter - Vercel Cron, Linux crontab, PM2, Railway, Coolify, or
+// any service that can call an authenticated HTTP endpoint on a schedule.
+//
+// These env vars let operators tune the worker per deployment without changing
+// application code:
+//
+//   WA_QUEUE_BUDGET_MS
+//     How long (ms) one invocation may run before stopping gracefully.
+//     The worker tracks elapsed time internally and stops before this budget
+//     expires, so unprocessed rows remain safely in 'processing' status until
+//     the recovery sweep picks them up on the next invocation.
+//     Default: 55000 (55 seconds) - safe across Vercel Pro, Railway, VPS.
+//     Tune up (e.g. 270000) on platforms with long function timeouts.
+//
+//   WA_QUEUE_BATCH_SIZE
+//     Maximum rows claimed per invocation. The budget check may stop the
+//     loop earlier than this limit.
+//     Default: 10
+//
+//   WA_QUEUE_RECOVERY_MINUTES
+//     Rows stuck in 'processing' beyond this threshold are assumed orphaned
+//     from a prior crashed or timed-out invocation and are reset to 'queued'.
+//     Must be meaningfully larger than WA_QUEUE_BUDGET_MS to avoid recovering
+//     rows from a currently-running parallel invocation.
+//     Default: 10 (minutes)
+
+function envInt(key: string, fallback: number): number {
+  const v = process.env[key]
+  if (!v) return fallback
+  const n = parseInt(v, 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+const BUDGET_MS                 = envInt('WA_QUEUE_BUDGET_MS',              55_000)
+const BATCH_SIZE                = envInt('WA_QUEUE_BATCH_SIZE',             10)
+const RECOVERY_THRESHOLD_MINUTES = envInt('WA_QUEUE_RECOVERY_MINUTES',      10)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Budget math (worst case, all messages hit MAX_DELAY):
-//   First message : 0s delay + ~2s (Fonnte + DB) = 2s
-//   Each remaining: MAX_DELAY_MS(8s) + ~2s (Fonnte + DB) = 10s
-//   15 messages   : 2 + 14 × 10 = 142s  ← well within 300s
-//   Headroom      : ~158s buffer for slow Fonnte or DB
-const BATCH_SIZE          = 15
-const MIN_DELAY_MS        = 3_000
-const MAX_DELAY_MS        = 8_000
+const MIN_DELAY_MS   = 3_000
+const MAX_DELAY_MS   = 8_000
+const RETRY_BASE_MS  = 30_000  // 30s after attempt 1, 60s after 2, 90s after 3
 
-// Retry backoff: 30s after attempt 1, 60s after attempt 2, 90s after attempt 3.
-const RETRY_BASE_MS       = 30_000
+// Budget guard: stop the loop when remaining time is too short for another
+// delay + Fonnte round-trip. 3s covers the Fonnte call + two DB writes.
+const MIN_CYCLE_MS   = MAX_DELAY_MS + 3_000  // 11s worst-case per cycle
 
-// A row stuck in 'processing' longer than this is considered orphaned.
-// Must be > maxDuration (300s = 5min) to avoid recovering rows from a
-// currently-running parallel invocation. 10 minutes gives a 2× safety margin.
-const RECOVERY_THRESHOLD_MINUTES = 10
-
-// Structured error codes written to wa_outbox.last_error_code.
-// Queryable by support without reading server logs.
-const ERR_FONNTE_REJECTED       = 'FONNTE_REJECTED'
-const ERR_FONNTE_NETWORK        = 'FONNTE_NETWORK_ERROR'
+const ERR_FONNTE_REJECTED        = 'FONNTE_REJECTED'
+const ERR_FONNTE_NETWORK         = 'FONNTE_NETWORK_ERROR'
 const ERR_RECOVERED_FROM_TIMEOUT = 'RECOVERED_FROM_TIMEOUT'
-const ERR_MAX_ATTEMPTS_REACHED  = 'MAX_ATTEMPTS_REACHED'
+const ERR_MAX_ATTEMPTS_REACHED   = 'MAX_ATTEMPTS_REACHED'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,15 +113,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const service = createServiceClient()
-  const now     = new Date()
+  const service         = createServiceClient()
+  const now             = new Date()
+  const invocationStart = Date.now()
 
   // ── Phase 1: Stuck-processing recovery ──────────────────────────────────
-  // Rows stuck in 'processing' beyond RECOVERY_THRESHOLD_MINUTES were left
-  // by a prior invocation that timed out or crashed. Reset them to 'queued'
-  // so they are picked up by this or a future invocation.
-  // This runs BEFORE the batch SELECT so recovered rows can be included
-  // in the current batch immediately.
+  // Rows in 'processing' beyond RECOVERY_THRESHOLD_MINUTES are assumed
+  // orphaned from a prior invocation that crashed or exhausted its budget.
+  // Reset to 'queued' before the SELECT so they can be included in this batch.
   const recoveryBefore = new Date(now.getTime() - RECOVERY_THRESHOLD_MINUTES * 60 * 1000).toISOString()
 
   const { data: recovered } = await (service
@@ -105,7 +129,7 @@ export async function POST(request: Request) {
       status:          'queued',
       processing_at:   null,
       last_error_code: ERR_RECOVERED_FROM_TIMEOUT,
-      error_message:   `Worker sebelumnya timeout atau crash saat memproses baris ini. Di-recover otomatis setelah ${RECOVERY_THRESHOLD_MINUTES} menit.`,
+      error_message:   `Worker sebelumnya crash atau kehabisan budget saat memproses baris ini. Di-recover otomatis setelah ${RECOVERY_THRESHOLD_MINUTES} menit.`,
     })
     .eq('status', 'processing')
     .lt('processing_at', recoveryBefore)
@@ -115,9 +139,8 @@ export async function POST(request: Request) {
 
   // ── Phase 2: Claim next batch ────────────────────────────────────────────
   // Note: SELECT then UPDATE is not atomic. A true FOR UPDATE SKIP LOCKED
-  // requires a Postgres RPC (tracked as P1). At current scale the race
-  // window is negligible; it becomes a P1 concern as invocation overlap
-  // becomes routine.
+  // requires a Postgres RPC (P1 backlog). At current throughput the race
+  // window is small; it becomes P1 priority as invocation overlap is routine.
   const { data: rows, error: fetchErr } = await (service
     .from('wa_outbox') as any)
     .select('*')
@@ -136,8 +159,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, processed: 0, recovered: recoveredCount })
   }
 
-  // Mark all claimed rows as 'processing' before the loop begins.
-  // If this invocation is killed, the recovery sweep above will reset them.
+  // Mark all claimed rows as 'processing' before entering the loop.
+  // If this invocation is killed before finishing, the recovery sweep above
+  // will reset any remaining 'processing' rows on the next invocation.
   const batchIds = batch.map(r => r.id)
   await (service
     .from('wa_outbox') as any)
@@ -145,27 +169,34 @@ export async function POST(request: Request) {
     .in('id', batchIds)
 
   // ── Phase 3: Process batch ───────────────────────────────────────────────
-  let sent     = 0
-  let failed   = 0
-  let retrying = 0
+  let sent        = 0
+  let failed      = 0
+  let retrying    = 0
+  let stoppedEarly = false
 
   for (let i = 0; i < batch.length; i++) {
     const row = batch[i]
 
-    // Apply delay before every message except the first in this batch.
-    // Capture the actual delay so it can be stored in wa_message_log
-    // (avoids the timestamp-subtraction bug where _sentAt is undefined
-    // after a failure, producing garbage values).
+    // Budget check and delay for all messages after the first.
+    // The worker stops gracefully when remaining budget would be too short
+    // for another delay + Fonnte send cycle. Unprocessed rows stay in
+    // 'processing' and are recovered by the next invocation's Phase 1 sweep.
     let appliedDelaySeconds: number | null = null
     if (i > 0) {
-      const delayMs        = row.delay_seconds != null ? row.delay_seconds * 1000 : randomDelayMs()
-      appliedDelaySeconds  = Math.round(delayMs / 1000)
+      const elapsed   = Date.now() - invocationStart
+      const remaining = BUDGET_MS - elapsed
+      if (remaining < MIN_CYCLE_MS) {
+        stoppedEarly = true
+        break
+      }
+      const delayMs       = row.delay_seconds != null ? row.delay_seconds * 1000 : randomDelayMs()
+      appliedDelaySeconds = Math.round(delayMs / 1000)
       await sleep(delayMs)
     }
 
     const result      = await sendViaFonnte(
       row.fonnte_token,
-      row.target_phone   ?? null,
+      row.target_phone    ?? null,
       row.target_group_id ?? null,
       row.message,
     )
@@ -210,18 +241,12 @@ export async function POST(request: Request) {
 
       sent++
     } else {
-      const canRetry        = newAttempts < (row.max_attempts as number)
-      const isMaxAttempts   = !canRetry
+      const canRetry      = newAttempts < (row.max_attempts as number)
+      const isMaxAttempts = !canRetry
       const nextScheduledAt = canRetry
         ? new Date(Date.now() + RETRY_BASE_MS * newAttempts).toISOString()
         : null
 
-      // last_error_code: set the most specific code. If this was already
-      // RECOVERED_FROM_TIMEOUT and is now failing Fonnte too, the Fonnte
-      // error code takes precedence (it is the most recent actionable cause).
-      // MAX_ATTEMPTS_REACHED is appended as a suffix only when retries are
-      // exhausted, because the root cause (FONNTE_REJECTED etc.) is still
-      // the most useful signal for support.
       const lastErrorCode = isMaxAttempts
         ? ERR_MAX_ATTEMPTS_REACHED
         : (result.errorCode ?? ERR_FONNTE_REJECTED)
@@ -265,11 +290,13 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    ok:        true,
-    processed: batch.length,
+    ok:           true,
+    processed:    batch.length,
     sent,
     failed,
     retrying,
-    recovered: recoveredCount,
+    recovered:    recoveredCount,
+    stopped_early: stoppedEarly,
+    elapsed_ms:   Date.now() - invocationStart,
   })
 }
