@@ -30,7 +30,26 @@ export function WaQueueHealth() {
 
   useEffect(() => { load() }, [])
 
-  if (loading) return null
+  // Saat loading: tetap tampilkan seksi dengan spinner, jangan return null
+  // (return null membuat seluruh seksi menghilang saat refresh, terlihat seperti tidak ada respons)
+  if (loading) return (
+    <div className="mt-8 border-t border-gray-100 pt-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-700">Kesehatan Antrian WA</h2>
+        <span className="flex items-center gap-1 text-[10px] text-gray-400">
+          <RefreshCw className="w-3 h-3 animate-spin" /> Memperbarui...
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {['Dalam Antrian','Sedang Diproses','Gagal','Menunggu Retry'].map(l => (
+          <div key={l} className="bg-gray-50 rounded-xl p-3 animate-pulse">
+            <p className="text-[10px] uppercase tracking-wide font-medium text-gray-300">{l}</p>
+            <p className="text-2xl font-bold text-gray-200 mt-0.5">-</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   const hasWarning = (health?.failed ?? 0) > 0 ||
     (health?.max_attempts_reached ?? 0) > 0 ||
