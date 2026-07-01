@@ -95,8 +95,8 @@ export function WaActivityFilters({ filters, onChange, onReset }: Props) {
         </div>
       )}
 
-      {/* Row filter + search */}
-      <div className="flex gap-2 flex-wrap items-center">
+      {/* Row 1: dropdowns */}
+      <div className="flex gap-2 flex-wrap">
         <select
           value={filters.direction}
           onChange={e => onChange({ direction: e.target.value })}
@@ -121,26 +121,26 @@ export function WaActivityFilters({ filters, onChange, onReset }: Props) {
           {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
 
-        {/* Contact search */}
-        <div className="relative flex-1 min-w-36">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari nama / nomor..."
-            value={filters.contact}
-            onChange={e => onChange({ contact: e.target.value })}
-            className="w-full h-8 pl-7 pr-2 text-xs border border-gray-200 rounded-lg text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-          />
-        </div>
-
         {hasActiveFilter && (
           <button
             onClick={onReset}
-            className="flex items-center gap-1 h-8 px-2.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1 h-8 px-2.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ml-auto"
           >
             <X className="w-3 h-3" /> Reset
           </button>
         )}
+      </div>
+
+      {/* Row 2: search */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Cari nama atau nomor WA..."
+          value={filters.contact}
+          onChange={e => onChange({ contact: e.target.value })}
+          className="w-full h-9 pl-8 pr-3 text-xs border border-gray-200 rounded-lg text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+        />
       </div>
     </div>
   )

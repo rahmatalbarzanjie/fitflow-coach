@@ -29,7 +29,7 @@ export function WaActivityStats({ stats }: Props) {
     : 0
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
       <StatCard label="Total" value={stats.total} />
       <StatCard label="Terkirim" value={stats.sent} />
       <StatCard label="Gagal" value={stats.failed} sub={`${failRate}%`} />

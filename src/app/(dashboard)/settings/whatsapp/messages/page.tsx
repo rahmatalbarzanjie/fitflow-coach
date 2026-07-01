@@ -7,7 +7,7 @@ import { WaActivityFilters, type Filters } from '@/components/wa-activity/WaActi
 import { WaActivityList } from '@/components/wa-activity/WaActivityList'
 import { WaActivityDetail } from '@/components/wa-activity/WaActivityDetail'
 import { WaQueueHealth } from '@/components/wa-activity/WaQueueHealth'
-import { Download, Trash2, AlertTriangle } from 'lucide-react'
+import { Download, Trash2, AlertTriangle, X } from 'lucide-react'
 
 const DEFAULT_FILTERS: Filters = {
   date_preset:  '7d',
@@ -34,15 +34,17 @@ function buildQuery(f: Filters, page: number, pageSize: number): string {
 }
 
 export default function WaMessagesPage() {
-  const [filters,   setFilters  ] = useState<Filters>(DEFAULT_FILTERS)
-  const [rows,      setRows     ] = useState<Record<string, any>[]>([])
-  const [total,     setTotal    ] = useState(0)
-  const [page,      setPage     ] = useState(1)
-  const [loading,   setLoading  ] = useState(true)
-  const [selected,  setSelected ] = useState<Record<string, any> | null>(null)
-  const [deleting,  setDeleting ] = useState(false)
+  const [filters,       setFilters      ] = useState<Filters>(DEFAULT_FILTERS)
+  const [rows,          setRows         ] = useState<Record<string, any>[]>([])
+  const [total,         setTotal        ] = useState(0)
+  const [page,          setPage         ] = useState(1)
+  const [loading,       setLoading      ] = useState(true)
+  const [selected,      setSelected     ] = useState<Record<string, any> | null>(null)
+  const [deleting,      setDeleting     ] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
-  const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0, inbound: 0, outbound: 0, with_url: 0 })
+  const [stats, setStats] = useState({
+    total: 0, sent: 0, failed: 0, inbound: 0, outbound: 0, with_url: 0,
+  })
 
   const PAGE_SIZE = 50
 
@@ -52,12 +54,9 @@ export default function WaMessagesPage() {
       const res  = await fetch(`/api/wa/activity?${buildQuery(f, p, PAGE_SIZE)}`)
       const data = await res.json()
       if (res.ok) {
-        setRows(data.data ?? [])
+        const all = (data.data ?? []) as Record<string, any>[]
+        setRows(all)
         setTotal(data.total ?? 0)
-
-        // Hitung stats dari data yang dikembalikan + dari server untuk akurasi
-        // (stats dihitung dari semua data, bukan hanya halaman saat ini)
-        const all = data.data as Record<string, any>[]
         setStats({
           total:    data.total,
           sent:     all.filter(r => r.success).length,
@@ -72,9 +71,7 @@ export default function WaMessagesPage() {
     }
   }, [])
 
-  useEffect(() => {
-    load(filters, page)
-  }, [filters, page, load])
+  useEffect(() => { load(filters, page) }, [filters, page, load])
 
   function handleFilterChange(partial: Partial<Filters>) {
     setFilters(prev => ({ ...prev, ...partial }))
@@ -86,13 +83,12 @@ export default function WaMessagesPage() {
     setPage(1)
   }
 
-  async function handleExport() {
+  function handleExport() {
     const q = buildQuery(filters, 1, 10_000)
     window.location.href = `/api/wa/activity/export?${q}`
   }
 
-  async function handleDelete() {
-    if (!deleteConfirm) { setDeleteConfirm(true); return }
+  async function confirmDelete() {
     setDeleting(true)
     setDeleteConfirm(false)
     try {
@@ -104,7 +100,6 @@ export default function WaMessagesPage() {
       if (filters.message_type) body.message_type = filters.message_type
       if (filters.status)       body.status       = filters.status
       if (filters.contact)      body.contact      = filters.contact
-
       await fetch('/api/wa/activity/delete', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -118,50 +113,55 @@ export default function WaMessagesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="w-full max-w-3xl mx-auto">
       <PageHeader
         title="Riwayat Pesan WhatsApp"
-        subtitle="Semua pesan masuk dan keluar melalui sistem FuelOS"
+        subtitle="Pesan masuk &amp; keluar melalui FuelOS"
         backHref="/settings/whatsapp"
         action={
           <div className="flex gap-1.5">
             <button
               onClick={handleExport}
-              className="flex items-center gap-1 h-8 px-3 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 h-8 px-2.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <Download className="w-3.5 h-3.5" /> Unduh CSV
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Unduh CSV</span>
             </button>
-            {deleteConfirm ? (
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-red-500 flex items-center gap-0.5">
-                  <AlertTriangle className="w-3 h-3" /> Hapus data ini?
-                </span>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="h-8 px-2.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                >
-                  Ya
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(false)}
-                  className="h-8 px-2 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Batal
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-1 h-8 px-3 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Hapus Filter Ini
-              </button>
-            )}
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              disabled={deleting}
+              className="flex items-center gap-1 h-8 px-2.5 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Hapus</span>
+            </button>
           </div>
         }
       />
+
+      {/* Delete confirmation bar - muncul di bawah header, bukan di dalam */}
+      {deleteConfirm && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4">
+          <p className="flex items-center gap-1.5 text-xs text-red-700">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            Hapus semua pesan sesuai filter aktif? Tindakan ini tidak bisa dibatalkan.
+          </p>
+          <div className="flex gap-1.5 ml-3 shrink-0">
+            <button
+              onClick={() => setDeleteConfirm(false)}
+              className="h-7 px-2.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-white transition-colors flex items-center gap-1"
+            >
+              <X className="w-3 h-3" /> Batal
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="h-7 px-2.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Ya, Hapus
+            </button>
+          </div>
+        </div>
+      )}
 
       <WaActivityStats stats={stats} />
 
