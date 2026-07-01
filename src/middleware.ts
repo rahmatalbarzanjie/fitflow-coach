@@ -33,21 +33,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/daftar', request.url))
   }
 
-  // Domain routing: getfuel.cloud = domain publik (halaman marketing + halaman
-  // per-instruktur untuk peserta). app.getfuel.cloud = dashboard instruktur.
-  // Kalau instruktur yang sudah login mengakses route dashboard lewat
-  // getfuel.cloud (bukan app.getfuel.cloud), redirect ke app.getfuel.cloud
-  // supaya getfuel.cloud bebas dipakai untuk website terpisah nantinya.
-  const host = request.headers.get('host') ?? ''
-  const isMainDomain = host === 'getfuel.cloud' || host === 'www.getfuel.cloud'
-  if (isMainDomain && user) {
-    const dest = new URL(request.url)
-    dest.host = 'app.getfuel.cloud'
-    dest.port = ''
-    return NextResponse.redirect(dest, { status: 302 })
-  }
-
-  // Segmen top-level dashboard yang sudah dipakai - HARUS dikecualikan dari
+// Segmen top-level dashboard yang sudah dipakai - HARUS dikecualikan dari
   // regex "/{slug}" instructor landing page di bawah. Tanpa ini, request
   // tanpa login ke /members, /packages, dst dianggap "public" (cocok regex
   // satu-segmen), middleware tidak redirect ke /login, dan page-nya crash
