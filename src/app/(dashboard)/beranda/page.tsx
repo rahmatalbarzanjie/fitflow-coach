@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   CheckSquare, Clock, MapPin, Users, Zap,
   MessageSquare, AlertTriangle, CheckCircle,
-  Calendar, TrendingUp, ChevronRight,
+  Calendar, TrendingUp, ChevronRight, CreditCard,
 } from 'lucide-react'
 import { formatTime, formatRupiah } from '@/lib/utils'
 import { CLASS_TYPES } from '@/lib/constants'
@@ -32,17 +32,21 @@ import { SubscriptionRenewalBanner } from '@/components/dashboard/SubscriptionRe
  * cuma punya TTL 45s tanpa cara dibuang lebih awal sama sekali, itulah akar
  * bug "Perlu Perhatian" tetap muncul sesaat setelah dikonfirmasi.
  */
-function getCachedBerandaData(userId: string, today: string, monthStart: string) {
+function getCachedBerandaData(userId: string, today: string, monthStart: string, sevenDaysOut: string) {
   return unstable_cache(
-    async (userId: string, today: string, monthStart: string) => {
+    async (userId: string, today: string, monthStart: string, sevenDaysOut: string) => {
       const supabase = createServiceClient()
 
-      const [profileRes, classesRes, atRiskRes, eventsRes, invitationsPendingRes, summaryRes] = await Promise.all([
+      const [
+        profileRes, classesRes, atRiskRes, eventsRes,
+        invitationsPendingRes, summaryRes,
+        membershipExpiringRes, sessionsMonthRes,
+      ] = await Promise.all([
         timed('query:/beranda:profile', supabase.from('profiles')
           .select('name').eq('id', userId).single()),
 
         timed('query:/beranda:classes', supabase.from('classes')
-          .select('id, name, type, day_of_week, start_time, end_time, location')
+          .select('id, name, type, day_of_week, start_time, end_time, location, capacity')
           .eq('user_id', userId)
           .order('start_time')),
 
@@ -68,20 +72,40 @@ function getCachedBerandaData(userId: string, today: string, monthStart: string)
           p_user_id:     userId,
           p_month_start: monthStart,
         })),
+
+        // Membership yang berakhir dalam 7 hari — trigger follow-up perpanjangan
+        timed<any>('query:/beranda:membershipExpiring', supabase
+          .from('member_memberships')
+          .select('id, end_date, package_type, members(id, name)')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .not('end_date', 'is', null)
+          .gte('end_date', today)
+          .lte('end_date', sevenDaysOut)
+          .order('end_date')),
+
+        // Sesi terselenggara bulan ini
+        timed<any>('query:/beranda:sessionsMonth', supabase.from('sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('status', 'completed')
+          .gte('session_date', monthStart)),
       ])
 
       return {
-        instructorName:      profileRes.data?.name ?? null,
-        classes:             (classesRes.data ?? []) as any[],
-        atRiskMembers:       (atRiskRes.data ?? []) as any[],
-        events:              (eventsRes.data ?? []) as any[],
-        invitationsPending:  invitationsPendingRes.count ?? 0,
-        summary:             (summaryRes.data ?? {}) as any,
+        instructorName:       profileRes.data?.name ?? null,
+        classes:              (classesRes.data ?? []) as any[],
+        atRiskMembers:        (atRiskRes.data ?? []) as any[],
+        events:               (eventsRes.data ?? []) as any[],
+        invitationsPending:   invitationsPendingRes.count ?? 0,
+        summary:              (summaryRes.data ?? {}) as any,
+        membershipExpiring:   (membershipExpiringRes.data ?? []) as any[],
+        sessionsThisMonth:    sessionsMonthRes.count ?? 0,
       }
     },
     ['beranda-cached-data'],
     { revalidate: 45, tags: [`beranda-${userId}`] }
-  )(userId, today, monthStart)
+  )(userId, today, monthStart, sevenDaysOut)
 }
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -92,12 +116,17 @@ const TYPE_EMOJI: Record<string, string> = {
 // WIB helper — server Vercel pakai UTC
 function getNowWIB() {
   const wib = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const tmr  = new Date(wib); tmr.setUTCDate(tmr.getUTCDate() + 1)
+  const in7  = new Date(wib); in7.setUTCDate(in7.getUTCDate() + 7)
   return {
-    today:      wib.toISOString().split('T')[0],
-    todayDow:   wib.getUTCDay(),
-    hour:       wib.getUTCHours(),
-    monthStart: wib.toISOString().substring(0, 7) + '-01',
-    dateLabel:  wib.toLocaleDateString('id-ID', {
+    today:        wib.toISOString().split('T')[0],
+    todayDow:     wib.getUTCDay(),
+    tomorrowDate: tmr.toISOString().split('T')[0],
+    tomorrowDow:  tmr.getUTCDay(),
+    sevenDaysOut: in7.toISOString().split('T')[0],
+    hour:         wib.getUTCHours(),
+    monthStart:   wib.toISOString().substring(0, 7) + '-01',
+    dateLabel:    wib.toLocaleDateString('id-ID', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       timeZone: 'Asia/Jakarta',
     }),
@@ -112,7 +141,7 @@ export default async function BerandaPage() {
   // RLS tetap melindungi data terlepas dari nilai user.id yang dipakai di query.
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user
-  const { today, todayDow, hour, monthStart, dateLabel } = getNowWIB()
+  const { today, todayDow, tomorrowDate, tomorrowDow, sevenDaysOut, hour, monthStart, dateLabel } = getNowWIB()
 
   const greeting = hour < 11 ? 'Selamat pagi'
     : hour < 15 ? 'Selamat siang'
@@ -120,43 +149,75 @@ export default async function BerandaPage() {
     : 'Selamat malam'
 
   console.time('query:/beranda:all')
-  const [cached, todaySessionsRes, profileSubRes] = await Promise.all([
+  const [cached, todaySessionsRes, profileSubRes, todaySlotsRes, tomorrowSlotsRes, pendingAmtRes] = await Promise.all([
     // Bundel yang di-cache 45s per user - lihat getCachedBerandaData di atas
-    timed('query:/beranda:cached-bundle', getCachedBerandaData(user!.id, today, monthStart)),
+    timed('query:/beranda:cached-bundle', getCachedBerandaData(user!.id, today, monthStart, sevenDaysOut)),
 
-    // Sesi hari ini + jumlah hadir - SELALU fresh, jangan di-cache
-    // (instruktur cek dashboard tepat setelah absen, harus langsung update)
+    // Sesi hari ini + jumlah hadir - SELALU fresh
     timed<any>('query:/beranda:todaySessions', (supabase.from('sessions') as any)
       .select('id, class_id, override_location, attendance(id)')
       .eq('user_id', user!.id)
       .eq('session_date', today)),
 
-    // Subscription — fresh, tidak di-cache (harus akurat untuk banner renewal)
+    // Subscription — fresh (harus akurat untuk banner renewal)
     supabase.from('profiles')
       .select('trial_expires_at, plan_name, subscription_status')
       .eq('id', user!.id)
       .single(),
+
+    // Slot booking hari ini per kelas — fresh (berubah saat peserta daftar)
+    timed<any>('query:/beranda:todaySlots', (supabase.from('registrations') as any)
+      .select('class_id')
+      .eq('user_id', user!.id)
+      .eq('session_date', today)
+      .in('payment_status', ['pending', 'confirmed'])),
+
+    // Slot booking besok per kelas — fresh
+    timed<any>('query:/beranda:tomorrowSlots', (supabase.from('registrations') as any)
+      .select('class_id')
+      .eq('user_id', user!.id)
+      .eq('session_date', tomorrowDate)
+      .in('payment_status', ['pending', 'confirmed'])),
+
+    // Pending payment total — fresh (revenue nyangkut)
+    timed<any>('query:/beranda:pendingAmt', (supabase.from('registrations') as any)
+      .select('amount_paid')
+      .eq('user_id', user!.id)
+      .eq('payment_status', 'pending')),
   ])
   console.timeEnd('query:/beranda:all')
 
-  const instructorName = cached.instructorName?.split(' ')[0] ?? 'Instruktur'
-  const classes        = cached.classes
-  const todaySessions  = (todaySessionsRes.data ?? []) as any[]
-  const atRiskMembers  = cached.atRiskMembers
-  const events         = cached.events
-  const invitationsPending = cached.invitationsPending
-  const summary         = cached.summary
-  const attendMonth     = summary.attendance_month ?? 0
-  const memberNew       = summary.member_new ?? 0
-  const revenueMonth    = Number(summary.revenue_month ?? 0)
-  const pendingEvents   = (summary.pending_events ?? []) as { id: string; title: string; count: number }[]
-  const pendingClasses  = (summary.pending_classes ?? []) as { id: string; name: string; count: number }[]
+  const instructorName      = cached.instructorName?.split(' ')[0] ?? 'Instruktur'
+  const classes             = cached.classes
+  const todaySessions       = (todaySessionsRes.data ?? []) as any[]
+  const atRiskMembers       = cached.atRiskMembers
+  const events              = cached.events
+  const invitationsPending  = cached.invitationsPending
+  const membershipExpiring  = cached.membershipExpiring
+  const sessionsThisMonth   = cached.sessionsThisMonth
+  const summary             = cached.summary
+  const attendMonth         = summary.attendance_month ?? 0
+  const memberNew           = summary.member_new ?? 0
+  const revenueMonth        = Number(summary.revenue_month ?? 0)
+  const pendingEvents       = (summary.pending_events ?? []) as { id: string; title: string; count: number }[]
+  const pendingClasses      = (summary.pending_classes ?? []) as { id: string; name: string; count: number }[]
 
-  // Kelas hari ini
-  const todayClasses  = classes.filter(c => c.day_of_week === todayDow)
-  const sessMap       = new Map(todaySessions.map((s: any) => [s.class_id, s]))
+  // Slot counts — group by class_id client-side (baris sedikit, tidak perlu RPC GROUP BY)
+  function toSlotMap(rows: any[]): Map<string, number> {
+    const m = new Map<string, number>()
+    for (const r of rows) m.set(r.class_id, (m.get(r.class_id) ?? 0) + 1)
+    return m
+  }
+  const todaySlotMap    = toSlotMap(todaySlotsRes.data ?? [])
+  const tomorrowSlotMap = toSlotMap(tomorrowSlotsRes.data ?? [])
+  const pendingAmount   = (pendingAmtRes.data ?? []).reduce((s: number, r: any) => s + Number(r.amount_paid || 0), 0)
 
-  const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0 || pendingClasses.length > 0 || invitationsPending > 0
+  // Kelas hari ini & besok
+  const todayClasses    = classes.filter((c: any) => c.day_of_week === todayDow)
+  const tomorrowClasses = classes.filter((c: any) => c.day_of_week === tomorrowDow)
+  const sessMap         = new Map(todaySessions.map((s: any) => [s.class_id, s]))
+
+  const hasAttention = atRiskMembers.length > 0 || pendingEvents.length > 0 || pendingClasses.length > 0 || invitationsPending > 0 || membershipExpiring.length > 0
 
   // Renewal banner — hanya muncul kalau <=7 hari tersisa sebelum trial_expires_at
   const subProfile = profileSubRes.data
@@ -200,40 +261,64 @@ export default async function BerandaPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {todayClasses.map(cls => {
+            {todayClasses.map((cls: any) => {
               const sess       = sessMap.get(cls.id)
               const hadirCount = sess ? (sess.attendance?.length ?? 0) : 0
               const lokasi     = sess?.override_location ?? cls.location
+              const booked     = todaySlotMap.get(cls.id) ?? 0
+              const cap        = cls.capacity as number | null
+              const slotLeft   = cap ? Math.max(0, cap - booked) : null
 
               return (
                 <div key={cls.id}
-                  className="flex items-center gap-3 bg-white rounded-2xl border border-violet-100 px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-base">{TYPE_EMOJI[cls.type] ?? '🎯'}</span>
-                      <p className="text-sm font-bold text-gray-900 truncate">{cls.name}</p>
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />{formatTime(cls.start_time)}–{formatTime(cls.end_time)}
-                      </p>
-                      {lokasi && (
-                        <p className="text-xs text-gray-400 flex items-center gap-1 truncate">
-                          <MapPin className="w-3 h-3 shrink-0" />{lokasi}
+                  className="bg-white rounded-2xl border border-violet-100 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{TYPE_EMOJI[cls.type] ?? '🎯'}</span>
+                        <p className="text-sm font-bold text-gray-900 truncate">{cls.name}</p>
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                        <p className="text-xs text-gray-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{formatTime(cls.start_time)}–{formatTime(cls.end_time)}
                         </p>
-                      )}
-                      {hadirCount > 0 && (
-                        <p className="text-xs text-green-600 font-semibold">{hadirCount} hadir</p>
-                      )}
+                        {lokasi && (
+                          <p className="text-xs text-gray-400 flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 shrink-0" />{lokasi}
+                          </p>
+                        )}
+                        {hadirCount > 0 && (
+                          <p className="text-xs text-green-600 font-semibold">{hadirCount} hadir</p>
+                        )}
+                      </div>
                     </div>
+                    <Link
+                      href={`/classes/${cls.id}/attendance?date=${today}`}
+                      className="flex items-center gap-1 h-8 px-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition-colors shrink-0"
+                    >
+                      <CheckSquare className="w-3 h-3" />
+                      {hadirCount > 0 ? 'Lihat' : 'Absen'}
+                    </Link>
                   </div>
-                  <Link
-                    href={`/classes/${cls.id}/attendance?date=${today}`}
-                    className="flex items-center gap-1 h-8 px-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition-colors shrink-0"
-                  >
-                    <CheckSquare className="w-3 h-3" />
-                    {hadirCount > 0 ? 'Lihat' : 'Absen'}
-                  </Link>
+                  {/* Slot bar — hanya tampil kalau kapasitas diset */}
+                  {cap && (
+                    <div className="mt-2.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] text-gray-400">
+                          {booked}/{cap} terdaftar
+                        </p>
+                        <p className={`text-[10px] font-semibold ${slotLeft === 0 ? 'text-red-500' : slotLeft! <= 2 ? 'text-orange-500' : 'text-gray-400'}`}>
+                          {slotLeft === 0 ? 'Penuh' : `${slotLeft} slot tersisa`}
+                        </p>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${booked / cap >= 1 ? 'bg-red-500' : booked / cap >= 0.8 ? 'bg-orange-400' : 'bg-violet-500'}`}
+                          style={{ width: `${Math.min(100, (booked / cap) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -267,6 +352,49 @@ export default async function BerandaPage() {
           </div>
         )}
       </div>
+
+      {/* ── BESOK ── */}
+      {tomorrowClasses.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Besok</p>
+          <div className="space-y-2">
+            {tomorrowClasses.map((cls: any) => {
+              const booked   = tomorrowSlotMap.get(cls.id) ?? 0
+              const cap      = cls.capacity as number | null
+              const slotLeft = cap ? Math.max(0, cap - booked) : null
+              return (
+                <div key={cls.id} className="bg-white rounded-2xl border border-gray-100 px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm">{TYPE_EMOJI[cls.type] ?? '🎯'}</span>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{cls.name}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 shrink-0">
+                      {formatTime(cls.start_time)}
+                    </p>
+                  </div>
+                  {cap && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] text-gray-400">{booked}/{cap} terdaftar</p>
+                        <p className={`text-[10px] font-semibold ${slotLeft === 0 ? 'text-red-500' : slotLeft! <= 2 ? 'text-orange-500' : 'text-gray-400'}`}>
+                          {slotLeft === 0 ? 'Penuh' : `${slotLeft} slot tersisa`}
+                        </p>
+                      </div>
+                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${booked / cap >= 1 ? 'bg-red-400' : booked / cap >= 0.8 ? 'bg-orange-400' : 'bg-violet-400'}`}
+                          style={{ width: `${Math.min(100, (booked / cap) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── AKSI CEPAT ── */}
       <div className="mb-4">
@@ -362,6 +490,28 @@ export default async function BerandaPage() {
                   <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                 </Link>
               )}
+              {membershipExpiring.map((mm: any) => {
+                const member = mm.members as { id: string; name: string } | null
+                const endDate = new Date(mm.end_date + 'T00:00')
+                const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / 86_400_000)
+                return (
+                  <Link key={mm.id} href={member ? `/members/${member.id}/membership` : '/members'}
+                    className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                      <CreditCard className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">
+                        Membership {member?.name ?? '–'} berakhir {daysLeft <= 0 ? 'hari ini' : `${daysLeft} hari lagi`}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {mm.package_type} · {endDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                  </Link>
+                )
+              })}
             </>
           )}
         </div>
@@ -370,16 +520,38 @@ export default async function BerandaPage() {
       {/* ── BULAN INI ── */}
       <div>
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Bulan Ini</p>
+
+        {/* Revenue block — confirmed vs pending */}
+        <div className="bg-white rounded-2xl border border-gray-100 mb-2 overflow-hidden divide-y divide-gray-50">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-500 shrink-0" />
+              <p className="text-sm text-gray-700">Revenue Dikonfirmasi</p>
+            </div>
+            <p className="text-sm font-bold text-green-600">{formatRupiah(revenueMonth)}</p>
+          </div>
+          {pendingAmount > 0 && (
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-orange-400 shrink-0" />
+                <p className="text-sm text-gray-500">Belum Dikonfirmasi</p>
+              </div>
+              <p className="text-sm font-semibold text-orange-500">{formatRupiah(pendingAmount)}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Count metrics — sesi + member + kehadiran */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Kehadiran',  value: attendMonth,              unit: 'orang', icon: CheckSquare, color: 'text-violet-600' },
-            { label: 'Member Baru', value: memberNew,               unit: 'orang', icon: Users,       color: 'text-blue-600'   },
-            { label: 'Revenue',    value: formatRupiah(revenueMonth), unit: '',    icon: TrendingUp,  color: 'text-green-600'  },
+            { label: 'Sesi',       value: sessionsThisMonth, unit: 'kelas',  icon: Calendar,   color: 'text-indigo-600' },
+            { label: 'Member Baru', value: memberNew,         unit: 'orang',  icon: Users,      color: 'text-blue-600'  },
+            { label: 'Kehadiran',  value: attendMonth,        unit: 'orang',  icon: CheckSquare, color: 'text-violet-600' },
           ].map(k => (
             <div key={k.label} className="bg-white rounded-2xl border border-gray-100 px-3 py-3.5 text-center">
               <k.icon className={`w-4 h-4 mx-auto mb-1.5 ${k.color}`} />
               <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
-              {k.unit && <p className="text-[10px] text-gray-400">{k.unit}</p>}
+              <p className="text-[10px] text-gray-400">{k.unit}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">{k.label}</p>
             </div>
           ))}
