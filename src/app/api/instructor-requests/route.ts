@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendWhatsApp } from '@/lib/whatsapp'
+import { enqueueWhatsApp } from '@/lib/wa-queue'
 import { getSystemConfig } from '@/lib/system-config'
 
 // Public endpoint - no auth required. Creates a pending registration request.
@@ -51,10 +51,14 @@ export async function POST(request: Request) {
 
     if (error) throw new Error(error.message)
 
-    // Notifikasi ke developer/admin - best-effort, jangan gagalkan request kalau ini error
+    // Notifikasi ke developer/admin via wa_outbox - best-effort, jangan gagalkan request kalau ini error
     try {
-      const adminWa = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
-      if (adminWa) {
+      const adminWa     = (await getSystemConfig('admin_wa')) || process.env.NEXT_PUBLIC_ADMIN_WA || ''
+      const fonnteToken = process.env.FONNTE_TOKEN ?? ''
+      const adminEmail  = process.env.ADMIN_EMAIL ?? ''
+      const adminUser   = userList?.users?.find(u => u.email?.toLowerCase() === adminEmail.toLowerCase())
+
+      if (adminWa && fonnteToken && adminUser?.id) {
         const message = [
           `🔔 *Pendaftaran Instruktur Baru*`,
           ``,
@@ -67,7 +71,16 @@ export async function POST(request: Request) {
           `Cek & konfirmasi di halaman Admin Panel.`,
         ].filter(Boolean).join('\n')
 
-        await sendWhatsApp(adminWa, message)
+        await enqueueWhatsApp({
+          supabase:    serviceSupabase,
+          userId:      adminUser.id,
+          phone:       adminWa,
+          message,
+          fonnteToken,
+          messageType: 'system',
+          contactName: 'Admin FuelOS',
+          sourceRoute: '/api/instructor-requests',
+        })
       }
     } catch {
       // Notifikasi gagal tidak boleh menggagalkan pendaftaran

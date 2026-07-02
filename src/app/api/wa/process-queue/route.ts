@@ -89,7 +89,8 @@ async function sendViaFonnte(
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization') ?? ''
-  const cronSecret = process.env.CRON_SECRET ?? ''
+  // Strip BOM (U+FEFF) that Windows/PowerShell may prepend when setting env vars via CLI
+  const cronSecret = (process.env.CRON_SECRET ?? '').replace(/^﻿/, '').trim()
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
