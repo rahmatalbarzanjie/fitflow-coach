@@ -567,6 +567,9 @@ CARA MENJAWAB:
   const studioName = instructorProfile.business_name ?? instructorProfile.name
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const slug = instructorProfile.slug ?? ''
+  // TEMP DIAG - hapus setelah URL confirmed correct
+  console.log('[WA-DIAG] NEXT_PUBLIC_APP_URL =', JSON.stringify(appUrl))
+  console.log('[WA-DIAG] sample_link =', slug ? `${appUrl}/${slug}/daftar/kelas/test` : '(no-slug)')
 
   const now = new Date()
   const todayLabel = `${DAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
