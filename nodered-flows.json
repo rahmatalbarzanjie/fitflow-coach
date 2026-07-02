@@ -104,7 +104,6 @@
     "proxy": "",
     "authType": "",
     "senderr": false,
-    "headers": [],
     "x": 670,
     "y": 320,
     "wires": [["ff-fn-split"]]
@@ -155,7 +154,6 @@
     "proxy": "",
     "authType": "",
     "senderr": false,
-    "headers": [],
     "x": 1270,
     "y": 320,
     "wires": [["ff-fn-mark"]]
@@ -190,7 +188,6 @@
     "proxy": "",
     "authType": "",
     "senderr": false,
-    "headers": [],
     "x": 1640,
     "y": 320,
     "wires": [[]]
@@ -251,7 +248,6 @@
     "proxy": "",
     "authType": "",
     "senderr": false,
-    "headers": [],
     "x": 610,
     "y": 460,
     "wires": [["ff-fn-waq-log"]]
@@ -326,7 +322,6 @@
     "proxy": "",
     "authType": "",
     "senderr": false,
-    "headers": [],
     "x": 700,
     "y": 620,
     "wires": [["ff-fn-wa-resp"]]
