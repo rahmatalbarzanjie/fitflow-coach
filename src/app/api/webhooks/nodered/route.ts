@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { normalizePhone } from '@/lib/whatsapp'
 
 /*
  * POST /api/webhooks/nodered
@@ -12,7 +11,6 @@ import { normalizePhone } from '@/lib/whatsapp'
  *  get_pending_recipients  – antrian broadcast (dengan fonnte_token per instruktur)
  *  mark_recipient          – tandai recipient sent/failed
  *  get_stats               – ringkasan hari ini untuk satu instruktur
- *  send_morning_recaps     – kirim rekap pagi ke SEMUA instruktur aktif (server-side)
  *  get_instructor_config   – data instruktur untuk Node-RED config (by slug)
  */
 
@@ -144,92 +142,6 @@ export async function POST(request: Request) {
         at_risk_members:  atRisk?.length ?? 0,
         sessions:         todaySessions ?? [],
       },
-    })
-  }
-
-  // ── Action: send_morning_recaps ───────────────────────────────────────────
-  // Kirim rekap pagi ke SEMUA instruktur yang punya fonnte_token + phone.
-  // Node-RED cukup trigger sekali - tidak perlu tahu siapa instrukturnya.
-  if (action === 'send_morning_recaps') {
-    const { data: instructors } = await supabase
-      .from('profiles')
-      .select('id, phone, fonnte_token, name, business_name')
-      .not('fonnte_token', 'is', null)
-      .not('phone', 'is', null)
-
-    if (!instructors || instructors.length === 0) {
-      return NextResponse.json({ ok: true, sent: 0, results: [] })
-    }
-
-    const today = new Date().toISOString().split('T')[0]
-    const tgl   = new Date().toLocaleDateString('id-ID', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      timeZone: 'Asia/Jakarta',
-    })
-
-    const results: { name: string; ok: boolean; error?: string }[] = []
-
-    for (const instructor of instructors) {
-      try {
-        const [{ data: sessions }, { data: pending }, { data: atRisk }] = await Promise.all([
-          supabase
-            .from('today_sessions')
-            .select('class_name, start_time, attended_count, session_revenue')
-            .eq('user_id', instructor.id)
-            .eq('session_date', today),
-          supabase
-            .from('registrations')
-            .select('id')
-            .eq('user_id', instructor.id)
-            .eq('payment_status', 'pending'),
-          supabase
-            .from('member_summary')
-            .select('id')
-            .eq('user_id', instructor.id)
-            .eq('status', 'at_risk'),
-        ])
-
-        const totalRevenue = (sessions ?? []).reduce((s: number, r: any) => s + Number(r.session_revenue ?? 0), 0)
-
-        let sessionLines = '  (tidak ada sesi hari ini)'
-        if (sessions && sessions.length > 0) {
-          sessionLines = sessions.map((ses: any) => {
-            const jam = (ses.start_time ?? '').slice(0, 5)
-            return `  • ${ses.class_name}${jam ? ' ' + jam : ''} - ${ses.attended_count ?? 0} hadir, ${rupiah(ses.session_revenue)}`
-          }).join('\n')
-        }
-
-        const label = (instructor as any).business_name || (instructor as any).name
-        const pesan =
-          `📊 *Rekap Harian FuelOS*\n${tgl}\n\n` +
-          `🏋️‍♀️ Sesi hari ini: *${sessions?.length ?? 0}*\n` +
-          `👥 Total hadir: *${(sessions ?? []).reduce((s: number, r: any) => s + (r.attended_count ?? 0), 0)} orang*\n` +
-          `💰 Pendapatan: *${rupiah(totalRevenue)}*\n` +
-          `⏳ Menunggu konfirmasi: *${pending?.length ?? 0}*\n` +
-          `⚠️ Perlu Follow Up: *${atRisk?.length ?? 0} member*\n\n` +
-          `Detail sesi:\n${sessionLines}`
-
-        const res = await fetch('https://api.fonnte.com/send', {
-          method:  'POST',
-          headers: { Authorization: (instructor as any).fonnte_token, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            target:      normalizePhone((instructor as any).phone),
-            message:     pesan,
-            countryCode: '62',
-          }),
-        })
-        const json = await res.json() as { status: boolean; reason?: string }
-        results.push({ name: label, ok: json.status === true, error: json.status ? undefined : json.reason })
-      } catch (err: any) {
-        results.push({ name: (instructor as any).name ?? instructor.id, ok: false, error: err?.message })
-      }
-    }
-
-    return NextResponse.json({
-      ok:      true,
-      sent:    results.filter(r => r.ok).length,
-      failed:  results.filter(r => !r.ok).length,
-      results,
     })
   }
 
