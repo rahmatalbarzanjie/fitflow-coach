@@ -5,6 +5,7 @@ import { PeriodNav } from '@/components/laporan/PeriodNav'
 import { SummaryCards } from '@/components/laporan/SummaryCards'
 import { ActionSnapshot, type ActionItem } from '@/components/laporan/ActionSnapshot'
 import { ClassOccupancyList } from '@/components/laporan/ClassOccupancyList'
+import { ClassOccupancyByLocation } from '@/components/laporan/ClassOccupancyByLocation'
 import { BusinessPulse } from '@/components/laporan/BusinessPulse'
 import { MarketingSection } from '@/components/laporan/MarketingSection'
 import { OperationalSection } from '@/components/laporan/OperationalSection'
@@ -58,6 +59,8 @@ interface RevenueResult {
 interface ClassOccupancy {
   id: string
   name: string
+  location: string | null
+  class_type: string | null
   capacity: number | null
   session_count: number
   attendance_count: number
@@ -201,7 +204,6 @@ export default async function LaporanPage({
   // by-revenue - bukan 3 list terpisah seperti sebelumnya (temuan UX audit
   // T2.1: untuk studio kecil, 3 list itu cuma menampilkan kelas yang sama
   // berulang-ulang, nol insight baru).
-  const classesSorted = [...classes].sort((a, b) => b.revenue - a.revenue)
   // Bagian instruktur dari revenue Kelas+Walk-in (revenue_share_pct per
   // kelas, lihat migrasi 010/084) - cuma ditampilkan kalau ada kelas yang
   // split-nya bukan 100%, supaya instruktur yang ambil semua bagiannya
@@ -456,13 +458,13 @@ export default async function LaporanPage({
         )}
       </div>
 
-      {/* Kelas (Class Performance) */}
+      {/* Kelas (Class Performance) - grouped by studio/location */}
       <div className="mt-4">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">Kelas</p>
         {classes.length === 0 ? (
           <EmptyState icon={Calendar} message="Belum ada kelas aktif" ctaHref="/classes/new" ctaLabel="Tambah Kelas" />
         ) : (
-          <ClassOccupancyList classes={classesSorted} />
+          <ClassOccupancyByLocation classes={classes} />
         )}
       </div>
 
