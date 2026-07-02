@@ -18,12 +18,18 @@ function nextOccurrence(dayOfWeek: number, from: Date) {
   return d.toISOString().split('T')[0]
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
 export default async function ClassRegistrationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; classId: string }>
+  searchParams: Promise<{ date?: string }>
 }) {
   const { slug, classId } = await params
+  const { date: dateParam } = await searchParams
+  const forcedDate = dateParam && DATE_RE.test(dateParam) ? dateParam : null
   const supabase = createServiceClient()
 
   const { data: profile } = await supabase
@@ -56,22 +62,28 @@ export default async function ClassRegistrationPage({
         .order('sort_order')
     : { data: [] }
 
-  const today = new Date()
-  const in14Days = new Date(today)
-  in14Days.setDate(in14Days.getDate() + 14)
+  // WIB-correct date (Vercel = UTC server, plain new Date() can be wrong date in WIB)
+  const todayWIB  = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const in14DaysWIB = new Date(Date.now() + 7 * 60 * 60 * 1000 + 14 * 24 * 60 * 60 * 1000)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: reschedSess } = await (supabase.from('sessions') as any)
-    .select('session_date')
-    .eq('class_id', classId)
-    .eq('session_type', 'rescheduled')
-    .gte('session_date', today.toISOString().split('T')[0])
-    .lte('session_date', in14Days.toISOString().split('T')[0])
-    .order('session_date')
-    .limit(1)
-    .maybeSingle()
-
-  const targetDate = reschedSess?.session_date ?? nextOccurrence(cls.day_of_week, today)
+  // forcedDate (from ?date= param) skips reschedule lookup — used by extra sessions
+  // which don't have a rescheduled session record to auto-detect.
+  let targetDate: string
+  if (forcedDate) {
+    targetDate = forcedDate
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: reschedSess } = await (supabase.from('sessions') as any)
+      .select('session_date')
+      .eq('class_id', classId)
+      .eq('session_type', 'rescheduled')
+      .gte('session_date', todayWIB.toISOString().split('T')[0])
+      .lte('session_date', in14DaysWIB.toISOString().split('T')[0])
+      .order('session_date')
+      .limit(1)
+      .maybeSingle()
+    targetDate = reschedSess?.session_date ?? nextOccurrence(cls.day_of_week, todayWIB)
+  }
 
   const { count: registeredCount } = await supabase
     .from('registrations')

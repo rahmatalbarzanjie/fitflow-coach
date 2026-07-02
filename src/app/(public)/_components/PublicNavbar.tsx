@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 
 interface Props {
   hasTestimonials?: boolean
+  hasTodayItems?: boolean
 }
 
-export function PublicNavbar({ hasTestimonials = false }: Props) {
+export function PublicNavbar({ hasTestimonials = false, hasTodayItems = false }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -23,6 +24,7 @@ export function PublicNavbar({ hasTestimonials = false }: Props) {
   }
 
   const navLinks = [
+    ...(hasTodayItems ? [{ id: 'jadwal-hari-ini', label: 'Hari Ini' }] : []),
     { id: 'schedules', label: 'Jadwal' },
     { id: 'events',    label: 'Events' },
     { id: 'benefits',  label: 'Member' },

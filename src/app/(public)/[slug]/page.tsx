@@ -9,6 +9,7 @@ import { ParticipantsList } from '@/components/public/ParticipantsList'
 import { CommunityPickerSheet } from '@/components/public/CommunityPickerSheet'
 import { GalleryGrid } from '@/components/public/GalleryGrid'
 import { CLASS_TYPES } from '@/lib/constants'
+import { TodaySchedule, type TodayItem } from '@/components/public/TodaySchedule'
 
 // Halaman ini pakai service-role client (key statis, tidak ada cookie per
 // user) - fetch-nya jadi kandidat sempurna untuk Next.js Data Cache, yang
@@ -87,7 +88,18 @@ export default async function InstructorLandingPage({
 }) {
   const { slug }   = await params
   const supabase   = createServiceClient()
-  const today      = new Date().toISOString().split('T')[0]
+
+  // WIB-correct dates — Vercel runs on UTC, so plain new Date() can be yesterday
+  // in WIB during the first 7 hours of the UTC day (00:00–07:00 WIB = 17:00–00:00 UTC prev day).
+  const nowWIB     = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const todayWIB   = nowWIB.toISOString().split('T')[0]   // YYYY-MM-DD in WIB
+  const todayDow   = nowWIB.getUTCDay()                    // 0=Sun … 6=Sat, WIB-correct
+  const todayLabel = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  })
+  // Alias kept for clarity in old queries below
+  const today = todayWIB
 
   // Profile
   const { data: profileBase } = await supabase
@@ -109,9 +121,8 @@ export default async function InstructorLandingPage({
     bot_phone: (extraData as any)?.bot_phone ?? null,
   }
 
-  const in7Days = new Date()
-  in7Days.setDate(in7Days.getDate() + 7)
-  const in7DaysStr = in7Days.toISOString().split('T')[0]
+  const in7DaysStr = new Date(Date.now() + 7 * 60 * 60 * 1000 + 7 * 24 * 60 * 60 * 1000)
+    .toISOString().split('T')[0]
 
   // Classes + Events + Sessions with changes in next 7 days
   const [classesRes, eventsRes, changedSessionsRes, testimonialsRes, benefitsRes] = await Promise.all([
@@ -189,7 +200,7 @@ export default async function InstructorLandingPage({
   const classTargetDateMap = new Map<string, string>()
   visibleClasses.forEach((c: any) => {
     const resched = rescheduledMap.get(c.id)
-    classTargetDateMap.set(c.id, resched?.session_date ?? nextOccurrence(c.day_of_week, new Date()))
+    classTargetDateMap.set(c.id, resched?.session_date ?? nextOccurrence(c.day_of_week, nowWIB))
   })
 
   const classRegMap: Record<string, { name: string }[]> = {}
@@ -204,6 +215,106 @@ export default async function InstructorLandingPage({
       ;(classRegMap[r.class_id] ??= []).push({ name: r.registrant_name.split(' ')[0] })
     })
   }
+
+  // ── JADWAL HARI INI ──────────────────────────────────────────────────────────
+  // Batch-query registration counts for all classes that run today (by
+  // day_of_week or via a changed session), so the "Jadwal Hari Ini" cards
+  // show accurate quota without N+1 queries.
+  const todayClassCandidateIds = classes
+    .filter((c: any) =>
+      c.day_of_week === todayDow ||
+      changedSessions.some((s: any) => s.class_id === c.id && s.session_date === todayWIB)
+    )
+    .map((c: any) => c.id as string)
+
+  const todayRegCounts: Record<string, number> = {}
+  if (todayClassCandidateIds.length > 0) {
+    const { data: todayRegs } = await supabase
+      .from('registrations')
+      .select('class_id')
+      .in('class_id', todayClassCandidateIds)
+      .eq('session_date', todayWIB)
+      .in('payment_status', ['pending', 'confirmed'])
+    for (const r of (todayRegs ?? []) as any[]) {
+      if (r.class_id) todayRegCounts[r.class_id] = (todayRegCounts[r.class_id] ?? 0) + 1
+    }
+  }
+
+  // Assemble TodayItem array — regular + rescheduled + extra classes + events today
+  const todayItems: TodayItem[] = []
+
+  // 1. Regular classes scheduled on today's day_of_week (not rescheduled away)
+  for (const c of (classes as any[]).filter((c: any) =>
+    c.day_of_week === todayDow && !rescheduledMap.has(c.id)
+  )) {
+    todayItems.push({
+      kind: 'class', id: c.id, slug: c.slug ?? c.id,
+      name: c.name, description: c.description,
+      startTime: c.start_time, endTime: c.end_time,
+      location: locationMap.get(c.id)?.override_location ?? c.location,
+      mapsUrl: c.google_maps_url,
+      capacity: c.capacity, bookedCount: todayRegCounts[c.id] ?? 0,
+      price: Number(c.class_price) || undefined,
+      type: c.type,
+      registerUrl: `/${slug}/daftar/kelas/${c.slug ?? c.id}`,
+    })
+  }
+
+  // 2. Classes rescheduled TO today
+  for (const s of changedSessions.filter((s: any) =>
+    s.session_type === 'rescheduled' && s.session_date === todayWIB
+  )) {
+    const c = (classes as any[]).find((c: any) => c.id === s.class_id)
+    if (!c) continue
+    todayItems.push({
+      kind: 'class', id: c.id, slug: c.slug ?? c.id,
+      name: c.name, description: c.description,
+      startTime: s.start_time ?? c.start_time,
+      endTime: s.end_time ?? c.end_time,
+      location: s.override_location ?? c.location,
+      mapsUrl: c.google_maps_url,
+      capacity: c.capacity, bookedCount: todayRegCounts[c.id] ?? 0,
+      price: Number(c.class_price) || undefined,
+      badge: 'rescheduled', type: c.type,
+      registerUrl: `/${slug}/daftar/kelas/${c.slug ?? c.id}`,
+    })
+  }
+
+  // 3. Extra sessions today — pass ?date so registration page targets the correct session
+  for (const s of extraSessions.filter((s: any) => s.session_date === todayWIB)) {
+    const c = (classes as any[]).find((c: any) => c.id === s.class_id)
+    if (!c) continue
+    todayItems.push({
+      kind: 'class', id: s.id, slug: c.slug ?? c.id,
+      name: c.name, description: c.description,
+      startTime: s.start_time ?? c.start_time,
+      endTime: s.end_time ?? c.end_time,
+      location: c.location,
+      mapsUrl: c.google_maps_url,
+      capacity: c.capacity, bookedCount: todayRegCounts[c.id] ?? 0,
+      price: Number(c.class_price) || undefined,
+      badge: 'extra', type: c.type,
+      registerUrl: `/${slug}/daftar/kelas/${c.slug ?? c.id}?date=${todayWIB}`,
+    })
+  }
+
+  // 4. Events happening today
+  for (const ev of (events as any[]).filter((ev: any) => ev.event_date === todayWIB)) {
+    todayItems.push({
+      kind: 'event', id: ev.id, slug: ev.slug ?? ev.id,
+      name: ev.title,
+      startTime: ev.start_time, endTime: ev.end_time,
+      location: ev.location,
+      mapsUrl: ev.google_maps_url,
+      capacity: ev.max_capacity, bookedCount: regCountMap[ev.id] ?? 0,
+      price: Number(ev.ots_price) || undefined,
+      registerUrl: `/${slug}/daftar/${ev.slug ?? ev.id}`,
+    })
+  }
+
+  // Sort by start_time ascending
+  todayItems.sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const hasTodayContent = todayItems.length > 0
 
   // Group classes by type
   const classGroups = Object.entries(
@@ -303,7 +414,7 @@ export default async function InstructorLandingPage({
 
   return (
     <div className="min-h-screen bg-white text-on-surface font-sans">
-      <PublicNavbar hasTestimonials={testimonials.length > 0} />
+      <PublicNavbar hasTestimonials={testimonials.length > 0} hasTodayItems={hasTodayContent} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
@@ -382,18 +493,20 @@ export default async function InstructorLandingPage({
             dari CTA, lihat heroCtas di atas), jadi dikasih label biar tidak
             ambigu cuma panah doang. */}
         <a
-          href="#schedules"
+          href={hasTodayContent ? '#jadwal-hari-ini' : '#schedules'}
           className="absolute bottom-6 inset-x-0 flex flex-col items-center gap-1 animate-bounce text-on-surface/40 hover:text-on-surface/70 transition-colors"
         >
-          <span className="text-xs font-semibold uppercase tracking-widest">Lihat Jadwal</span>
+          <span className="text-xs font-semibold uppercase tracking-widest">
+            {hasTodayContent ? 'Jadwal Hari Ini' : 'Lihat Jadwal'}
+          </span>
           <span className="material-symbols-outlined">keyboard_double_arrow_down</span>
         </a>
       </section>
 
-      {/* Trust section (nama/foto kecil, specialty, bio, proof bullets, CTA
-          kedua) dihapus 2026-06-26 - isinya cuma mengulang hero (keputusan
-          eksplisit user, lihat screenshot pembanding). Hero di atas sekarang
-          satu-satunya tempat info instruktur ditampilkan. */}
+      {/* ── JADWAL HARI INI ──────────────────────────────────────────────── */}
+      {hasTodayContent && (
+        <TodaySchedule items={todayItems} todayLabel={todayLabel} />
+      )}
 
       {/* ── EMPTY STATE — instruktur baru, belum ada kelas/event ──────────── */}
       {!hasContent && (
