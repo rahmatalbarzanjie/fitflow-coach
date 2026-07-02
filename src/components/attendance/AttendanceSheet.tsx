@@ -35,7 +35,8 @@ interface Participant {
   name: string
   phone: string
   state: AttendState
-  attendanceId?: string // kalau sudah ada di DB
+  attendanceId?: string
+  needsMemberUpgrade?: boolean // existing record has null member_id, needs delete+reinsert for trigger
 }
 
 interface Props {
@@ -229,15 +230,23 @@ export function AttendanceSheet({
     // 2. Booking yang dikonfirmasi (skip kalau sudah masuk via member)
     for (const b of bookings) {
       if (b.member_id && addedMemberIds.has(b.member_id)) continue
-      // Booking tanpa member_id (mayoritas kasus) dicocokkan via nama+telepon
-      // registrant - sebelumnya selalu dianggap "belum ada" untuk kasus ini,
-      // jadi attendanceId tidak pernah ke-set dan absensi yang sudah tersimpan
-      // tidak pernah terdeteksi, menyebabkan duplikat tiap kali disimpan ulang.
+
+      // Untuk booking dengan member_id: coba cocokkan via member_id dulu,
+      // lalu fallback ke nama+telepon (untuk record lama yang tersimpan
+      // dengan member_id = null sebelum bug ini diperbaiki).
       const existing = existingAttendance.find(a =>
         b.member_id
-          ? a.member_id === b.member_id
-          : a.registrant_phone === b.registrant_phone && a.registrant_name === b.registrant_name
+          ? (a.member_id === b.member_id ||
+             (a.registrant_phone === b.registrant_phone && a.registrant_name === b.registrant_name))
+          : (a.registrant_phone === b.registrant_phone && a.registrant_name === b.registrant_name)
       )
+
+      // Record lama yang cocok via nama/telepon tapi member_id-nya masih null:
+      // perlu di-delete+reinsert saat save agar trigger konsumsi membership bisa jalan.
+      const needsMemberUpgrade = !!(
+        existing && !existing.member_id && b.member_id
+      )
+
       list.push({
         key: `booking-${b.id}`,
         source: 'booking',
@@ -246,6 +255,7 @@ export function AttendanceSheet({
         phone: b.registrant_phone ?? '',
         state: existing ? 'hadir' : 'none',
         attendanceId: existing?.id,
+        needsMemberUpgrade,
       })
     }
 
@@ -301,26 +311,36 @@ export function AttendanceSheet({
       const hadirList = participants.filter(p => p.state === 'hadir')
       const noneList = participants.filter(p => p.state === 'none')
 
-      // Hapus attendance yang di-uncheck
-      const toDelete = noneList
-        .filter(p => p.attendanceId)
+      // ID record lama yang perlu di-upgrade (member_id null → set):
+      // harus di-delete dulu agar INSERT baru bisa jalan dan trigger
+      // sync_membership_consumption terpanggil dengan member_id yang benar.
+      const upgradeIds = hadirList
+        .filter(p => p.needsMemberUpgrade && p.attendanceId)
         .map(p => p.attendanceId!)
+
+      const toDelete = [
+        ...noneList.filter(p => p.attendanceId).map(p => p.attendanceId!),
+        ...upgradeIds,
+      ]
       if (toDelete.length > 0) {
         await supabase.from('attendance').delete().in('id', toDelete)
       }
 
-      // Insert attendance baru
+      // Insert attendance baru — termasuk peserta yang record lamanya baru di-delete (upgrade)
       const toInsert = hadirList
-        .filter(p => !p.attendanceId)
+        .filter(p => !p.attendanceId || upgradeIds.includes(p.attendanceId!))
         .map(p => ({
           session_id: session.id,
           user_id: userId,
-          member_id: p.source === 'member' ? p.memberId ?? null : null,
+          // Simpan member_id dari memberId (booking linked ke member),
+          // bukan hanya untuk source='member'. Ini yang memicu trigger
+          // konsumsi sesi membership saat INSERT ke attendance.
+          member_id: p.memberId ?? null,
           source: p.source,
           payment_mode: cls.payment_mode ?? 'drop_in',
           amount_paid: cls.class_price ?? 0,
-          registrant_name: p.source !== 'member' ? p.name : null,
-          registrant_phone: p.source !== 'member' ? p.phone : null,
+          registrant_name: p.memberId ? null : p.name,
+          registrant_phone: p.memberId ? null : p.phone,
         }))
 
       if (toInsert.length > 0) {
